@@ -1,15 +1,8 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
 import { SupabaseProvider } from '@/supabase';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: 'cover',
-};
 
 export const metadata: Metadata = {
   title: "E-Moorm - Hyperlocal Marketplace",
