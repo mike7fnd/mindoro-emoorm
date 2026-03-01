@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase, setDocumentNonBlocking } from "@/supabase";
 
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,5 +77,22 @@ export default function AuthCallbackPage() {
         <p className="text-sm text-muted-foreground">Verifying your email...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9f9]">
+          <div className="bg-white rounded-[25px] p-8 md:p-12 w-full max-w-[480px] shadow-sm text-center space-y-4">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+            <p className="text-sm text-muted-foreground">Verifying your email...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackInner />
+    </Suspense>
   );
 }
