@@ -7,7 +7,9 @@ let supabaseInstance: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient {
   if (!supabaseInstance) {
-    supabaseInstance = createClient(supabaseConfig.url, supabaseConfig.anonKey);
+    const url = supabaseConfig.url || 'https://placeholder.supabase.co';
+    const key = supabaseConfig.anonKey || 'placeholder-key';
+    supabaseInstance = createClient(url, key);
   }
   return supabaseInstance;
 }
