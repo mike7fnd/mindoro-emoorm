@@ -8,9 +8,17 @@ export async function initiateEmailSignUp(supabase: SupabaseClient | any, email:
   const { data, error } = await client.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : undefined,
+    },
   });
   if (error) throw error;
-  return { user: data.user };
+
+  // No session means email confirmation is required
+  const needsConfirmation = !!(data.user && !data.session);
+  return { user: data.user, needsConfirmation };
 }
 
 /** Initiate email/password sign-in. */

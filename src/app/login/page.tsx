@@ -49,8 +49,8 @@ export default function LoginPage() {
     } else if (err.code === "auth/wrong-password") {
       friendlyMessage = "Incorrect password.";
     } else if (err.code === "auth/email-already-in-use") {
-      friendlyMessage = "This email is already in use by another account.";
-    } else if (err.message) {
+      friendlyMessage = "This email is already in use by another account.";    } else if (err.message?.includes("Email not confirmed")) {
+      friendlyMessage = "Your email is not yet confirmed. Please check your inbox for the verification link.";    } else if (err.message) {
       friendlyMessage = err.message;
     }
 

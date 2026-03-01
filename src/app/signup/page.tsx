@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail, RotateCw } from "lucide-react";
 import { useUser, initiateEmailSignUp, initiateGoogleSignIn, useSupabase, setDocumentNonBlocking } from "@/supabase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,26 +39,9 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (user && !isUserLoading && !showEmailConfirm) {
-      // Only allow profile creation if email is confirmed
-      if (user.email && user.emailVerified !== false) {
-        setDocumentNonBlocking(supabase, "users", {
-          id: user.uid,
-          firstName: formData.firstName || user.displayName?.split(" ")[0] || "",
-          lastName: formData.lastName || user.displayName?.split(" ")[1] || "",
-          email: user.email,
-          mobile: formData.mobile || "",
-          province: formData.province || "",
-          city: formData.city || "",
-          barangay: formData.barangay || "",
-          street: formData.street || "",
-          createdAt: new Date().toISOString()
-        });
-        router.push("/profile");
-      } else {
-        setShowEmailConfirm(true);
-      }
+      router.push("/profile");
     }
-  }, [user, isUserLoading, router, supabase, formData, showEmailConfirm]);
+  }, [user, isUserLoading, router, showEmailConfirm]);
 
   useEffect(() => {
     gsap.fromTo(".signup-card",
@@ -180,8 +163,42 @@ export default function SignUpPage() {
       return;
     }
     try {
-      await initiateEmailSignUp(supabase, formData.email, formData.password);
-      setShowEmailConfirm(true);
+      const result = await initiateEmailSignUp(supabase, formData.email, formData.password);
+
+      // Save profile data for after email confirmation
+      localStorage.setItem("pendingProfile", JSON.stringify({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        mobile: formData.mobile,
+        province: formData.province,
+        city: formData.city,
+        barangay: formData.barangay,
+        street: formData.street,
+      }));
+
+      if (result.needsConfirmation) {
+        setShowEmailConfirm(true);
+        return;
+      }
+
+      // If no confirmation needed (shouldn't happen with confirm enabled), create profile directly
+      if (result.user) {
+        const pending = JSON.parse(localStorage.getItem("pendingProfile") || "{}");
+        await setDocumentNonBlocking(supabase, "users", {
+          id: result.user.id,
+          firstName: pending.firstName || "",
+          lastName: pending.lastName || "",
+          email: formData.email,
+          mobile: pending.mobile || "",
+          province: pending.province || "",
+          city: pending.city || "",
+          barangay: pending.barangay || "",
+          street: pending.street || "",
+          createdAt: new Date().toISOString()
+        });
+        localStorage.removeItem("pendingProfile");
+      }
     } catch (err) {
       handleAuthError(err);
     }
@@ -193,6 +210,51 @@ export default function SignUpPage() {
   };
 
   if (isUserLoading) return null;
+
+  if (showEmailConfirm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9f9]">
+        <div className="signup-card bg-white rounded-[25px] p-8 md:p-12 w-full max-w-[480px] shadow-sm border-none text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <Mail className="h-10 w-10 text-primary" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-headline tracking-[-0.05em] mb-2">Check your email</h2>
+          <p className="text-sm text-muted-foreground mb-2">
+            We sent a confirmation link to
+          </p>
+          <p className="text-sm font-bold text-black mb-6">{formData.email}</p>
+          <p className="text-xs text-muted-foreground mb-8">
+            Click the link in the email to verify your account. After verification you will be redirected back to sign in.
+          </p>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await initiateEmailSignUp(supabase, formData.email, formData.password);
+                toast({ title: "Email resent", description: "Check your inbox again." });
+              } catch {
+                toast({ variant: "destructive", title: "Error", description: "Could not resend email. Try again later." });
+              }
+            }}
+            className="w-full bg-[#f8f8f8] text-black font-bold py-4 rounded-full hover:bg-muted transition-all flex items-center justify-center gap-2 text-sm tracking-tight mb-4"
+          >
+            <RotateCw className="h-4 w-4" />
+            Resend confirmation email
+          </button>
+
+          <Link
+            href="/login"
+            className="inline-block text-sm text-primary font-bold hover:underline"
+          >
+            Back to Sign In
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#f9f9f9]">
