@@ -9,6 +9,7 @@ import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocument
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import confetti from "canvas-confetti";
 
 interface CartItem {
@@ -402,6 +403,12 @@ export default function CheckoutPage() {
           )}
         </div>
       </main>
+      <FirstTimeIntro
+        storageKey="checkout"
+        title="Checkout"
+        description="Review your order, set your delivery address, and choose a payment method to complete your purchase."
+        icon={<CreditCard className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

@@ -42,6 +42,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SellerInfoStepper } from "@/components/ui/seller-info-stepper";
 import { SellerRegistrationForm } from "@/components/ui/seller-registration-form";
 import { Badge } from "@/components/ui/badge";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -583,6 +584,12 @@ export default function ProfilePage() {
               </section>
             </div>
           </main>
+          <FirstTimeIntro
+            storageKey="profile"
+            title="Your Profile"
+            description="Manage your account, view your activity, wishlist, and orders. Become a seller to start your own store."
+            icon={<UserIcon className="h-7 w-7" />}
+          />
           <div className="md:hidden">
             <Footer />
           </div>

@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 
 interface Booking {
   id: string;
@@ -213,6 +214,12 @@ export default function MyBookingsPage() {
         </div>
       </main>
 
+      <FirstTimeIntro
+        storageKey="my-bookings"
+        title="My Bookings"
+        description="Track all your reservations in one place. View upcoming, confirmed, and past bookings with full details."
+        icon={<Calendar className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

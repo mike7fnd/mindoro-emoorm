@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import {
   Select,
   SelectContent,
@@ -328,6 +329,12 @@ export default function SettingsPage() {
             </div>
           </main>
 
+          <FirstTimeIntro
+            storageKey="settings"
+            title="Settings"
+            description="Customize your experience. Update your personal info, notification preferences, and account security."
+            icon={<Shield className="h-7 w-7" />}
+          />
           <div className="md:hidden">
             <Footer />
           </div>

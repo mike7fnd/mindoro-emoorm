@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 
 interface Conversation {
   id: string;
@@ -399,6 +400,12 @@ function MessagesContent() {
         </div>
       </main>
 
+      <FirstTimeIntro
+        storageKey="messages"
+        title="Messages"
+        description="Chat directly with sellers, ask questions, and negotiate. All your conversations stay organized here."
+        icon={<MessagesSquare className="h-7 w-7" />}
+      />
       {!activeConversationId && <Footer />}
     </div>
   );

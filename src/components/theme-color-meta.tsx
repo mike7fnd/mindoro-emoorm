@@ -12,7 +12,7 @@ export function ThemeColorMeta() {
 
     // Green status bar only on home page, white everywhere else
     const isHome = pathname === "/";
-    meta.setAttribute("content", isHome ? "#29a366" : "#ffffff");
+    meta.setAttribute("content", isHome ? "#29a366" : "transparent");
   }, [pathname]);
 
   return null;

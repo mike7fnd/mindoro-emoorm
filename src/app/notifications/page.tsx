@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 
 interface Notification {
   id: string;
@@ -126,6 +127,12 @@ export default function NotificationsPage() {
           )}
         </div>
       </main>
+      <FirstTimeIntro
+        storageKey="notifications"
+        title="Notifications"
+        description="Stay updated with order confirmations, booking reminders, promotions, and important announcements."
+        icon={<Bell className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

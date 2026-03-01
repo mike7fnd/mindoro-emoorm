@@ -9,6 +9,7 @@ import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -251,6 +252,12 @@ export default function CartPage() {
           </div>
         </div>
       )}
+      <FirstTimeIntro
+        storageKey="cart"
+        title="Your Cart"
+        description="Items you add from stores and facilities appear here. Review your selections and proceed to checkout when ready."
+        icon={<ShoppingCart className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );
