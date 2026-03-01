@@ -141,7 +141,7 @@ export default function SellerProfilePage() {
 
   return (
     <SellerLayout>
-      <div className="max-w-2xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
+      <div className="max-w-2xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
         {/* Cover + Avatar */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
           {/* Cover Image */}
@@ -207,7 +207,7 @@ export default function SellerProfilePage() {
             {/* Name & Badge */}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-normal font-headline tracking-[-0.05em]">
+                <h1 className="text-2xl font-normal font-headline tracking-[-0.05em]">
                   {s?.name || "My Shop"}
                 </h1>
                 {s?.status === "active" && (

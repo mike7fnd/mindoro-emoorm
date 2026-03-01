@@ -103,11 +103,11 @@ export default function SellerDashboardPage() {
 
   return (
     <SellerLayout>
-      <div className="max-w-7xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-8 md:space-y-10">
+      <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-8 md:space-y-10">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Seller Dashboard</h1>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Seller Dashboard</h1>
             <p className="text-sm text-muted-foreground font-normal">
               {store ? `Overview of ${(store as any).name}` : "Overview of your shop performance"}
             </p>

@@ -117,14 +117,14 @@ export default function ShopRegistrationPage() {
     <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
       <Header />
 
-      <main className="flex-grow container mx-auto px-4 md:px-8 pt-8 md:pt-32 pb-24 max-w-2xl">
+      <main className="flex-grow container mx-auto px-6 md:px-8 pt-8 md:pt-32 pb-24 max-w-2xl">
         {registered ? (
           <div className="flex flex-col items-center justify-center text-center py-24 animate-in fade-in zoom-in duration-500">
             <div className="h-24 w-24 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mb-6">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
             <PartyPopper className="h-8 w-8 text-primary mb-4 animate-bounce" />
-            <h1 className="text-2xl md:text-3xl font-headline tracking-tight text-black dark:text-white mb-2">You&apos;re All Set!</h1>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white mb-2">You&apos;re All Set!</h1>
             <p className="text-sm text-muted-foreground max-w-sm">Your shop has been registered successfully. Redirecting you to your seller dashboard...</p>
             <div className="mt-8">
               <div className="h-1 w-48 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
@@ -151,7 +151,7 @@ export default function ShopRegistrationPage() {
 
             {/* Header */}
             <div className="mb-10">
-              <h1 className="text-2xl md:text-3xl font-headline tracking-tight text-black dark:text-white">Register Your Shop</h1>
+              <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Register Your Shop</h1>
               <p className="text-sm text-muted-foreground mt-2">Fill in the details below to set up your seller account and start listing products.</p>
             </div>
 

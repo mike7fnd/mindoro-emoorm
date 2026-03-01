@@ -550,34 +550,34 @@ export default function ProfilePage() {
               </section>
 
               {/* Two grid cards: My Shop / Become a Seller & Support */}
-              <section className="grid grid-cols-2 gap-4 mt-8">
+              <section className="grid grid-cols-2 gap-3 md:gap-4 mt-8">
                 {userShop ? (
-                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:from-primary/15 hover:to-primary/10 transition-all">
-                    <div className="h-14 w-14 rounded-2xl bg-primary/15 flex items-center justify-center mb-3">
-                      <Store className="h-7 w-7 text-primary" />
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:from-primary/15 hover:to-primary/10 transition-all">
+                    <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-primary/15 flex items-center justify-center mb-2 md:mb-3">
+                      <Store className="h-5 w-5 md:h-7 md:w-7 text-primary" />
                     </div>
-                    <h4 className="font-headline text-base mb-0.5">{(userShop as any).name || 'My Shop'}</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Manage your products, orders, and analytics from your seller dashboard.</p>
-                    <Button asChild className="rounded-full px-6 h-10 bg-primary text-white font-bold mt-2 gap-1.5">
-                      <Link href="/seller/dashboard">Go to Dashboard <ArrowUpRight className="h-3.5 w-3.5" /></Link>
+                    <h4 className="font-headline text-sm md:text-base mb-0.5 leading-tight">{(userShop as any).name || 'My Shop'}</h4>
+                    <p className="text-[10px] md:text-xs text-muted-foreground mb-2 md:mb-3 leading-snug hidden sm:block">Manage your products, orders, and analytics from your seller dashboard.</p>
+                    <Button asChild className="rounded-full px-4 md:px-6 h-8 md:h-10 bg-primary text-white font-bold mt-1 md:mt-2 gap-1 md:gap-1.5 text-[11px] md:text-sm">
+                      <Link href="/seller/dashboard">Dashboard <ArrowUpRight className="h-3 w-3 md:h-3.5 md:w-3.5" /></Link>
                     </Button>
                   </div>
                 ) : (
-                  <div className="bg-primary/10 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-primary/20 transition-all">
-                    <Shield className="h-8 w-8 text-primary mb-2" />
-                    <h4 className="font-headline text-base mb-1">Become a Seller</h4>
-                    <p className="text-xs text-muted-foreground mb-3">Open your own store and start selling to the E-Moorm community.</p>
-                    <Button asChild className="rounded-full px-6 h-10 bg-primary text-white font-bold mt-2">
-                      <Link href="/seller/register">Register as Seller</Link>
+                  <div className="bg-primary/10 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-primary/20 transition-all">
+                    <Shield className="h-6 w-6 md:h-8 md:w-8 text-primary mb-1.5 md:mb-2" />
+                    <h4 className="font-headline text-sm md:text-base mb-0.5 md:mb-1 leading-tight">Become a Seller</h4>
+                    <p className="text-[10px] md:text-xs text-muted-foreground mb-2 md:mb-3 leading-snug hidden sm:block">Open your own store and start selling to the E-Moorm community.</p>
+                    <Button asChild className="rounded-full px-4 md:px-6 h-8 md:h-10 bg-primary text-white font-bold mt-1 md:mt-2 text-[11px] md:text-sm">
+                      <Link href="/seller/register">Register</Link>
                     </Button>
                   </div>
                 )}
-                <div className="bg-[#f8f8f8] rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-black/5 transition-all">
-                  <HelpCircle className="h-8 w-8 text-primary mb-2" />
-                  <h4 className="font-headline text-base mb-1">Support</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Need help or have a concern? Contact our support team for assistance.</p>
-                  <Button asChild variant="outline" className="rounded-full px-6 h-10 border-primary/20 text-primary font-bold mt-2">
-                    <Link href="mailto:support@emoorm.ph">Contact Support</Link>
+                <div className="bg-[#f8f8f8] rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-black/5 transition-all">
+                  <HelpCircle className="h-6 w-6 md:h-8 md:w-8 text-primary mb-1.5 md:mb-2" />
+                  <h4 className="font-headline text-sm md:text-base mb-0.5 md:mb-1 leading-tight">Support</h4>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mb-2 md:mb-3 leading-snug hidden sm:block">Need help or have a concern? Contact our support team for assistance.</p>
+                  <Button asChild variant="outline" className="rounded-full px-4 md:px-6 h-8 md:h-10 border-primary/20 text-primary font-bold mt-1 md:mt-2 text-[11px] md:text-sm">
+                    <Link href="mailto:support@emoorm.ph">Contact Us</Link>
                   </Button>
                 </div>
               </section>

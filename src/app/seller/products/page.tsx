@@ -19,14 +19,20 @@ import {
   Filter,
   ImageIcon,
   Loader2,
+  Pencil,
+  Copy,
+  Share2,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, useCollection, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
 
 const statusStyle: Record<string, string> = {
@@ -41,6 +47,7 @@ const statusStyle: Record<string, string> = {
 export default function SellerProductsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const router = useRouter();
 
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
@@ -87,6 +94,30 @@ export default function SellerProductsPage() {
     window.location.reload();
   };
 
+  const handleDuplicateProduct = async (product: any) => {
+    const { id, createdAt, updatedAt, totalSales, rating, ...rest } = product;
+    const newProduct = {
+      ...rest,
+      name: `${product.name} (Copy)`,
+      status: "Draft",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      totalSales: 0,
+    };
+    await supabase.from("facilities").insert(newProduct);
+    window.location.reload();
+  };
+
+  const handleShareProduct = (product: any) => {
+    const url = `${window.location.origin}/book/${product.id}`;
+    if (navigator.share) {
+      navigator.share({ title: product.name, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      alert("Product link copied to clipboard!");
+    }
+  };
+
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "Available" || currentStatus === "active" ? "Draft" : "Available";
     updateDocumentNonBlocking(supabase, "facilities", id, { status: newStatus, updatedAt: new Date().toISOString() });
@@ -99,11 +130,11 @@ export default function SellerProductsPage() {
 
   return (
     <SellerLayout>
-      <div className="max-w-7xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
+      <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">My Products</h1>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">My Products</h1>
             <p className="text-sm text-muted-foreground font-normal">{allProducts.length} total products</p>
           </div>
           <Link href="/seller/products/add">
@@ -133,7 +164,7 @@ export default function SellerProductsPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={setTab} className="flex justify-center">
           <TabsList className="bg-black/[0.03] dark:bg-white/[0.03] rounded-full p-1 h-auto">
             <TabsTrigger value="all" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-4">
               All ({allProducts.length})
@@ -168,7 +199,7 @@ export default function SellerProductsPage() {
                       ) : (
                         <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
                       )}
-                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-3 right-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -179,12 +210,44 @@ export default function SellerProductsPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none">
-                            <DropdownMenuItem className="gap-2" onClick={() => handleToggleStatus(product.id, status)}>
-                              {status === "Available" ? <><EyeOff className="h-4 w-4" /> Hide</> : <><Eye className="h-4 w-4" /> Publish</>}
+                          <DropdownMenuContent align="end" className="w-52 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl dark:bg-black/30">
+                            <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Product Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+                            <DropdownMenuItem
+                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                              onClick={() => router.push(`/seller/products/add?edit=${product.id}`)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              <span className="text-sm font-medium">Edit Product</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 text-red-600" onClick={() => handleDeleteProduct(product.id)}>
-                              <Trash2 className="h-4 w-4" /> Delete
+                            <DropdownMenuItem
+                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                              onClick={() => handleDuplicateProduct(product)}
+                            >
+                              <Copy className="h-4 w-4" />
+                              <span className="text-sm font-medium">Duplicate</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                              onClick={() => handleToggleStatus(product.id, status)}
+                            >
+                              {status === "Available" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <span className="text-sm font-medium">{status === "Available" ? "Hide Product" : "Publish"}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                              onClick={() => handleShareProduct(product)}
+                            >
+                              <Share2 className="h-4 w-4" />
+                              <span className="text-sm font-medium">Share Link</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+                            <DropdownMenuItem
+                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3 text-red-600"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="text-sm font-bold">Delete Product</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -194,15 +257,19 @@ export default function SellerProductsPage() {
                       </Badge>
                     </div>
                     <CardContent className="p-5">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="font-medium text-sm md:text-base truncate min-w-0">{product.name}</h3>
-                        <span className="text-xs text-muted-foreground shrink-0">{product.totalSales || 0} sold</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-sm md:text-base truncate">{product.name}</h3>
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs text-muted-foreground">{product.rating || 5.0}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs text-muted-foreground">{product.totalSales || 0} sold</span>
+                          <p className="font-headline text-lg">₱{Number(product.price || 0).toLocaleString()}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs text-muted-foreground">{product.rating || 5.0}</span>
-                      </div>
-                      <p className="font-headline text-lg mt-2">₱{Number(product.price || 0).toLocaleString()}</p>
                     </CardContent>
                   </Card>
                 );

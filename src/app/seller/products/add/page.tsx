@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,14 +25,16 @@ import {
   Layers,
   Upload,
   X,
+  Save,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useSupabaseAuth,
   useSupabase,
   useStableMemo,
   useDoc,
   addDocumentNonBlocking,
+  updateDocumentNonBlocking,
 } from "@/supabase";
 import { uploadImage } from "@/lib/upload-image";
 
@@ -53,6 +55,10 @@ const categories = [
 
 export default function AddProductPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditing = Boolean(editId);
+
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
@@ -62,6 +68,13 @@ export default function AddProductPage() {
   }, [user]);
   const { data: store } = useDoc(storeRef);
 
+  // Fetch existing product when editing
+  const productRef = useStableMemo(() => {
+    if (!editId) return null;
+    return { table: "facilities", id: editId };
+  }, [editId]);
+  const { data: existingProduct, isLoading: productLoading } = useDoc(productRef);
+
   const [form, setForm] = useState({
     name: "",
     price: "",
@@ -70,9 +83,26 @@ export default function AddProductPage() {
     description: "",
     imageUrl: "",
   });
+  const [formLoaded, setFormLoaded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Pre-fill form when editing and product data arrives
+  useEffect(() => {
+    if (isEditing && existingProduct && !formLoaded) {
+      const p = existingProduct as any;
+      setForm({
+        name: p.name || "",
+        price: p.price?.toString() || "",
+        stock: p.stock?.toString() || "",
+        category: p.category || p.type || "",
+        description: p.description || "",
+        imageUrl: p.imageUrl || "",
+      });
+      setFormLoaded(true);
+    }
+  }, [isEditing, existingProduct, formLoaded]);
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -110,11 +140,17 @@ export default function AddProductPage() {
       status: "Available",
       rating: 5.0,
       type: form.category || "General",
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    await addDocumentNonBlocking(supabase, "facilities", productData);
+    if (isEditing && editId) {
+      await updateDocumentNonBlocking(supabase, "facilities", editId, productData);
+    } else {
+      await addDocumentNonBlocking(supabase, "facilities", {
+        ...productData,
+        createdAt: new Date().toISOString(),
+      });
+    }
     setAdding(false);
     router.push("/seller/products");
   };
@@ -123,7 +159,7 @@ export default function AddProductPage() {
 
   return (
     <SellerLayout>
-      <div className="max-w-2xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
+      <div className="max-w-2xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button
@@ -135,11 +171,11 @@ export default function AddProductPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-normal font-headline tracking-[-0.05em]">
-              Add Product
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em]">
+              {isEditing ? "Edit Product" : "Add Product"}
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              Fill in the details to list a new product
+              {isEditing ? "Update your product details" : "Fill in the details to list a new product"}
             </p>
           </div>
         </div>
@@ -301,11 +337,11 @@ export default function AddProductPage() {
           >
             {adding ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> {isEditing ? "Saving..." : "Adding..."}
               </>
             ) : (
               <>
-                <Package className="h-4 w-4 mr-2" /> Add Product
+                {isEditing ? <Save className="h-4 w-4 mr-2" /> : <Package className="h-4 w-4 mr-2" />} {isEditing ? "Save Changes" : "Add Product"}
               </>
             )}
           </Button>

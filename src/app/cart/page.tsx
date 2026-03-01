@@ -4,11 +4,19 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { ShoppingCart, Trash2, Plus, Minus, Store } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Store, MoreVertical, Heart, Share2, Archive, Tag, HelpCircle } from "lucide-react";
 import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CartItem {
   id: string;
@@ -119,14 +127,54 @@ export default function CartPage() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Header />
-      <main className="flex-grow container mx-auto px-4 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
-        <div className="mb-10 mt-8 md:mt-0">
-          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] leading-tight">
-            My Cart
-          </h1>
-          <p className="text-muted-foreground mt-1">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</p>
+      <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
+        <div className="p-6 md:p-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white">
+              My Cart
+            </h1>
+            <p className="text-muted-foreground text-sm mt-0.5">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none mt-0.5">
+                <MoreVertical className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl dark:bg-black/30">
+              <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Cart Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+              <DropdownMenuItem
+                className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                onClick={() => router.push('/my-bookings')}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                <span className="text-sm font-medium">My Orders</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+                <Heart className="h-4 w-4" />
+                <span className="text-sm font-medium">Move All to Wishlist</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+                <Archive className="h-4 w-4" />
+                <span className="text-sm font-medium">Save for Later</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+                <Share2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Share Cart</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+              <DropdownMenuItem
+                className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3 text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="text-sm font-bold">Clear Cart</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
+        <div className="px-6 md:px-8">
         {cartLoading ? (
           <div className="text-center py-20 text-muted-foreground italic">Loading cart...</div>
         ) : cartItems.length === 0 ? (
@@ -183,6 +231,7 @@ export default function CartPage() {
             ))}
           </div>
         )}
+        </div>
       </main>
 
       {/* Fixed checkout bar */}
