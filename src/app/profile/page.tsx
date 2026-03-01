@@ -8,8 +8,8 @@ import {
   useSupabase,
   useCollection,
   useDoc,
-  useMemoFirebase,
-  useFirebase
+  useStableMemo,
+  useSupabaseAuth
 } from "@/supabase";
 import {
   Shield,
@@ -152,7 +152,7 @@ export function ProfileSidebar({ onLogout }: { onLogout: () => void }) {
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
-  const { auth } = useFirebase();
+  const { auth } = useSupabaseAuth();
   const supabase = useSupabase();
   const router = useRouter();
 
@@ -194,7 +194,7 @@ export default function ProfilePage() {
     }
   };
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);
@@ -202,20 +202,20 @@ export default function ProfilePage() {
   const { data: userProfile } = useDoc(userProfileRef);
 
   // Check if user has a registered store
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: userShop } = useDoc(storeRef);
 
-  const bookingsQuery = useMemoFirebase(() => {
+  const bookingsQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "bookings", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user]);
 
   const { data: bookings } = useCollection(bookingsQuery);
 
-  const facilitiesQuery = useMemoFirebase(() => {
+  const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 
@@ -232,7 +232,7 @@ export default function ProfilePage() {
   }).filter(bk => bookingFilter === "All" || bk.status === bookingFilter);
 
   // Wishlist
-  const wishlistQuery = useMemoFirebase(() => {
+  const wishlistQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "wishlist", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user]);

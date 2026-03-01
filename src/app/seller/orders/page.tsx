@@ -20,7 +20,7 @@ import {
   ShoppingCart,
   Loader2,
 } from "lucide-react";
-import { useFirebase, useSupabase, useMemoFirebase, useCollection, updateDocumentNonBlocking } from "@/supabase";
+import { useSupabaseAuth, useSupabase, useStableMemo, useCollection, updateDocumentNonBlocking } from "@/supabase";
 
 const statusConfig: Record<string, { icon: React.ElementType; className: string; label: string }> = {
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "To Pay" },
@@ -40,11 +40,11 @@ export default function SellerOrdersPage() {
   const [tab, setTab] = useState("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
   // Fetch orders (bookings) for this store
-  const ordersConfig = useMemoFirebase(() => {
+  const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "bookings",

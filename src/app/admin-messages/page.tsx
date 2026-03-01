@@ -7,7 +7,7 @@ import {
   useUser,
   useSupabase,
   useCollection,
-  useMemoFirebase
+  useStableMemo
 } from "@/supabase";
 import {
   MessagesSquare,
@@ -75,12 +75,12 @@ function AdminMessagesContent() {
     }
   }, [user, isUserLoading, router]);
 
-  const usersQuery = useMemoFirebase(() => {
+  const usersQuery = useStableMemo(() => {
     return { table: "users" };
   }, []);
   const { data: profiles } = useCollection<UserProfile>(usersQuery);
 
-  const allConversationsQuery = useMemoFirebase(() => {
+  const allConversationsQuery = useStableMemo(() => {
     if (!user || user.email !== 'kioalaquer301@gmail.com') return null;
     return {
       table: "conversations",
@@ -90,7 +90,7 @@ function AdminMessagesContent() {
 
   const { data: conversations } = useCollection(allConversationsQuery);
 
-  const messagesQuery = useMemoFirebase(() => {
+  const messagesQuery = useStableMemo(() => {
     if (!user || user.email !== 'kioalaquer301@gmail.com' || !selectedUserId) return null;
     return {
       table: "messages",

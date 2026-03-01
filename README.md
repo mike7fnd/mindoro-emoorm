@@ -1,5 +1,3 @@
-# Firebase Studio
+# E-Moorm
 
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+Hyperlocal digital marketplace for Oriental Mindoro, built with Next.js and Supabase.

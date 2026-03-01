@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { useFirebase, useSupabase, useMemoFirebase, useDoc, useCollection, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
+import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, useCollection, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
 
 const statusStyle: Record<string, string> = {
   Available: "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400",
@@ -42,18 +42,18 @@ export default function SellerProductsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
 
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
   // Fetch store data
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store } = useDoc(storeRef);
 
   // Fetch products (facilities) for this seller
-  const productsConfig = useMemoFirebase(() => {
+  const productsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "facilities",

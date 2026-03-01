@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Star, MapPin, Heart, ArrowLeft, Store as StoreIcon, Users, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDoc, useCollection, useMemoFirebase, useUser, useSupabase } from "@/supabase";
+import { useDoc, useCollection, useStableMemo, useUser, useSupabase } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,20 +49,20 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
   const { user } = useUser();
   const supabase = useSupabase();
 
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     return { table: "stores", id };
   }, [id]);
 
   const { data: store, isLoading: storeLoading } = useDoc<StoreData>(storeRef);
 
-  const productsQuery = useMemoFirebase(() => {
+  const productsQuery = useStableMemo(() => {
     return { table: "facilities", filters: [{ column: "storeId", op: "eq", value: id }] };
   }, [id]);
 
   const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
 
   // Check if current user follows this store
-  const followQuery = useMemoFirebase(() => {
+  const followQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "store_followers", filters: [{ column: "storeId", op: "eq", value: id }, { column: "userId", op: "eq", value: user.uid }] };
   }, [user, id]);

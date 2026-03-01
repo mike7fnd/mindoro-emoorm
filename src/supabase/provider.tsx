@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, Depende
 import { SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 import { getSupabaseClient } from './client';
 
-/** App-level user type that matches Firebase User shape for minimal migration pain */
+/** App-level user type */
 export interface AppUser {
   uid: string;
   email: string | null;
@@ -84,10 +84,10 @@ export function useSupabase(): SupabaseClient {
   return context.supabase;
 }
 
-/** Returns { supabase, user, isUserLoading, userError } - replaces useFirebase() */
-export function useFirebase(): { supabase: SupabaseClient; auth: { signOut: () => Promise<any> }; user: AppUser | null; isUserLoading: boolean; userError: Error | null } {
+/** Returns { supabase, user, isUserLoading, userError } with auth signOut helper */
+export function useSupabaseAuth(): { supabase: SupabaseClient; auth: { signOut: () => Promise<any> }; user: AppUser | null; isUserLoading: boolean; userError: Error | null } {
   const context = useContext(SupabaseContext);
-  if (!context) throw new Error('useFirebase must be used within SupabaseProvider');
+  if (!context) throw new Error('useSupabaseAuth must be used within SupabaseProvider');
   return {
     supabase: context.supabase,
     auth: {
@@ -99,12 +99,7 @@ export function useFirebase(): { supabase: SupabaseClient; auth: { signOut: () =
   };
 }
 
-/** Returns the Supabase client - replaces useFirestore() */
-export function useFirestore(): SupabaseClient {
-  return useSupabase();
-}
-
-/** Returns the Supabase auth interface - replaces useAuth() */
+/** Returns the Supabase auth interface */
 export function useAuth() {
   const supabase = useSupabase();
   return supabase.auth;
@@ -121,8 +116,8 @@ export function useUser(): UserHookResult {
   };
 }
 
-/** Memoize helper - replaces useMemoFirebase */
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+/** Stable memoize helper — wraps useMemo */
+export function useStableMemo<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(factory, deps);
 }

@@ -8,7 +8,7 @@ import {
   useUser, 
   useSupabase, 
   useCollection, 
-  useMemoFirebase 
+  useStableMemo 
 } from "@/supabase";
 import { Bell, Calendar, Info, Sparkles, MoreVertical, Search, CheckCircle2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export default function NotificationsPage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
 
-  const notificationsQuery = useMemoFirebase(() => {
+  const notificationsQuery = useStableMemo(() => {
     if (!user) return null;
     return { 
       table: "notifications", 

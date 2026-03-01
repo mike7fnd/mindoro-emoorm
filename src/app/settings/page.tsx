@@ -7,8 +7,8 @@ import {
   useUser,
   useSupabase,
   useDoc,
-  useMemoFirebase,
-  useFirebase,
+  useStableMemo,
+  useSupabaseAuth,
   updateDocumentNonBlocking
 } from "@/supabase";
 import {
@@ -45,12 +45,12 @@ import {
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
-  const { auth } = useFirebase();
+  const { auth } = useSupabaseAuth();
   const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);

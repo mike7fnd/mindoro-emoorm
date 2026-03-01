@@ -25,17 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFirebase, useSupabase, useMemoFirebase, useDoc, updateDocumentNonBlocking } from "@/supabase";
+import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, updateDocumentNonBlocking } from "@/supabase";
 
 export default function SellerSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
   // Fetch store data
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);

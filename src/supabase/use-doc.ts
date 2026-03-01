@@ -19,10 +19,8 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Supabase row with real-time updates.
- * Replaces Firebase's useDoc hook.
- *
  * Pass a SupabaseDocConfig object (or null/undefined to skip).
- * Memoize the config with useMemo/useMemoFirebase for stability.
+ * Memoize the config with useMemo/useStableMemo for stability.
  */
 export function useDoc<T = any>(
   config: SupabaseDocConfig | null | undefined

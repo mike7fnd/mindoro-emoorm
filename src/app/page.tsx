@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { Heart, Star, Search, Store, Tag, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useUser, useSupabase, useCollection, useMemoFirebase, useDoc } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo, useDoc } from "@/supabase";
 import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Filter } from "lucide-react";
@@ -80,25 +80,25 @@ export default function HomePage() {
     setShowCookieConsent(false);
   };
 
-  const productsQuery = useMemoFirebase(() => {
+  const productsQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 
-  const storesQuery = useMemoFirebase(() => {
+  const storesQuery = useStableMemo(() => {
     return { table: "stores" };
   }, []);
 
   const { data: productsData, isLoading: isProductsLoading } = useCollection<Product>(productsQuery);
   const { data: storesData, isLoading: isStoresLoading } = useCollection<StoreItem>(storesQuery);
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);
 
   const { data: userProfile } = useDoc(userProfileRef);
 
-  const wishlistQuery = useMemoFirebase(() => {
+  const wishlistQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "wishlist", filters: [{ column: "userId", op: "eq", value: user.uid }] };
   }, [user]);

@@ -27,9 +27,9 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  useFirebase,
+  useSupabaseAuth,
   useSupabase,
-  useMemoFirebase,
+  useStableMemo,
   useDoc,
   addDocumentNonBlocking,
 } from "@/supabase";
@@ -51,10 +51,10 @@ const categories = [
 
 export default function AddProductPage() {
   const router = useRouter();
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);

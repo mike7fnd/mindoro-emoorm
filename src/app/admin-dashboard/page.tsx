@@ -28,7 +28,7 @@ import {
   Area
 } from "recharts";
 import Link from "next/link";
-import { useUser, useSupabase, useCollection, useMemoFirebase } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import { cn } from "@/lib/utils";
 
 const data = [
@@ -56,7 +56,7 @@ export default function SellerDashboard() {
     }
   }, [user, isUserLoading, router, isResortAdmin]);
 
-  const ordersQuery = useMemoFirebase(() => {
+  const ordersQuery = useStableMemo(() => {
     if (!user || !isResortAdmin) return null;
     return {
       table: "bookings",
@@ -67,14 +67,14 @@ export default function SellerDashboard() {
 
   const { data: recentOrders } = useCollection(ordersQuery);
 
-  const usersQuery = useMemoFirebase(() => {
+  const usersQuery = useStableMemo(() => {
     if (!user || !isResortAdmin) return null;
     return { table: "users" };
   }, [user, isResortAdmin]);
 
   const { data: allUsers } = useCollection(usersQuery);
 
-  const facilitiesQuery = useMemoFirebase(() => {
+  const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 

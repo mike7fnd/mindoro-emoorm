@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Package, ShoppingCart, BarChart3, Store, Settings, Bell } from "lucide-react";
-import { useFirebase, useMemoFirebase, useDoc } from "@/supabase";
+import { useSupabaseAuth, useStableMemo, useDoc } from "@/supabase";
 import Image from "next/image";
 
 const sellerNavItems = [
@@ -18,14 +18,14 @@ const sellerNavItems = [
 export function SellerHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const isActive = (path: string) => {
     if (path === "/seller/dashboard" && pathname === "/seller/dashboard") return true;
     if (path !== "/seller/dashboard" && pathname.startsWith(path)) return true;
     return false;
   };
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);
@@ -84,8 +84,8 @@ export function SellerHeader() {
 
 export function SellerBottomNav() {
   const pathname = usePathname();
-  const { user } = useFirebase();
-  const userProfileRef = useMemoFirebase(() => {
+  const { user } = useSupabaseAuth();
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);

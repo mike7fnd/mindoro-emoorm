@@ -15,21 +15,21 @@ import {
   ArrowDownRight,
   Loader2,
 } from "lucide-react";
-import { useFirebase, useMemoFirebase, useDoc, useCollection } from "@/supabase";
+import { useSupabaseAuth, useStableMemo, useDoc, useCollection } from "@/supabase";
 
 export default function SellerAnalyticsPage() {
   const [period, setPeriod] = useState("week");
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
 
   // Fetch store data
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store } = useDoc(storeRef);
 
   // Fetch products
-  const productsConfig = useMemoFirebase(() => {
+  const productsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "facilities",
@@ -39,7 +39,7 @@ export default function SellerAnalyticsPage() {
   const { data: products, isLoading: productsLoading } = useCollection(productsConfig);
 
   // Fetch orders
-  const ordersConfig = useMemoFirebase(() => {
+  const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "bookings",
@@ -50,7 +50,7 @@ export default function SellerAnalyticsPage() {
   const { data: orders, isLoading: ordersLoading } = useCollection(ordersConfig);
 
   // Fetch reviews for this store
-  const reviewsConfig = useMemoFirebase(() => {
+  const reviewsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "reviews",

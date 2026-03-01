@@ -25,34 +25,34 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  useFirebase,
+  useSupabaseAuth,
   useSupabase,
-  useMemoFirebase,
+  useStableMemo,
   useDoc,
   useCollection,
 } from "@/supabase";
 
 export default function SellerProfilePage() {
   const router = useRouter();
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
   // Fetch store data
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store, isLoading: storeLoading } = useDoc(storeRef);
 
   // Fetch user profile
-  const userRef = useMemoFirebase(() => {
+  const userRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);
   const { data: userProfile } = useDoc(userRef);
 
   // Fetch products
-  const productsConfig = useMemoFirebase(() => {
+  const productsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "facilities",
@@ -62,7 +62,7 @@ export default function SellerProfilePage() {
   const { data: products } = useCollection(productsConfig);
 
   // Fetch orders
-  const ordersConfig = useMemoFirebase(() => {
+  const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "bookings",
@@ -72,7 +72,7 @@ export default function SellerProfilePage() {
   const { data: orders } = useCollection(ordersConfig);
 
   // Fetch followers
-  const followersConfig = useMemoFirebase(() => {
+  const followersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "store_followers",

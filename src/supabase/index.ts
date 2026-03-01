@@ -3,7 +3,7 @@
 // Supabase module - Main entry point
 // Re-exports everything for @/supabase imports
 
-export { SupabaseProvider, useSupabase, useFirebase, useFirestore, useAuth, useUser, useMemoFirebase } from './provider';
+export { SupabaseProvider, useSupabase, useSupabaseAuth, useAuth, useUser, useStableMemo } from './provider';
 export type { AppUser, UserHookResult, SupabaseContextState } from './provider';
 
 export { useCollection } from './use-collection';

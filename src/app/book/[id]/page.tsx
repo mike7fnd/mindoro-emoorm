@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
-import { useSupabase, useDoc, useMemoFirebase, useUser, addDocumentNonBlocking, useCollection } from "@/supabase";
+import { useSupabase, useDoc, useStableMemo, useUser, addDocumentNonBlocking, useCollection } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { format, differenceInDays, isSameDay } from "date-fns";
@@ -140,7 +140,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const currentDragX = useRef<number>(0);
   const swipeContainerRef = useRef<HTMLDivElement>(null);
 
-  const facilityRef = useMemoFirebase(() => {
+  const facilityRef = useStableMemo(() => {
     if (!id) return null;
     return { table: "facilities", id };
   }, [id]);
@@ -148,7 +148,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const { data: facility, isLoading } = useDoc<Facility>(facilityRef);
 
   // Fetch bookings for this facility to show availability
-  const bookingsQuery = useMemoFirebase(() => {
+  const bookingsQuery = useStableMemo(() => {
     if (!id) return null;
     return { table: "bookings", filters: [{ column: "facilityId", op: "eq" as const, value: id }] };
   }, [id]);

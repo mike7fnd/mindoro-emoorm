@@ -1,4 +1,4 @@
-# Settings to manage and configure a Firebase App Hosting backend.
+# App Hosting configuration
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:

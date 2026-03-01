@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser, useSupabase, useCollection, useMemoFirebase, useDoc, addDocumentNonBlocking } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -61,20 +61,20 @@ export default function CheckoutPage() {
     street: "",
   });
 
-  const cartQuery = useMemoFirebase(() => {
+  const cartQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "cart_items", filters: [{ column: "userId", op: "eq", value: user.uid }] };
   }, [user]);
 
   const { data: cartData } = useCollection<CartItem>(cartQuery);
 
-  const productsQuery = useMemoFirebase(() => {
+  const productsQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 
   const { data: productsData } = useCollection<Product>(productsQuery);
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);

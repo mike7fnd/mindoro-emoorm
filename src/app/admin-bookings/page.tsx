@@ -4,7 +4,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { useUser, useSupabase, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo, updateDocumentNonBlocking } from "@/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export default function AdminBookingsPage() {
     }
   }, [user, isUserLoading, router, isResortAdmin]);
 
-  const bookingsQuery = useMemoFirebase(() => {
+  const bookingsQuery = useStableMemo(() => {
     if (!user || !isResortAdmin) return null;
     return {
       table: "bookings",

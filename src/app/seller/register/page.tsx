@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Store, Phone, MapPin, FileText, Upload, Tag, CheckCircle2, PartyPopper } from "lucide-react";
 import confetti from "canvas-confetti";
-import { useFirebase, useSupabase, useMemoFirebase, useDoc, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
+import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
 
 export default function ShopRegistrationPage() {
   const [form, setForm] = useState({
@@ -23,11 +23,11 @@ export default function ShopRegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
   const router = useRouter();
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
   // If user already has a store, redirect to dashboard
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);

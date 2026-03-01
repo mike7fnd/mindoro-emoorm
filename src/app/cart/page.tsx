@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShoppingCart, Trash2, Plus, Minus, Store } from "lucide-react";
-import { useUser, useSupabase, useCollection, useMemoFirebase } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -38,20 +38,20 @@ export default function CartPage() {
   const supabase = useSupabase();
   const router = useRouter();
 
-  const cartQuery = useMemoFirebase(() => {
+  const cartQuery = useStableMemo(() => {
     if (!user) return null;
     return { table: "cart_items", filters: [{ column: "userId", op: "eq", value: user.uid }] };
   }, [user]);
 
   const { data: cartData, isLoading: cartLoading } = useCollection<CartItem>(cartQuery);
 
-  const productsQuery = useMemoFirebase(() => {
+  const productsQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 
   const { data: productsData } = useCollection<Product>(productsQuery);
 
-  const storesQuery = useMemoFirebase(() => {
+  const storesQuery = useStableMemo(() => {
     return { table: "stores" };
   }, []);
 

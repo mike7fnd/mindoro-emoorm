@@ -24,10 +24,8 @@ export interface UseCollectionResult<T> {
 
 /**
  * React hook to subscribe to a Supabase table/query with real-time updates.
- * Replaces Firebase's useCollection hook.
- *
  * Pass a SupabaseQueryConfig object (or null/undefined to skip).
- * Memoize the config with useMemo/useMemoFirebase for stability.
+ * Memoize the config with useMemo/useStableMemo for stability.
  */
 export function useCollection<T = any>(
   config: SupabaseQueryConfig | null | undefined

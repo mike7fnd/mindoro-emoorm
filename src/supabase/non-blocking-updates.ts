@@ -3,7 +3,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Upsert a document (insert or update). Replaces Firebase setDocumentNonBlocking.
+ * Upsert a document (insert or update).
  * @param supabase Supabase client
  * @param table Table name
  * @param data Row data (must include 'id' for upsert)
@@ -18,7 +18,7 @@ export function setDocumentNonBlocking(supabase: SupabaseClient, table: string, 
 }
 
 /**
- * Insert a new row. Replaces Firebase addDocumentNonBlocking.
+ * Insert a new row.
  * @param supabase Supabase client
  * @param table Table name
  * @param data Row data
@@ -39,7 +39,7 @@ export function addDocumentNonBlocking(supabase: SupabaseClient, table: string, 
 }
 
 /**
- * Update an existing row. Replaces Firebase updateDocumentNonBlocking.
+ * Update an existing row.
  * @param supabase Supabase client
  * @param table Table name
  * @param id Row ID
@@ -56,7 +56,7 @@ export function updateDocumentNonBlocking(supabase: SupabaseClient, table: strin
 }
 
 /**
- * Delete a row. Replaces Firebase deleteDocumentNonBlocking.
+ * Delete a row.
  * @param supabase Supabase client
  * @param table Table name
  * @param id Row ID

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { useUser, useSupabase, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
+import { useUser, useSupabase, useCollection, useStableMemo, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +70,7 @@ export default function AdminFacilitiesPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const facilitiesQuery = useMemoFirebase(() => {
+  const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 

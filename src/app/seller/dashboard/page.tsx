@@ -20,7 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { useFirebase, useMemoFirebase, useDoc, useCollection } from "@/supabase";
+import { useSupabaseAuth, useStableMemo, useDoc, useCollection } from "@/supabase";
 
 const statusConfig: Record<string, { icon: React.ElementType; className: string }> = {
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
@@ -36,17 +36,17 @@ const statusConfig: Record<string, { icon: React.ElementType; className: string 
 };
 
 export default function SellerDashboardPage() {
-  const { user } = useFirebase();
+  const { user } = useSupabaseAuth();
 
   // Fetch store data
-  const storeRef = useMemoFirebase(() => {
+  const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store } = useDoc(storeRef);
 
   // Fetch products (facilities) for this seller
-  const productsConfig = useMemoFirebase(() => {
+  const productsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "facilities",
@@ -57,7 +57,7 @@ export default function SellerDashboardPage() {
   const { data: products, isLoading: productsLoading } = useCollection(productsConfig);
 
   // Fetch orders (bookings) for this store
-  const ordersConfig = useMemoFirebase(() => {
+  const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "bookings",

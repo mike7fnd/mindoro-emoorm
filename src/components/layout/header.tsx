@@ -17,7 +17,7 @@ import {
   Plus,
   Store,
 } from "lucide-react";
-import { useUser, useSupabase, useDoc, useMemoFirebase, useFirebase } from "@/supabase";
+import { useUser, useSupabase, useDoc, useStableMemo, useSupabaseAuth } from "@/supabase";
 import Image from "next/image";
 
 function HeaderContent() {
@@ -26,7 +26,7 @@ function HeaderContent() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isUserLoading, auth } = useFirebase();
+  const { user, isUserLoading, auth } = useSupabaseAuth();
   const supabase = useSupabase();
 
   const isAdmin = user?.email === 'kioalaquer301@gmail.com';
@@ -43,7 +43,7 @@ function HeaderContent() {
 
   const shouldHideBottomNav = isBookDetailPage || (isMessagePage && hasActiveChat) || !isOnBottomNavPage;
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "users", id: user.uid };
   }, [user]);

@@ -21,7 +21,7 @@ import {
   useUser,
   useSupabase,
   useCollection,
-  useMemoFirebase
+  useStableMemo
 } from "@/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { bellasBot } from "@/ai/flows/bellas-bot-flow";
@@ -84,7 +84,7 @@ function MessagesContent() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const conversationsQuery = useMemoFirebase(() => {
+  const conversationsQuery = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "conversations",
@@ -108,7 +108,7 @@ function MessagesContent() {
     return list;
   }, [userConversations]);
 
-  const messagesQuery = useMemoFirebase(() => {
+  const messagesQuery = useStableMemo(() => {
     if (!user || !activeConversationId) return null;
     return {
       table: "messages",

@@ -8,7 +8,7 @@ import {
   useUser,
   useSupabase,
   useCollection,
-  useMemoFirebase
+  useStableMemo
 } from "@/supabase";
 import {
   Calendar,
@@ -53,7 +53,7 @@ export default function MyBookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
 
-  const bookingsQuery = useMemoFirebase(() => {
+  const bookingsQuery = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "bookings",
@@ -64,7 +64,7 @@ export default function MyBookingsPage() {
 
   const { data: bookings, isLoading: isBookingsLoading } = useCollection<Booking>(bookingsQuery);
 
-  const facilitiesQuery = useMemoFirebase(() => {
+  const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
   }, []);
 
