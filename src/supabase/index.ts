@@ -14,4 +14,4 @@ export type { SupabaseDocConfig, UseDocResult } from './use-doc';
 
 export { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
 
-export { initiateEmailSignUp, initiateEmailSignIn, initiateGoogleSignIn } from './auth';
+export { initiateEmailSignUp, initiateEmailSignIn } from './auth';
