@@ -3,6 +3,7 @@ import './globals.css';
 import { SupabaseProvider } from '@/supabase';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
+import { ThemeColorMeta } from '@/components/theme-color-meta';
 
 export const metadata: Metadata = {
   title: "E-Moorm - Hyperlocal Marketplace",
@@ -18,7 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#29a366" />
+        <meta name="theme-color" content="#ffffff" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="E-Moorm" />
@@ -46,6 +47,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <PWAInstallPrompt />
+          <ThemeColorMeta />
         </SupabaseProvider>
       </body>
     </html>
