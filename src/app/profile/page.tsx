@@ -62,6 +62,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { uploadImage } from "@/lib/upload-image";
 
 export function ProfileSidebar({ onLogout }: { onLogout: () => void }) {
   const router = useRouter();
@@ -162,6 +163,7 @@ export default function ProfilePage() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [localProfilePic, setLocalProfilePic] = useState<string | null>(null);
 
   // Handler for avatar click
   const handleAvatarClick = () => {
@@ -174,19 +176,12 @@ export default function ProfilePage() {
     if (!file || !user) return;
     setUploading(true);
     try {
-      // Upload to Supabase Storage
-      const filePath = `avatars/${user.uid}_${Date.now()}`;
-      const { data, error } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
-      if (error) throw error;
-      // Get public URL
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-      const publicUrl = urlData?.publicUrl;
-      if (publicUrl) {
-        // Update user profile
-        await supabase.from("users").update({ profilePictureUrl: publicUrl }).eq("id", user.uid);
-        // Optionally, update UI immediately
-        window.location.reload();
-      }
+      const publicUrl = await uploadImage(supabase, "avatars", file, `avatars/${user.uid}`);
+      // Add cache-busting param so browser/Next.js doesn't serve stale image
+      const freshUrl = `${publicUrl}?t=${Date.now()}`;
+      await supabase.from("users").update({ profilePictureUrl: freshUrl }).eq("id", user.uid);
+      // Update local state immediately so the UI reflects the change without reload
+      setLocalProfilePic(freshUrl);
     } catch (err) {
       alert("Failed to upload profile picture.");
     } finally {
@@ -320,7 +315,7 @@ export default function ProfilePage() {
         <Header />
         <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-2xl">
           <div className="px-0 md:px-6 mt-8 md:mt-0 space-y-8">
-            <section className="bg-white dark:bg-white/[0.03] rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/[0.02] flex flex-col items-center text-center relative overflow-hidden transition-all duration-300">
+            <section className="bg-white dark:bg-white/[0.03] rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/[0.02] flex flex-col items-center text-center relative overflow-hidden transition-all duration-300">
               <div className="mb-6 flex items-center justify-center">
                 <div className="h-24 w-24 md:h-28 md:w-28 rounded-full border-4 border-[#f9f9f9] dark:border-white/10 shadow-md bg-muted flex items-center justify-center">
                   <UserIcon className="h-12 w-12 md:h-14 md:w-14 text-muted-foreground/40" />
@@ -356,7 +351,7 @@ export default function ProfilePage() {
   }
 
   const displayName = userProfile?.firstName ? `${userProfile.firstName} ${userProfile.lastName}` : (user.displayName || "Shopper");
-  const profilePic = userProfile?.profilePictureUrl || user.photoURL || "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
+  const profilePic = localProfilePic || userProfile?.profilePictureUrl || user.photoURL || "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
 
   return (
     <SidebarProvider>
@@ -385,7 +380,7 @@ export default function ProfilePage() {
                       <MoreVertical className="h-5 w-5 text-muted-foreground" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-2xl border-none bg-white/80 backdrop-blur-xl dark:bg-black/80">
+                  <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl dark:bg-black/30">
                     <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Account Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
                     <DropdownMenuItem
@@ -425,7 +420,7 @@ export default function ProfilePage() {
             <div className="px-6 space-y-8">
               <section
                 ref={cardRef}
-                className="bg-white dark:bg-white/[0.03] rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/[0.02] flex flex-col items-center text-center relative overflow-hidden transition-all duration-300"
+                className="bg-white dark:bg-white/[0.03] rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/[0.02] flex flex-col items-center text-center relative overflow-hidden transition-all duration-300"
               >
                 <button
                   onClick={toggleQR}

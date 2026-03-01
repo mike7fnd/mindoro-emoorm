@@ -225,11 +225,13 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Header />
-      <main className="flex-grow container mx-auto px-4 md:px-6 pt-0 md:pt-32 pb-24 max-w-[1480px]">
+      {/* Green gradient from top */}
+      <div className="absolute top-0 left-0 w-full h-[160px] bg-gradient-to-b from-green-700/75 via-green-600/25 via-50% to-transparent pointer-events-none z-0" />
+      <main className="flex-grow container mx-auto px-4 md:px-6 pt-0 md:pt-32 pb-24 max-w-[1480px] relative z-10">
         <div className="mb-10 mt-8 md:mt-0">
-          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] leading-tight">
+          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] leading-tight text-white">
             {firstName ? `Hi, ${firstName}!` : "E-Moorm"} <br />
-            <span className="text-muted-foreground">discover local products.</span>
+            <span className="text-black">discover local products.</span>
           </h1>
         </div>
 
@@ -246,13 +248,13 @@ export default function HomePage() {
                 ref={el => tabRefs.current[idx] = el}
                 onClick={() => setActiveTab(key)}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
+                  "flex flex-col items-center gap-1 px-6 py-3 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
                   activeTab === key
                     ? "text-primary"
                     : "text-black/70 hover:text-primary"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-6 w-6" />
                 {label}
               </button>
             ))}
@@ -419,7 +421,7 @@ export default function HomePage() {
             ) : filteredProducts.map((product) => (
               <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
                 <Link href={`/book/${product.id}`}>
-                  <div className="relative aspect-square overflow-hidden rounded-[25px] shadow-sm">
+                  <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
                     <Image
                       src={product.imageUrl || "/placeholder.svg"}
                       alt={product.name}
@@ -492,7 +494,7 @@ export default function HomePage() {
               <div className="col-span-full text-center py-20 text-muted-foreground italic">No stores found. Be the first to open a store!</div>
             ) : filteredStores.map((store) => (
               <Link key={store.id} href={`/stores/${store.id}`}>
-                <div className="rounded-[25px] overflow-hidden shadow-sm hover:shadow-md transition-all bg-[#f8f8f8]">
+                <div className="rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] transition-all bg-[#f8f8f8]">
                   <div className="relative h-32 bg-muted">
                     {store.coverUrl ? (
                       <Image src={store.coverUrl} alt={store.name} fill className="object-cover" />
@@ -537,7 +539,7 @@ export default function HomePage() {
             ) : dealProducts.map((product) => (
               <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
                 <Link href={`/book/${product.id}`}>
-                  <div className="relative aspect-square overflow-hidden rounded-[25px] shadow-sm">
+                  <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
                     <Image
                       src={product.imageUrl || "/placeholder.svg"}
                       alt={product.name}

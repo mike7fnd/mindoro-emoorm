@@ -71,6 +71,7 @@ export function SellerHeader() {
                 width={40}
                 height={40}
                 className="object-cover h-full w-full"
+                unoptimized
               />
             </div>
           </div>
@@ -110,7 +111,7 @@ export function SellerBottomNav() {
               className={cn("mobile-nav-item", isActive(item.href) && "active")}
             >
               <div className="mobile-nav-icon">
-                <Icon className="h-7 w-7" strokeWidth={1.5} fill={isActive(item.href) ? "currentColor" : "none"} />
+                <Icon className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isActive(item.href) ? "currentColor" : "none"} />
               </div>
               <span>{item.label}</span>
             </Link>
@@ -121,7 +122,7 @@ export function SellerBottomNav() {
             "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
             pathname === "/seller/profile" ? "border-primary scale-110 shadow-lg" : "border-muted"
           )}>
-            <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" />
+            <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" unoptimized />
           </div>
           <span>Shop</span>
         </Link>

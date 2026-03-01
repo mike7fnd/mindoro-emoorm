@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   Edit2,
   TrendingUp,
   Calendar,
+  Camera,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,11 +32,17 @@ import {
   useDoc,
   useCollection,
 } from "@/supabase";
+import { uploadImage } from "@/lib/upload-image";
 
 export default function SellerProfilePage() {
   const router = useRouter();
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Fetch store data
   const storeRef = useStableMemo(() => {
@@ -90,6 +97,38 @@ export default function SellerProfilePage() {
   const storeCover = s?.coverUrl || "";
   const joinDate = s?.createdAt ? new Date(s.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "";
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadImage(supabase, "stores", file, `logo/${user.uid}`);
+      await supabase.from("stores").update({ imageUrl: url }).eq("id", user.uid);
+      window.location.reload();
+    } catch (err) {
+      console.error("Logo upload error:", err);
+      alert("Failed to upload shop logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingCover(true);
+    try {
+      const url = await uploadImage(supabase, "stores", file, `cover/${user.uid}`);
+      await supabase.from("stores").update({ coverUrl: url }).eq("id", user.uid);
+      window.location.reload();
+    } catch (err) {
+      console.error("Cover upload error:", err);
+      alert("Failed to upload cover image.");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   if (storeLoading) {
     return (
       <SellerLayout>
@@ -104,9 +143,13 @@ export default function SellerProfilePage() {
     <SellerLayout>
       <div className="max-w-2xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
         {/* Cover + Avatar */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] overflow-hidden">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
           {/* Cover Image */}
-          <div className="h-32 md:h-44 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent relative">
+          <div
+            className="h-32 md:h-44 bg-gradient-to-br from-black/5 via-black/[0.02] to-transparent relative group cursor-pointer"
+            onClick={() => coverInputRef.current?.click()}
+            title="Change cover photo"
+          >
             {storeCover && (
               <Image
                 src={storeCover}
@@ -115,13 +158,24 @@ export default function SellerProfilePage() {
                 className="object-cover"
               />
             )}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-white text-sm font-medium">
+                <Camera className="h-5 w-5" />
+                {uploadingCover ? "Uploading..." : "Change Cover"}
+              </div>
+            </div>
+            <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} disabled={uploadingCover} />
           </div>
 
           {/* Shop Info */}
           <CardContent className="p-6 pt-0 relative">
             {/* Avatar */}
             <div className="-mt-12 md:-mt-14 mb-4 flex items-end justify-between">
-              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full border-4 border-white dark:border-[#111] shadow-md overflow-hidden bg-white">
+              <div
+                className="h-24 w-24 md:h-28 md:w-28 rounded-full border-4 border-white dark:border-[#111] shadow-md overflow-hidden bg-white relative group cursor-pointer"
+                onClick={() => logoInputRef.current?.click()}
+                title="Change shop logo"
+              >
                 <Image
                   src={storeImage}
                   alt={s?.name || "Shop"}
@@ -129,6 +183,15 @@ export default function SellerProfilePage() {
                   height={112}
                   className="object-cover h-full w-full"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center rounded-full">
+                  <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                {uploadingLogo && (
+                  <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-full">
+                    <Loader2 className="h-5 w-5 animate-spin text-black" />
+                  </div>
+                )}
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
               </div>
               <Link href="/seller/settings">
                 <Button
@@ -191,7 +254,7 @@ export default function SellerProfilePage() {
             { label: "Followers", value: followerCount, icon: Users, color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400" },
             { label: "Revenue", value: `₱${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400" },
           ].map((stat) => (
-            <Card key={stat.label} className="border-none shadow-sm rounded-[20px] bg-white dark:bg-white/[0.03]">
+            <Card key={stat.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
               <CardContent className="p-4 flex flex-col items-center text-center gap-2">
                 <div className={`h-10 w-10 rounded-full flex items-center justify-center ${stat.color}`}>
                   <stat.icon className="h-4 w-4" />
@@ -206,7 +269,7 @@ export default function SellerProfilePage() {
         </div>
 
         {/* Rating */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -227,7 +290,7 @@ export default function SellerProfilePage() {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-4 space-y-1">
             <Link href="/seller/products">
               <div className="flex items-center justify-between p-3 rounded-xl hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer">

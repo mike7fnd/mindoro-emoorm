@@ -1,0 +1,24 @@
+{
+  "name": "E-Moorm - Hyperlocal Marketplace",
+  "short_name": "E-Moorm",
+  "description": "Discover and purchase authentic, locally produced goods from Oriental Mindoro, Philippines.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#29a366",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

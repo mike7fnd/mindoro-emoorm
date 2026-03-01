@@ -26,10 +26,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, updateDocumentNonBlocking } from "@/supabase";
+import { uploadImage } from "@/lib/upload-image";
 
 export default function SellerSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
 
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
@@ -67,6 +70,21 @@ export default function SellerSettingsPage() {
       });
     }
   }, [store]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadImage(supabase, "stores", file, `logo/${user.uid}`);
+      setForm(prev => ({ ...prev, imageUrl: url }));
+    } catch (err) {
+      console.error("Logo upload error:", err);
+      alert("Failed to upload shop logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const handleSave = () => {
     if (!user) return;
@@ -106,7 +124,7 @@ export default function SellerSettingsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">Shop <span className="text-primary">Settings</span></h1>
+            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Settings</h1>
             <p className="text-sm text-muted-foreground font-normal">Manage your shop preferences</p>
           </div>
           <Button
@@ -120,7 +138,7 @@ export default function SellerSettingsPage() {
         </div>
 
         {/* Shop Profile */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="p-3 rounded-2xl bg-primary/10 text-primary">
@@ -130,20 +148,29 @@ export default function SellerSettingsPage() {
             </div>
             <Separator className="opacity-50" />
 
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center relative group cursor-pointer overflow-hidden">
+            <div
+              className="flex items-center gap-4 cursor-pointer"
+              onClick={() => logoInputRef.current?.click()}
+              title="Upload shop logo"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center relative group overflow-hidden">
                 {form.imageUrl ? (
                   <img src={form.imageUrl} alt="Shop logo" className="w-full h-full object-cover" />
                 ) : (
                   <Store className="h-8 w-8 text-muted-foreground/40" />
                 )}
                 <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="h-5 w-5 text-white" />
+                  {uploadingLogo ? (
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
                 </div>
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
               </div>
               <div>
                 <p className="text-sm font-medium">Shop Logo</p>
-                <p className="text-xs text-muted-foreground">Recommended: 200×200px</p>
+                <p className="text-xs text-muted-foreground">{uploadingLogo ? "Uploading..." : "Click to upload • 200×200px"}</p>
               </div>
             </div>
 
@@ -163,7 +190,7 @@ export default function SellerSettingsPage() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label className="text-sm text-muted-foreground">Category</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
@@ -182,21 +209,12 @@ export default function SellerSettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-sm text-muted-foreground">Image URL</Label>
-                <Input
-                  className="mt-1.5 rounded-xl"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Business Info */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
@@ -236,7 +254,7 @@ export default function SellerSettingsPage() {
         </Card>
 
         {/* Notifications */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="p-3 rounded-2xl bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400">
@@ -264,7 +282,7 @@ export default function SellerSettingsPage() {
         </Card>
 
         {/* Privacy */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="p-3 rounded-2xl bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
@@ -290,7 +308,7 @@ export default function SellerSettingsPage() {
         </Card>
 
         {/* Danger Zone */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] border border-red-100 dark:border-red-500/10">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-red-100 dark:border-red-500/10 rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-4">
             <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] text-red-600">Danger Zone</h2>
             <Separator className="opacity-50" />

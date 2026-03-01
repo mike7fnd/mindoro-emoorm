@@ -60,7 +60,7 @@ export default function NotificationsPage() {
                 <MoreVertical className="h-5 w-5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-2xl border-none bg-white/80 backdrop-blur-xl">
+            <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl">
               <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Manage Alerts</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-black/5" />
               <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">

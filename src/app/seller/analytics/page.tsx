@@ -143,7 +143,7 @@ export default function SellerAnalyticsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">Shop <span className="text-primary">Analytics</span></h1>
+            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Analytics</h1>
             <p className="text-sm text-muted-foreground font-normal">Track your shop performance</p>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function SellerAnalyticsPage() {
               {overviewStats.map((stat) => {
                 const Icon = stat.icon;
                 return (
-                  <Card key={stat.label} className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                  <Card key={stat.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                     <CardContent className="p-6 md:p-8">
                       <div className="flex justify-between items-start mb-6">
                         <div className={`p-3 rounded-2xl ${stat.color}`}>
@@ -178,7 +178,7 @@ export default function SellerAnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
               {/* Revenue Chart */}
               <div className="lg:col-span-2">
-                <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                   <CardContent className="p-6 md:p-8">
                     <div className="flex items-center justify-between mb-6">
                       <div>
@@ -218,7 +218,7 @@ export default function SellerAnalyticsPage() {
 
               {/* Categories */}
               <div>
-                <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                   <CardContent className="p-6 md:p-8">
                     <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] mb-5">Product Categories</h2>
                     {topCategories.length === 0 ? (
@@ -244,7 +244,7 @@ export default function SellerAnalyticsPage() {
             </div>
 
             {/* Recent Activity */}
-            <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+            <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
               <CardContent className="p-6 md:p-8">
                 <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] mb-5">Recent Activity</h2>
                 {recentActivity.length === 0 ? (

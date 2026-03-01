@@ -167,7 +167,7 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
             <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
               <Link href={`/book/${product.id}`}>
                 <div className="relative aspect-square overflow-hidden rounded-[25px] shadow-sm">
-                  <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
+                  <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
                   {product.isAuction && (
                     <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-full">Auction</div>
                   )}

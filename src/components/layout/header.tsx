@@ -206,6 +206,7 @@ function HeaderContent() {
                       width={40}
                       height={40}
                       className="object-cover h-full w-full"
+                      unoptimized
                     />
                   </div>
                   {isDropdownOpen && (
@@ -238,19 +239,19 @@ function HeaderContent() {
               <>
                 <Link href="/admin-dashboard" className={cn("mobile-nav-item", isLinkActive("/admin-dashboard") && "active")}>
                   <div className="mobile-nav-icon">
-                    <LayoutDashboard className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/admin-dashboard") ? "currentColor" : "none"} />
+                    <LayoutDashboard className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-dashboard") ? "currentColor" : "none"} />
                   </div>
                   <span>Dashboard</span>
                 </Link>
                 <Link href="/admin-bookings" className={cn("mobile-nav-item", isLinkActive("/admin-bookings") && "active")}>
                   <div className="mobile-nav-icon">
-                    <ShoppingCart className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/admin-bookings") ? "currentColor" : "none"} />
+                    <ShoppingCart className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-bookings") ? "currentColor" : "none"} />
                   </div>
                   <span>Orders</span>
                 </Link>
                 <Link href="/admin-messages" className={cn("mobile-nav-item", isLinkActive("/admin-messages") && "active")}>
                   <div className="mobile-nav-icon">
-                    <MessageSquare className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/admin-messages") ? "currentColor" : "none"} />
+                    <MessageSquare className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-messages") ? "currentColor" : "none"} />
                   </div>
                   <span>Inbox</span>
                 </Link>
@@ -259,26 +260,26 @@ function HeaderContent() {
               <>
                 <Link href="/" className={cn("mobile-nav-item", isLinkActive("/") && "active")}>
                   <div className="mobile-nav-icon">
-                    <Home className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/") ? "currentColor" : "none"} />
+                    <Home className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/") ? "currentColor" : "none"} />
                   </div>
                   <span>Home</span>
                 </Link>
                 <Link href="/cart" className={cn("mobile-nav-item", isLinkActive("/cart") && "active")}>
                   <div className="mobile-nav-icon">
-                    <ShoppingCart className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/cart") ? "currentColor" : "none"} />
+                    <ShoppingCart className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/cart") ? "currentColor" : "none"} />
                   </div>
                   <span>Cart</span>
                 </Link>
                 <Link href="/notifications" className={cn("mobile-nav-item", isLinkActive("/notifications") && "active")}>
                   <div className="mobile-nav-icon">
-                    <Bell className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/notifications") ? "currentColor" : "none"} />
+                    <Bell className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/notifications") ? "currentColor" : "none"} />
                   </div>
                   <span>Notifications</span>
                 </Link>
                 {user && (
                   <Link href="/messages" className={cn("mobile-nav-item", isLinkActive("/messages") && "active")}>
                     <div className="mobile-nav-icon">
-                      <MessageSquare className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/messages") ? "currentColor" : "none"} />
+                      <MessageSquare className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/messages") ? "currentColor" : "none"} />
                     </div>
                     <span>Inbox</span>
                   </Link>
@@ -291,14 +292,14 @@ function HeaderContent() {
                   "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
                   isLinkActive("/profile") ? "border-primary scale-110 shadow-lg" : "border-muted"
                 )}>
-                  <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" />
+                  <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" unoptimized />
                 </div>
                 <span>Profile</span>
               </Link>
             ) : (
               <Link href="/login" className={cn("mobile-nav-item", isLinkActive("/login") && "active")}>
                 <div className="mobile-nav-icon">
-                  <LogOut className="h-7 w-7 rotate-180" strokeWidth={1.5} fill={isLinkActive("/login") ? "currentColor" : "none"} />
+                  <LogOut className="h-[30px] w-[30px] rotate-180" strokeWidth={1.2} fill={isLinkActive("/login") ? "currentColor" : "none"} />
                 </div>
                 <span>Login</span>
               </Link>
@@ -338,7 +339,7 @@ function HeaderContent() {
           <div className="pt-6 border-t border-black/10">
             <Link href="/profile" className="mobile-menu-link">
               <div className="h-6 w-6 rounded-full overflow-hidden mr-2">
-                <Image src={profilePic} alt="PFP" width={24} height={24} className="object-cover h-full w-full" />
+                <Image src={profilePic} alt="PFP" width={24} height={24} className="object-cover h-full w-full" unoptimized />
               </div>
               Profile
             </Link>

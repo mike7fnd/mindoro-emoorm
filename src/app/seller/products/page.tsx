@@ -101,13 +101,16 @@ export default function SellerProductsPage() {
     <SellerLayout>
       <div className="max-w-7xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">My <span className="text-primary">Products</span></h1>
+            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">My Products</h1>
             <p className="text-sm text-muted-foreground font-normal">{allProducts.length} total products</p>
           </div>
           <Link href="/seller/products/add">
-            <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2">
+            <Button size="icon" className="bg-black hover:bg-primary transition-colors rounded-full h-10 w-10 shadow-sm md:hidden">
+              <Plus className="h-5 w-5" />
+            </Button>
+            <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2 hidden md:inline-flex">
               <Plus className="h-4 w-4" /> Add Product
             </Button>
           </Link>
@@ -158,7 +161,7 @@ export default function SellerProductsPage() {
               {filteredProducts.map((product: any) => {
                 const status = getProductStatus(product);
                 return (
-                  <Card key={product.id} className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] overflow-hidden group">
+                  <Card key={product.id} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden group">
                     <div className="aspect-square bg-black/[0.03] dark:bg-white/[0.03] relative flex items-center justify-center overflow-hidden">
                       {product.imageUrl ? (
                         <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
@@ -176,7 +179,7 @@ export default function SellerProductsPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl">
+                          <DropdownMenuContent align="end" className="rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none">
                             <DropdownMenuItem className="gap-2" onClick={() => handleToggleStatus(product.id, status)}>
                               {status === "Available" ? <><EyeOff className="h-4 w-4" /> Hide</> : <><Eye className="h-4 w-4" /> Publish</>}
                             </DropdownMenuItem>

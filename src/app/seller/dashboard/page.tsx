@@ -18,9 +18,20 @@ import {
   AlertCircle,
   Truck,
   Loader2,
+  MoreVertical,
+  BarChart3,
+  Settings,
+  User,
+  ClipboardList,
 } from "lucide-react";
 import Link from "next/link";
 import { useSupabaseAuth, useStableMemo, useDoc, useCollection } from "@/supabase";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusConfig: Record<string, { icon: React.ElementType; className: string }> = {
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
@@ -94,16 +105,47 @@ export default function SellerDashboardPage() {
     <SellerLayout>
       <div className="max-w-7xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-8 md:space-y-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">Seller <span className="text-primary">Dashboard</span></h1>
+            <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Seller Dashboard</h1>
             <p className="text-sm text-muted-foreground font-normal">
               {store ? `Overview of ${(store as any).name}` : "Overview of your shop performance"}
             </p>
           </div>
-          <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm" asChild>
-            <Link href="/seller/products"><Plus className="mr-2 h-4 w-4" /> Add Product</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/seller/products/add">
+              <Button size="icon" className="bg-black hover:bg-primary transition-colors rounded-full h-10 w-10 shadow-sm md:hidden">
+                <Plus className="h-5 w-5" />
+              </Button>
+              <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2 hidden md:inline-flex">
+                <Plus className="h-4 w-4" /> Add Product
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="rounded-full h-10 w-10">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none">
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/seller/products"><Package className="h-4 w-4" /> Products</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/seller/orders"><ClipboardList className="h-4 w-4" /> Orders</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/seller/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/seller/profile"><User className="h-4 w-4" /> Shop Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/seller/settings"><Settings className="h-4 w-4" /> Shop Settings</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {isLoading ? (
@@ -117,7 +159,7 @@ export default function SellerDashboardPage() {
               {stats.map((stat) => {
                 const Icon = stat.icon;
                 return (
-                  <Card key={stat.label} className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                  <Card key={stat.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                     <CardContent className="p-6 md:p-8">
                       <div className="flex justify-between items-start mb-6">
                         <div className={`p-3 rounded-2xl ${stat.color}`}>
@@ -136,7 +178,7 @@ export default function SellerDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
               {/* Recent Orders */}
               <div className="lg:col-span-2">
-                <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                   <CardContent className="p-6 md:p-8">
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Recent Orders</h2>
@@ -181,7 +223,7 @@ export default function SellerDashboardPage() {
 
               {/* Top Products */}
               <div>
-                <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
                   <CardContent className="p-6 md:p-8">
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Top Products</h2>
@@ -215,7 +257,7 @@ export default function SellerDashboardPage() {
                 </Card>
 
                 {/* Quick Actions */}
-                <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] mt-6">
+                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] mt-6">
                   <CardContent className="p-6 md:p-8">
                     <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] mb-4">Quick Actions</h2>
                     <div className="space-y-2">

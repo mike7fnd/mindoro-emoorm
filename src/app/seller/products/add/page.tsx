@@ -23,7 +23,8 @@ import {
   Tag,
   FileText,
   Layers,
-  Link2,
+  Upload,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -33,6 +34,7 @@ import {
   useDoc,
   addDocumentNonBlocking,
 } from "@/supabase";
+import { uploadImage } from "@/lib/upload-image";
 
 const categories = [
   "Jewelry",
@@ -69,9 +71,26 @@ export default function AddProductPage() {
     imageUrl: "",
   });
   const [adding, setAdding] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingImage(true);
+    try {
+      const url = await uploadImage(supabase, "products", file, `${user.uid}/${form.name || "product"}`);
+      setForm((prev) => ({ ...prev, imageUrl: url }));
+    } catch (err) {
+      console.error("Image upload error:", err);
+      alert("Failed to upload image.");
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -117,7 +136,7 @@ export default function AddProductPage() {
           </Button>
           <div>
             <h1 className="text-2xl md:text-3xl font-normal font-headline tracking-[-0.05em]">
-              Add <span className="text-primary">Product</span>
+              Add Product
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
               Fill in the details to list a new product
@@ -125,29 +144,62 @@ export default function AddProductPage() {
           </div>
         </div>
 
-        {/* Image Preview */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] overflow-hidden">
-          <div className="aspect-[16/9] bg-black/[0.03] dark:bg-white/[0.03] relative flex items-center justify-center overflow-hidden">
+        {/* Image Upload */}
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
+          <div
+            className="aspect-[16/9] bg-black/[0.03] dark:bg-white/[0.03] relative flex items-center justify-center overflow-hidden cursor-pointer group"
+            onClick={() => imageInputRef.current?.click()}
+            title="Upload product image"
+          >
             {form.imageUrl ? (
-              <img
-                src={form.imageUrl}
-                alt="Product preview"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
+              <>
+                <img
+                  src={form.imageUrl}
+                  alt="Product preview"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium flex items-center gap-2">
+                    <Upload className="h-4 w-4" /> Change Image
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 hover:bg-red-500 hover:text-white text-black/60 transition-colors z-10"
+                  onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, imageUrl: "" })); }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
             ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                <ImageIcon className="h-16 w-16" />
-                <span className="text-sm">Product image preview</span>
+              <div className="flex flex-col items-center gap-3 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
+                {uploadingImage ? (
+                  <>
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                    <span className="text-sm">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-12 w-12" />
+                    <span className="text-sm font-medium">Click to upload product image</span>
+                    <span className="text-xs">JPG, PNG, WebP up to 5MB</span>
+                  </>
+                )}
               </div>
             )}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+            />
           </div>
         </Card>
 
         {/* Form */}
-        <Card className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 space-y-5">
             {/* Product Name */}
             <div className="space-y-2">
@@ -230,21 +282,6 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* Image URL */}
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                <Link2 className="h-3.5 w-3.5" /> Image URL
-              </Label>
-              <Input
-                className="rounded-xl h-12"
-                placeholder="https://example.com/image.jpg"
-                value={form.imageUrl}
-                onChange={(e) => updateField("imageUrl", e.target.value)}
-              />
-              <p className="text-[11px] text-muted-foreground/60">
-                Paste a direct link to your product image
-              </p>
-            </div>
           </CardContent>
         </Card>
 

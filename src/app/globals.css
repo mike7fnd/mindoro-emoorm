@@ -10,19 +10,19 @@
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
-    --primary: 330 72% 56%;
+    --primary: 152 60% 40%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 0%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
-    --accent: 330 72% 56%;
+    --accent: 152 60% 40%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 330 72% 56%;
+    --ring: 152 60% 40%;
     --radius: 25px;
     
     /* New Custom Variables */
@@ -30,7 +30,7 @@
     --logo-font: "Playfair Display", serif;
     --nav-height: 68px;
     --nav-sticky-gap: 12px;
-    --primary-color: #e03d8f;
+    --primary-color: #29a366;
     --mobile-nav-height: 70px;
     --bottom-nav-height: 76px;
 
@@ -50,19 +50,19 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 3%;
     --popover-foreground: 0 0% 100%;
-    --primary: 330 72% 56%;
+    --primary: 152 60% 40%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 65%;
-    --accent: 330 72% 56%;
+    --accent: 152 60% 40%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 330 72% 56%;
+    --ring: 152 60% 40%;
   }
 
   * {

@@ -84,7 +84,7 @@ export default function SellerOrdersPage() {
       <div className="max-w-7xl mx-auto p-4 md:p-8 w-full pt-4 md:pt-32 pb-24 space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">Shop <span className="text-primary">Orders</span></h1>
+          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Orders</h1>
           <p className="text-sm text-muted-foreground font-normal">{counts["To Pay"] + counts["To Ship"]} orders need attention</p>
         </div>
 
@@ -96,7 +96,7 @@ export default function SellerOrdersPage() {
             { label: "To Receive", count: counts["To Receive"], color: "text-purple-600" },
             { label: "Completed", count: counts.Completed, color: "text-green-600" },
           ].map((s) => (
-            <Card key={s.label} className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03]">
+            <Card key={s.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
               <CardContent className="p-5 md:p-6 text-center">
                 <p className={`text-xl md:text-3xl font-normal font-headline tracking-[-0.05em] ${s.color}`}>{s.count}</p>
                 <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{s.label}</p>
@@ -157,7 +157,7 @@ export default function SellerOrdersPage() {
                 const isExpanded = expandedOrder === order.id;
 
                 return (
-                  <Card key={order.id} className="border-none shadow-sm rounded-[25px] bg-white dark:bg-white/[0.03] overflow-hidden">
+                  <Card key={order.id} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
                     <CardContent className="p-0">
                       <button
                         className="w-full p-4 flex items-center justify-between text-left hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors"
