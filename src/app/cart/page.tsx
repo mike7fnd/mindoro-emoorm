@@ -9,6 +9,7 @@ import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,7 +104,30 @@ export default function CartPage() {
     await supabase.from("cart_items").delete().eq("id", cartItemId);
   };
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
+        <div className="p-6 md:p-8">
+          <Skeleton className="h-7 w-32 rounded-full mb-2" />
+          <Skeleton className="h-4 w-20 rounded-full" />
+        </div>
+        <div className="px-6 md:px-8 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
+              <Skeleton className="h-24 w-24 rounded-[20px] shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4 rounded-full" />
+                <Skeleton className="h-3 w-1/2 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 
   if (!user) {
     return (
@@ -176,7 +200,18 @@ export default function CartPage() {
 
         <div className="px-6 md:px-8">
         {cartLoading ? (
-          <div className="text-center py-20 text-muted-foreground italic">Loading cart...</div>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
+                <Skeleton className="h-24 w-24 rounded-[20px] shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4 rounded-full" />
+                  <Skeleton className="h-3 w-1/2 rounded-full" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />

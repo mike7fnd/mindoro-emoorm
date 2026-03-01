@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -131,7 +132,31 @@ export default function SettingsPage() {
     }
   };
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
+      <Header />
+      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-2xl">
+        <div className="mt-8 md:mt-0 mb-8">
+          <Skeleton className="h-7 w-32 rounded-full mb-2" />
+          <Skeleton className="h-4 w-56 rounded-full" />
+        </div>
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-6">
+              <Skeleton className="h-3 w-24 rounded-full mb-4" />
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="flex items-center justify-between py-4">
+                  <Skeleton className="h-4 w-28 rounded-full" />
+                  <Skeleton className="h-4 w-32 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!user) {
     if (typeof window !== "undefined") router.push("/login");
     return null;

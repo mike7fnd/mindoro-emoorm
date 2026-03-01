@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useSupabaseAuth, useSupabase, useStableMemo, useCollection, updateDocumentNonBlocking } from "@/supabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusConfig: Record<string, { icon: React.ElementType; className: string; label: string }> = {
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "To Pay" },
@@ -143,8 +144,19 @@ export default function SellerOrdersPage() {
         </Tabs>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-5">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-14 w-14 rounded-2xl shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40 rounded-full" />
+                    <Skeleton className="h-3 w-28 rounded-full" />
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <>

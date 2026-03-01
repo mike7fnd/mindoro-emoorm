@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { uploadImage } from "@/lib/upload-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfileSidebar({ onLogout }: { onLogout: () => void }) {
   const router = useRouter();
@@ -306,9 +307,46 @@ export default function ProfilePage() {
 
   // removed duplicate uploading and fileInputRef
 
-  if (isUserLoading) return null;
-
-  // GUEST VIEW: Encourage login/signup
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505] transition-colors">
+      <Header />
+      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-2xl">
+        <div className="px-0 md:px-6 mt-8 md:mt-0 space-y-8">
+          <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-black/[0.02] flex flex-col items-center">
+            <Skeleton className="h-24 w-24 md:h-28 md:w-28 rounded-full mb-4" />
+            <Skeleton className="h-6 w-40 rounded-full mb-2" />
+            <Skeleton className="h-4 w-56 rounded-full mb-6" />
+            <div className="flex gap-8">
+              <div className="flex flex-col items-center">
+                <Skeleton className="h-6 w-10 rounded-full mb-1" />
+                <Skeleton className="h-3 w-14 rounded-full" />
+              </div>
+              <div className="flex flex-col items-center">
+                <Skeleton className="h-6 w-10 rounded-full mb-1" />
+                <Skeleton className="h-3 w-14 rounded-full" />
+              </div>
+              <div className="flex flex-col items-center">
+                <Skeleton className="h-6 w-10 rounded-full mb-1" />
+                <Skeleton className="h-3 w-14 rounded-full" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-6 space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <Skeleton className="h-4 w-28 rounded-full" />
+                </div>
+                <Skeleton className="h-4 w-4 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505] transition-colors">

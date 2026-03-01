@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, updateDocumentNonBlocking } from "@/supabase";
 import { uploadImage } from "@/lib/upload-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SellerSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -111,8 +112,29 @@ export default function SellerSettingsPage() {
   if (isLoading) {
     return (
       <SellerLayout>
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="max-w-3xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6 md:space-y-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <Skeleton className="h-7 w-40 rounded-full mb-2" />
+              <Skeleton className="h-4 w-56 rounded-full" />
+            </div>
+            <Skeleton className="h-10 w-28 rounded-full" />
+          </div>
+          <div className="rounded-[32px] border border-black/[0.02] bg-white p-6 space-y-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-20 w-20 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32 rounded-full" />
+                <Skeleton className="h-3 w-48 rounded-full" />
+              </div>
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-20 rounded-full" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
         </div>
       </SellerLayout>
     );

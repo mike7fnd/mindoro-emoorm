@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CartItem {
   id: string;
@@ -161,7 +162,40 @@ export default function CheckoutPage() {
     }
   };
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-grow container mx-auto px-4 pt-0 md:pt-32 pb-24 max-w-[600px]">
+        <div className="mt-8 md:mt-0 mb-8">
+          <Skeleton className="h-7 w-32 rounded-full mb-2" />
+          <Skeleton className="h-4 w-48 rounded-full" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
+              <Skeleton className="h-20 w-20 rounded-[16px] shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4 rounded-full" />
+                <Skeleton className="h-3 w-1/2 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 rounded-[25px] border border-black/[0.02] p-6 space-y-4">
+          <Skeleton className="h-5 w-32 rounded-full" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex justify-between">
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-4 w-16 rounded-full" />
+            </div>
+          ))}
+          <Skeleton className="h-12 w-full rounded-full mt-4" />
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!user) { router.push("/login"); return null; }
 
   if (orderSuccess) {

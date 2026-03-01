@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Booking {
   id: string;
@@ -81,7 +82,35 @@ export default function MyBookingsPage() {
     });
   }, [bookings, facilities, searchTerm, activeStatus]);
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-1 w-full max-w-4xl mx-auto pt-0 md:pt-32 pb-24 px-6">
+        <div className="mt-8 md:mt-0 mb-10">
+          <Skeleton className="h-8 w-48 rounded-full mb-4" />
+        </div>
+        <div className="flex gap-2 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-24 rounded-full" />
+          ))}
+        </div>
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-[30px] overflow-hidden border border-black/[0.05] flex flex-col sm:flex-row">
+              <Skeleton className="w-full sm:w-48 h-48 shrink-0" />
+              <div className="flex-1 p-5 space-y-3">
+                <Skeleton className="h-5 w-3/4 rounded-full" />
+                <Skeleton className="h-4 w-1/2 rounded-full" />
+                <Skeleton className="h-4 w-1/3 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!user) {
     if (typeof window !== "undefined") router.push("/login");
     return null;
@@ -131,7 +160,19 @@ export default function MyBookingsPage() {
 
         <div className="space-y-6">
           {isBookingsLoading ? (
-            <div className="py-20 text-center text-muted-foreground italic">Fetching your order history...</div>
+            <div className="space-y-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-[30px] overflow-hidden border border-black/[0.05] flex flex-col sm:flex-row">
+                  <Skeleton className="w-full sm:w-48 h-48 shrink-0" />
+                  <div className="flex-1 p-5 space-y-3">
+                    <Skeleton className="h-5 w-3/4 rounded-full" />
+                    <Skeleton className="h-4 w-1/2 rounded-full" />
+                    <Skeleton className="h-4 w-1/3 rounded-full" />
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filteredBookings.length > 0 ? (
             filteredBookings.map((bk) => {
               const facility = facilities?.find(f => f.id === bk.facilityId);

@@ -34,6 +34,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, useCollection, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusStyle: Record<string, string> = {
   Available: "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400",
@@ -182,8 +183,17 @@ export default function SellerProductsPage() {
         </Tabs>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white overflow-hidden">
+                <Skeleton className="aspect-square w-full" />
+                <div className="p-5 space-y-3">
+                  <Skeleton className="h-4 w-3/4 rounded-full" />
+                  <Skeleton className="h-3 w-1/2 rounded-full" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <>

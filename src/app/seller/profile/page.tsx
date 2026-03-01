@@ -33,6 +33,7 @@ import {
   useCollection,
 } from "@/supabase";
 import { uploadImage } from "@/lib/upload-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SellerProfilePage() {
   const router = useRouter();
@@ -132,8 +133,29 @@ export default function SellerProfilePage() {
   if (storeLoading) {
     return (
       <SellerLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="max-w-2xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
+          <div className="rounded-[32px] border border-black/[0.02] bg-white overflow-hidden">
+            <Skeleton className="h-36 md:h-48 w-full" />
+            <div className="p-6 -mt-10 relative">
+              <Skeleton className="h-24 w-24 rounded-full mb-4" />
+              <Skeleton className="h-6 w-48 rounded-full mb-2" />
+              <Skeleton className="h-4 w-72 rounded-full mb-4" />
+              <div className="flex gap-6">
+                <Skeleton className="h-4 w-20 rounded-full" />
+                <Skeleton className="h-4 w-20 rounded-full" />
+                <Skeleton className="h-4 w-20 rounded-full" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-[32px] border border-black/[0.02] bg-white p-6 space-y-4">
+            <Skeleton className="h-5 w-32 rounded-full" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="h-4 w-32 rounded-full" />
+              </div>
+            ))}
+          </div>
         </div>
       </SellerLayout>
     );
