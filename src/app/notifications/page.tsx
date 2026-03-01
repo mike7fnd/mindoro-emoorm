@@ -6,11 +6,10 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { 
   useUser, 
-  useFirestore, 
+  useSupabase, 
   useCollection, 
   useMemoFirebase 
-} from "@/firebase";
-import { collection, query, orderBy, Timestamp } from "firebase/firestore";
+} from "@/supabase";
 import { Bell, Calendar, Info, Sparkles, MoreVertical, Search, CheckCircle2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,22 +25,23 @@ interface Notification {
   id: string;
   title: string;
   content: string;
-  type: 'booking' | 'system' | 'promo';
-  timestamp: Timestamp;
+  type: 'order' | 'system' | 'promo';
+  timestamp: string;
   isRead: boolean;
 }
 
 export default function NotificationsPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
 
   const notificationsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(
-      collection(firestore, "users", user.uid, "notifications"),
-      orderBy("timestamp", "desc")
-    );
-  }, [firestore, user]);
+    if (!user) return null;
+    return { 
+      table: "notifications", 
+      filters: [{ column: "user_id", op: "eq" as const, value: user.uid }],
+      order: { column: "timestamp", ascending: false }
+    };
+  }, [user]);
 
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
 
@@ -95,11 +95,11 @@ export default function NotificationsPage() {
               >
                 <div className={cn(
                   "h-12 w-12 rounded-full flex items-center justify-center shrink-0",
-                  notif.type === 'booking' ? "bg-blue-50 text-blue-500" :
+                  notif.type === 'order' ? "bg-blue-50 text-blue-500" :
                   notif.type === 'promo' ? "bg-primary/10 text-primary" :
                   "bg-muted text-muted-foreground"
                 )}>
-                  {notif.type === 'booking' ? <Calendar className="h-6 w-6" /> :
+                  {notif.type === 'order' ? <Calendar className="h-6 w-6" /> :
                    notif.type === 'promo' ? <Sparkles className="h-6 w-6" /> :
                    <Info className="h-6 w-6" />}
                 </div>
@@ -107,7 +107,7 @@ export default function NotificationsPage() {
                   <div className="flex justify-between items-start mb-1">
                     <h4 className="font-bold text-[15px]">{notif.title}</h4>
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                      {notif.timestamp?.toDate().toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      {notif.timestamp ? new Date(notif.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">

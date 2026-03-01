@@ -6,17 +6,17 @@ export function Footer() {
       <div className="max-w-[1480px] mx-auto flex flex-wrap gap-[30px] items-start justify-between">
         {/* Left Column: Address */}
         <div className="px-[17px] flex-1 min-w-[240px]">
-          <h3 className="text-[#020202] m-0 mb-2 text-[0.95rem] font-semibold">Address</h3>
+          <h3 className="text-[#020202] m-0 mb-2 text-[0.95rem] font-semibold">Service Area</h3>
           <p className="m-0 text-black leading-relaxed text-[0.94rem]">
-            Balahid, Hagan, Bongabong<br />
-            Oriental Mindoro, PH
+            Oriental Mindoro<br />
+            Philippines
           </p>
         </div>
 
         {/* Center Column: Branding */}
         <div className="px-[17px] flex-1 min-w-[240px] text-center">
           <div className="font-headline italic text-[1.35rem] text-[#070707] tracking-[0.5px]">
-            Bella's Paradise
+            E-Moorm
           </div>
           <div className="mt-2.5 text-black text-[0.95rem] tracking-[1px]">
             ★★★★★
@@ -27,8 +27,8 @@ export function Footer() {
         <div className="px-[17px] flex-1 min-w-[240px] text-right">
           <h3 className="text-[#020202] m-0 mb-2 text-[0.95rem] font-semibold">Contact Us</h3>
           <p className="m-0 text-black leading-relaxed text-[0.94rem]">
-            0977 445 8694<br />
-            bellasparadisefarmresort@gmail.com
+            support@emoorm.ph<br />
+            Oriental Mindoro, PH
           </p>
         </div>
       </div>

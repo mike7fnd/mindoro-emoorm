@@ -3,18 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { 
-  useUser, 
-  useFirestore, 
+import {
+  useUser,
+  useSupabase,
   useDoc,
   useMemoFirebase,
   useFirebase,
   updateDocumentNonBlocking
-} from "@/firebase";
-import { doc, serverTimestamp } from "firebase/firestore";
-import { 
-  User, 
-  MapPin, 
+} from "@/supabase";
+import {
+  User,
+  MapPin,
   Smartphone,
   Save,
   Moon,
@@ -47,14 +46,14 @@ import {
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const { auth } = useFirebase();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return doc(firestore, "users", user.uid);
-  }, [firestore, user]);
+    if (!user) return null;
+    return { table: "users", id: user.uid };
+  }, [user]);
 
   const { data: profile } = useDoc(userProfileRef);
 
@@ -110,16 +109,16 @@ export default function SettingsPage() {
   };
 
   const handleUpdateProfile = () => {
-    if (!firestore || !user) return;
-    
-    updateDocumentNonBlocking(doc(firestore, "users", user.uid), {
+    if (!user) return;
+
+    updateDocumentNonBlocking(supabase, "users", user.uid, {
       ...formData,
-      updatedAt: serverTimestamp()
+      updatedAt: new Date().toISOString()
     });
 
     toast({
       title: "Settings Saved",
-      description: "Your resort profile has been updated.",
+      description: "Your profile has been updated.",
     });
   };
 
@@ -138,17 +137,17 @@ export default function SettingsPage() {
     return null;
   }
 
-  const sectionHeaderClass = "text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3";
+  const sectionHeaderClass = "text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3";
   const groupedContainerClass = "bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]";
   const rowClass = "flex items-center justify-between px-6 py-5 transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]";
-  const rowLabelClass = "text-sm font-bold text-black/80 dark:text-white/80 shrink-0";
+  const rowLabelClass = "text-sm text-black/80 dark:text-white/80 shrink-0";
   const rowInputClass = "flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30";
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-white dark:bg-[#050505] transition-colors">
         <ProfileSidebar onLogout={handleLogout} />
-        
+
         <div className="flex-1 flex flex-col">
           <div className="md:hidden">
             <Header />
@@ -157,7 +156,7 @@ export default function SettingsPage() {
           <main className="flex-grow container mx-auto px-6 md:px-12 pt-8 md:pt-16 pb-32 max-w-2xl">
             <div className="mb-12">
               <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] mb-1.5 text-black dark:text-white">Settings</h1>
-              <p className="text-sm text-muted-foreground font-medium opacity-60">Personalize your resort experience.</p>
+              <p className="text-sm text-muted-foreground font-medium opacity-60">Personalize your shopping experience.</p>
             </div>
 
             <div className="space-y-12">
@@ -167,9 +166,9 @@ export default function SettingsPage() {
                 <div className={groupedContainerClass}>
                   <div className={rowClass}>
                     <span className={rowLabelClass}>First Name</span>
-                    <input 
+                    <input
                       value={formData.firstName}
-                      onChange={e => setFormData({...formData, firstName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, firstName: e.target.value })}
                       className={rowInputClass}
                       placeholder="Required"
                     />
@@ -177,9 +176,9 @@ export default function SettingsPage() {
                   <Separator className="bg-black/[0.03] mx-6 w-auto" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Last Name</span>
-                    <input 
+                    <input
                       value={formData.lastName}
-                      onChange={e => setFormData({...formData, lastName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, lastName: e.target.value })}
                       className={rowInputClass}
                       placeholder="Required"
                     />
@@ -187,9 +186,9 @@ export default function SettingsPage() {
                   <Separator className="bg-black/[0.03] mx-6 w-auto" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Avatar URL</span>
-                    <input 
+                    <input
                       value={formData.profilePictureUrl}
-                      onChange={e => setFormData({...formData, profilePictureUrl: e.target.value})}
+                      onChange={e => setFormData({ ...formData, profilePictureUrl: e.target.value })}
                       className={rowInputClass}
                       placeholder="https://..."
                     />
@@ -198,10 +197,10 @@ export default function SettingsPage() {
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Mobile</span>
                     <div className="flex items-center gap-1 flex-1 justify-end">
-                      <span className="text-sm font-bold text-muted-foreground/40">+63</span>
-                      <input 
+                      <span className="text-sm text-muted-foreground/40">+63</span>
+                      <input
                         value={formData.mobile}
-                        onChange={e => setFormData({...formData, mobile: e.target.value})}
+                        onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                         className="text-right text-sm font-medium bg-transparent outline-none border-none text-primary max-w-[120px]"
                         placeholder="912 345 6789"
                       />
@@ -212,13 +211,13 @@ export default function SettingsPage() {
 
               {/* Address Section */}
               <div>
-                <h3 className={sectionHeaderClass}>Resort Address</h3>
+                <h3 className={sectionHeaderClass}>Delivery Address</h3>
                 <div className={groupedContainerClass}>
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Province</span>
-                    <select 
+                    <select
                       value={formData.province}
-                      onChange={e => setFormData({...formData, province: e.target.value})}
+                      onChange={e => setFormData({ ...formData, province: e.target.value })}
                       className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
                     >
                       <option value="">Select</option>
@@ -228,19 +227,19 @@ export default function SettingsPage() {
                   <Separator className="bg-black/[0.03] mx-6 w-auto" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>City</span>
-                    <input 
+                    <input
                       value={formData.city}
-                      onChange={e => setFormData({...formData, city: e.target.value})}
+                      onChange={e => setFormData({ ...formData, city: e.target.value })}
                       className={rowInputClass}
-                      placeholder="Bongabong"
+                      placeholder="Your city"
                     />
                   </div>
                   <Separator className="bg-black/[0.03] mx-6 w-auto" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Barangay</span>
-                    <input 
+                    <input
                       value={formData.barangay}
-                      onChange={e => setFormData({...formData, barangay: e.target.value})}
+                      onChange={e => setFormData({ ...formData, barangay: e.target.value })}
                       className={rowInputClass}
                       placeholder="Hagan"
                     />
@@ -248,9 +247,9 @@ export default function SettingsPage() {
                   <Separator className="bg-black/[0.03] mx-6 w-auto" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Street</span>
-                    <input 
+                    <input
                       value={formData.street}
-                      onChange={e => setFormData({...formData, street: e.target.value})}
+                      onChange={e => setFormData({ ...formData, street: e.target.value })}
                       className={rowInputClass}
                       placeholder="Balahid"
                     />
@@ -313,22 +312,22 @@ export default function SettingsPage() {
                       </div>
                       <span className={rowLabelClass}>Two-Factor</span>
                     </div>
-                    <Badge variant="secondary" className="bg-muted text-[9px] font-bold rounded-full px-2 py-0.5 border-none opacity-50">Disabled</Badge>
+                    <Badge variant="secondary" className="bg-muted text-[9px] rounded-full px-2 py-0.5 border-none opacity-50">Disabled</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="pt-6">
-                <Button 
+                <Button
                   onClick={handleUpdateProfile}
-                  className="w-full h-16 rounded-full bg-black hover:bg-primary text-white font-bold text-lg shadow-xl active:scale-[0.98] transition-all gap-3"
+                  className="w-full h-16 rounded-full bg-black hover:bg-primary text-white text-lg shadow-xl active:scale-[0.98] transition-all gap-3"
                 >
                   <Save className="h-5 w-5" /> Save Changes
                 </Button>
               </div>
             </div>
           </main>
-          
+
           <div className="md:hidden">
             <Footer />
           </div>

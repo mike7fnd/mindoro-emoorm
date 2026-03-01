@@ -4,9 +4,9 @@
 import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { 
-  MessagesSquare, 
-  Send, 
+import {
+  MessagesSquare,
+  Send,
   ArrowLeft,
   MoreVertical,
   Smile,
@@ -17,22 +17,12 @@ import {
   Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  useUser, 
-  useFirestore, 
-  useCollection, 
+import {
+  useUser,
+  useSupabase,
+  useCollection,
   useMemoFirebase
-} from "@/firebase";
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  addDoc, 
-  serverTimestamp, 
-  doc,
-  setDoc,
-  Timestamp
-} from "firebase/firestore";
+} from "@/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { bellasBot } from "@/ai/flows/bellas-bot-flow";
 import {
@@ -48,7 +38,7 @@ interface Conversation {
   id: string;
   name: string;
   lastMessage?: string;
-  updatedAt?: Timestamp;
+  updatedAt?: string;
   userId?: string;
 }
 
@@ -57,12 +47,12 @@ interface Message {
   senderId: string;
   recipientId: string;
   content: string;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
-function formatMessageTime(timestamp: Timestamp | null) {
+function formatMessageTime(timestamp: string | null) {
   if (!timestamp) return "";
-  const date = timestamp.toDate();
+  const date = new Date(timestamp);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -77,10 +67,10 @@ function formatMessageTime(timestamp: Timestamp | null) {
 
 function MessagesContent() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const activeConversationId = searchParams.get('id');
   const [messageInput, setMessageInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
@@ -95,12 +85,13 @@ function MessagesContent() {
   }, []);
 
   const conversationsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(
-      collection(firestore, "users", user.uid, "conversations"),
-      orderBy("updatedAt", "desc")
-    );
-  }, [firestore, user]);
+    if (!user) return null;
+    return {
+      table: "conversations",
+      filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
+      order: { column: "updatedAt", ascending: false }
+    };
+  }, [user]);
 
   const { data: userConversations } = useCollection<Conversation>(conversationsQuery);
 
@@ -109,21 +100,22 @@ function MessagesContent() {
     if (!list.find(c => c.id === 'bella-bot')) {
       list.unshift({
         id: 'bella-bot',
-        name: "Bella's Bot",
-        lastMessage: "Hi! I'm your AI concierge. How can I help?",
-        updatedAt: Timestamp.now(),
+        name: "E-Moorm Bot",
+        lastMessage: "Hi! I'm your shopping assistant. How can I help?",
+        updatedAt: new Date().toISOString(),
       });
     }
     return list;
   }, [userConversations]);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !activeConversationId) return null;
-    return query(
-      collection(firestore, "users", user.uid, "conversations", activeConversationId, "messages"),
-      orderBy("createdAt", "asc")
-    );
-  }, [firestore, user, activeConversationId]);
+    if (!user || !activeConversationId) return null;
+    return {
+      table: "messages",
+      filters: [{ column: "conversationId", op: "eq" as const, value: activeConversationId }],
+      order: { column: "createdAt", ascending: true }
+    };
+  }, [user, activeConversationId]);
 
   const { data: messages } = useCollection<Message>(messagesQuery);
 
@@ -133,34 +125,28 @@ function MessagesContent() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !user || !firestore || !activeConversationId) return;
+    if (!messageInput.trim() || !user || !activeConversationId) return;
 
     const content = messageInput.trim();
     setMessageInput("");
 
-    const messagesRef = collection(
-      firestore, 
-      "users", 
-      user.uid, 
-      "conversations", 
-      activeConversationId, 
-      "messages"
-    );
+    const now = new Date().toISOString();
 
-    await addDoc(messagesRef, {
+    await supabase.from("messages").insert({
+      conversationId: activeConversationId,
       senderId: user.uid,
       recipientId: activeConversationId === 'bella-bot' ? 'bella-bot' : 'admin',
       content,
-      createdAt: serverTimestamp()
+      createdAt: now
     });
 
-    const convoRef = doc(firestore, "users", user.uid, "conversations", activeConversationId);
-    setDoc(convoRef, {
+    await supabase.from("conversations").upsert({
+      id: activeConversationId,
       userId: user.uid,
       lastMessage: content,
-      updatedAt: serverTimestamp(),
-      name: activeConversationId === 'bella-bot' ? "Bella's Bot" : "Resort Support"
-    }, { merge: true });
+      updatedAt: now,
+      name: activeConversationId === 'bella-bot' ? "E-Moorm Bot" : "Customer Support"
+    }, { onConflict: 'id' });
 
     if (activeConversationId === 'bella-bot') {
       setIsBotTyping(true);
@@ -171,18 +157,22 @@ function MessagesContent() {
         })) || [];
 
         const aiResponse = await bellasBot({ message: content, history });
-        
-        await addDoc(messagesRef, {
+
+        const replyTime = new Date().toISOString();
+
+        await supabase.from("messages").insert({
+          conversationId: activeConversationId,
           senderId: 'bella-bot',
           recipientId: user.uid,
           content: aiResponse.reply,
-          createdAt: serverTimestamp()
+          createdAt: replyTime
         });
 
-        setDoc(convoRef, {
+        await supabase.from("conversations").upsert({
+          id: activeConversationId,
           lastMessage: aiResponse.reply,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+          updatedAt: replyTime,
+        }, { onConflict: 'id' });
       } catch (error) {
         console.error("AI Error:", error);
       } finally {
@@ -207,7 +197,7 @@ function MessagesContent() {
           "flex flex-col lg:flex-row md:h-[80vh] md:rounded-[25px] border border-black/[0.05] overflow-hidden bg-white shadow-2xl transition-all",
           isMobileView && activeConversationId ? "h-[100dvh] border-none rounded-none fixed inset-0 z-[1001]" : "h-screen"
         )}>
-          
+
           {showList && (
             <aside className="w-full lg:w-[380px] flex flex-col border-r border-black/[0.05] bg-white animate-in fade-in duration-300 h-full">
               <div className="p-6 md:p-8 flex items-center justify-between">
@@ -236,13 +226,13 @@ function MessagesContent() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto">
                 <div className="px-6 pb-4">
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Search..." 
+                    <input
+                      type="text"
+                      placeholder="Search..."
                       className="w-full bg-[#f2f2f2] rounded-[10px] py-2.5 px-4 text-sm outline-none placeholder:text-muted-foreground/50"
                     />
                   </div>
@@ -250,7 +240,7 @@ function MessagesContent() {
 
                 <div className="space-y-1">
                   {conversations?.map((convo) => (
-                    <div 
+                    <div
                       key={convo.id}
                       onClick={() => router.push(`/messages?id=${convo.id}`)}
                       className={cn(
@@ -305,7 +295,7 @@ function MessagesContent() {
                       <div>
                         <h3 className="text-[15px] font-bold tracking-tight leading-tight">{activeConversation?.name}</h3>
                         <p className="text-[11px] text-green-500 font-medium">
-                          {activeConversationId === 'bella-bot' ? "AI Concierge Active" : "Concierge online"}
+                          {activeConversationId === 'bella-bot' ? "Shopping Assistant Active" : "Support online"}
                         </p>
                       </div>
                     </div>
@@ -322,18 +312,18 @@ function MessagesContent() {
                         {messages?.map((msg) => {
                           const isMe = msg.senderId === user?.uid;
                           return (
-                            <div 
+                            <div
                               key={msg.id}
                               className={cn(
                                 "max-w-[80%] md:max-w-[70%] flex flex-col group relative",
                                 isMe ? "self-end items-end" : "self-start items-start"
                               )}
                             >
-                              <div 
+                              <div
                                 className={cn(
                                   "px-4 py-2.5 text-sm transition-all relative",
-                                  isMe 
-                                    ? "bg-primary text-white rounded-[22px] rounded-br-[4px]" 
+                                  isMe
+                                    ? "bg-primary text-white rounded-[22px] rounded-br-[4px]"
                                     : "bg-[#f2f2f2] text-black rounded-[22px] rounded-bl-[4px]"
                                 )}
                               >
@@ -372,7 +362,7 @@ function MessagesContent() {
                             <Smile className="h-5 w-5" />
                           </button>
                         </div>
-                        <input 
+                        <input
                           type="text"
                           placeholder="Message..."
                           className="w-full border border-black/[0.1] rounded-full pl-12 pr-12 h-[44px] outline-none focus:border-black/30 transition-all text-sm"
@@ -385,7 +375,7 @@ function MessagesContent() {
                           </button>
                         </div>
                       </div>
-                      <button 
+                      <button
                         type="submit"
                         disabled={!messageInput.trim() || isBotTyping}
                         className="text-primary font-bold text-[15px] px-3 disabled:opacity-30 hover:text-primary/80 transition-all shrink-0"
@@ -401,7 +391,7 @@ function MessagesContent() {
                     <MessagesSquare className="h-12 w-12 text-black/20" />
                   </div>
                   <h2 className="text-xl font-normal font-headline tracking-tight mb-2">Direct Messages</h2>
-                  <p className="text-sm text-muted-foreground max-w-[280px]">Connect with our resort concierge for a blissful and personalized experience.</p>
+                  <p className="text-sm text-muted-foreground max-w-[280px]">Connect with sellers or our shopping assistant for a great marketplace experience.</p>
                 </div>
               )}
             </section>

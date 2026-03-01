@@ -8,8 +8,8 @@
  * - OptimizeFacilityAvailabilityOutput - The return type for the optimizeFacilityAvailability function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const OptimizeFacilityAvailabilityInputSchema = z.object({
   bookingData: z.string().describe('Historical booking data in JSON format, including facility type, dates, and occupancy rates.'),
@@ -55,11 +55,11 @@ export async function optimizeFacilityAvailability(
 
 const prompt = ai.definePrompt({
   name: 'optimizeFacilityAvailabilityPrompt',
-  input: {schema: OptimizeFacilityAvailabilityInputSchema},
-  output: {schema: OptimizeFacilityAvailabilityOutputSchema},
-  prompt: `You are an AI assistant designed to analyze booking patterns and facility usage data for Bella's Paradise Farm Resort, a resort in the Philippines. Your goal is to identify periods of low occupancy and suggest strategies to optimize availability, such as offering discounts or promotions during those times. You should also suggest optimal pricing based on demand and occupancy.
+  input: { schema: OptimizeFacilityAvailabilityInputSchema },
+  output: { schema: OptimizeFacilityAvailabilityOutputSchema },
+  prompt: `You are an AI assistant designed to analyze order patterns and product sales data for E-Moorm, a hyperlocal digital marketplace in Oriental Mindoro, Philippines. Your goal is to identify periods of low sales and suggest strategies to optimize product availability, such as offering discounts or promotions during those times. You should also suggest optimal pricing based on demand and sales volume.
 
-Analyze the following booking data and facility details to provide actionable insights and recommendations.
+Analyze the following order data and product details to provide actionable insights and recommendations.
 
 Booking Data:
 {{{bookingData}}}
@@ -67,9 +67,9 @@ Booking Data:
 Facility Details:
 {{{facilityDetails}}}
 
-Based on the analysis, provide a summary of the booking patterns, highlighting periods of low occupancy. Then, suggest specific strategies to optimize availability during those periods, including discounts, promotions, or other incentives. Finally, suggest optimal pricing for different facility types based on demand and occupancy.
+Based on the analysis, provide a summary of the sales patterns, highlighting periods of low demand. Then, suggest specific strategies to optimize sales during those periods, including discounts, promotions, or other incentives. Finally, suggest optimal pricing for different product categories based on demand and volume.
 
-Ensure that your recommendations are tailored to the specific context of Bella's Paradise Farm Resort and are designed to maximize revenue and improve resource utilization.
+Ensure that your recommendations are tailored to the specific context of E-Moorm and are designed to maximize revenue and improve seller performance.
 
 Output your response in JSON format.`,
 });
@@ -81,7 +81,7 @@ const optimizeFacilityAvailabilityFlow = ai.defineFlow(
     outputSchema: OptimizeFacilityAvailabilityOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

@@ -1,17 +1,17 @@
 'use server';
 
 /**
- * @fileOverview Bella's Bot - An AI concierge for Bella's Paradise Farm Resort.
- * 
- * This flow uses Genkit to provide helpful information to guests about 
- * accommodations, amenities, and resort policies.
+ * @fileOverview E-Moorm Bot - An AI shopping assistant for E-Moorm marketplace.
+ *
+ * This flow uses Genkit to provide helpful information to buyers about
+ * products, sellers, and marketplace policies.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const BellasBotInputSchema = z.object({
-  message: z.string().describe('The message from the guest.'),
+  message: z.string().describe('The message from the buyer.'),
   history: z.array(z.object({
     role: z.enum(['user', 'model']),
     content: z.string(),
@@ -20,7 +20,7 @@ const BellasBotInputSchema = z.object({
 export type BellasBotInput = z.infer<typeof BellasBotInputSchema>;
 
 const BellasBotOutputSchema = z.object({
-  reply: z.string().describe('The AI concierge\'s helpful response.'),
+  reply: z.string().describe('The AI shopping assistant\'s helpful response.'),
 });
 export type BellasBotOutput = z.infer<typeof BellasBotOutputSchema>;
 
@@ -32,29 +32,31 @@ const prompt = ai.definePrompt({
   name: 'bellasBotPrompt',
   input: { schema: BellasBotInputSchema },
   output: { schema: BellasBotOutputSchema },
-  prompt: `You are Bella's Bot, the friendly and sophisticated AI concierge for Bella's Paradise Farm Resort in Bongabong, Oriental Mindoro, Philippines.
+  prompt: `You are E-Moorm Bot, the friendly and helpful AI shopping assistant for E-Moorm, a hyperlocal digital marketplace centered on Oriental Mindoro, Philippines. E-Moorm connects consumers seeking authentic, locally produced goods with merchants, farmers, and artisans operating across the province.
 
-Your goal is to assist guests with their inquiries about the resort in a warm, welcoming, and helpful manner.
+Your goal is to assist buyers with their inquiries about products, sellers, and the marketplace in a warm, welcoming, and helpful manner.
 
-Information about Bella's Paradise Farm Resort:
-- Location: Balahid, Hagan, Bongabong, Oriental Mindoro.
-- Vibe: A "Paradise Farm" where guests can experience nature and freshwater. Relaxing, family-friendly, and sophisticated.
-- Accommodations:
-  - Kubos (Traditional bamboo huts, including "Kubo sa Ilog")
-  - Cabanas (Luxury garden stays)
-  - A-House (Modern triangular house for 4 guests)
-  - Function Hall (For events and gatherings up to 20 guests)
-  - Tents (For outdoor enthusiasts)
-  - Rooms (Standard resort rooms)
-- Amenities: Beautiful swimming pool (great for kids), freshwater surroundings, farm views, and lush nature.
+Information about E-Moorm:
+- Location: Serving all of Oriental Mindoro, Philippines.
+- Platform: A local e-commerce marketplace connecting local sellers with buyers.
+- Product Categories:
+  - Vegetables (Fresh local produce from Mindoro farms)
+  - Fruits (Tropical fruits like calamansi, mangoes, bananas)
+  - Seafood (Fresh catch from local fishermen)
+  - Meat (Native chicken, pork, beef from local farms)
+  - Snacks (Local delicacies, dried fish, pastillas)
+  - Rice & Grains (Locally grown rice varieties)
+  - Beverages (Fresh juices, local drinks)
+  - Condiments (Local sauces, vinegars, spices)
+- Features: Cash on delivery, GCash payments, seller verification, product ratings.
 
 Guidelines:
 1. Always be polite and professional.
 2. Use a touch of Filipino hospitality in your tone.
-3. If you don't know the answer to a specific question (like current real-time availability for a specific date), suggest they message "Resort Support" to talk to a human staff member.
+3. If you don't know the answer to a specific question (like current product stock), suggest they message "Customer Support" to talk to a human staff member.
 4. Keep responses relatively concise but thorough enough to be helpful.
 
-Guest Message: {{{message}}}
+Buyer Message: {{{message}}}
 
 {{#if history}}
 Previous Context:

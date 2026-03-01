@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { FirebaseClientProvider } from '@/firebase';
+import { SupabaseProvider } from '@/supabase';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: "Bella's Booking Bliss - Paradise Farm Resort",
-  description: "Comprehensive booking and management system for Bella's Paradise Farm Resort",
+  title: "E-Moorm - Hyperlocal Marketplace",
+  description: "Discover and purchase authentic, locally produced goods from Oriental Mindoro, Philippines.",
 };
 
 export default function RootLayout({
@@ -35,10 +35,10 @@ export default function RootLayout({
         }} />
       </head>
       <body className="font-body antialiased bg-white text-foreground dark:bg-[#050505] transition-colors duration-300">
-        <FirebaseClientProvider>
+        <SupabaseProvider>
           {children}
           <Toaster />
-        </FirebaseClientProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );

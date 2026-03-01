@@ -1,0 +1,128 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useMemo, DependencyList, type ReactNode } from 'react';
+import { SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import { getSupabaseClient } from './client';
+
+/** App-level user type that matches Firebase User shape for minimal migration pain */
+export interface AppUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
+
+export interface UserHookResult {
+  user: AppUser | null;
+  isUserLoading: boolean;
+  userError: Error | null;
+}
+
+export interface SupabaseContextState {
+  supabase: SupabaseClient;
+  user: AppUser | null;
+  isUserLoading: boolean;
+  userError: Error | null;
+}
+
+const SupabaseContext = createContext<SupabaseContextState | undefined>(undefined);
+
+function mapUser(supaUser: SupabaseUser | null): AppUser | null {
+  if (!supaUser) return null;
+  return {
+    uid: supaUser.id,
+    email: supaUser.email ?? null,
+    displayName: supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? null,
+    photoURL: supaUser.user_metadata?.avatar_url ?? null,
+  };
+}
+
+export function SupabaseProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [userError, setUserError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        setUserError(error);
+      } else {
+        setUser(mapUser(session?.user ?? null));
+      }
+      setIsUserLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(mapUser(session?.user ?? null));
+      setIsUserLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const contextValue = useMemo((): SupabaseContextState => ({
+    supabase,
+    user,
+    isUserLoading,
+    userError,
+  }), [supabase, user, isUserLoading, userError]);
+
+  return (
+    <SupabaseContext.Provider value={contextValue}>
+      {children}
+    </SupabaseContext.Provider>
+  );
+}
+
+/** Returns the Supabase client instance */
+export function useSupabase(): SupabaseClient {
+  const context = useContext(SupabaseContext);
+  if (!context) throw new Error('useSupabase must be used within SupabaseProvider');
+  return context.supabase;
+}
+
+/** Returns { supabase, user, isUserLoading, userError } - replaces useFirebase() */
+export function useFirebase(): { supabase: SupabaseClient; auth: { signOut: () => Promise<any> }; user: AppUser | null; isUserLoading: boolean; userError: Error | null } {
+  const context = useContext(SupabaseContext);
+  if (!context) throw new Error('useFirebase must be used within SupabaseProvider');
+  return {
+    supabase: context.supabase,
+    auth: {
+      signOut: () => context.supabase.auth.signOut(),
+    },
+    user: context.user,
+    isUserLoading: context.isUserLoading,
+    userError: context.userError,
+  };
+}
+
+/** Returns the Supabase client - replaces useFirestore() */
+export function useFirestore(): SupabaseClient {
+  return useSupabase();
+}
+
+/** Returns the Supabase auth interface - replaces useAuth() */
+export function useAuth() {
+  const supabase = useSupabase();
+  return supabase.auth;
+}
+
+/** Returns { user, isUserLoading, userError } */
+export function useUser(): UserHookResult {
+  const context = useContext(SupabaseContext);
+  if (!context) throw new Error('useUser must be used within SupabaseProvider');
+  return {
+    user: context.user,
+    isUserLoading: context.isUserLoading,
+    userError: context.userError,
+  };
+}
+
+/** Memoize helper - replaces useMemoFirebase */
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(factory, deps);
+}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useAuth, useUser, initiateEmailSignIn, initiateGoogleSignIn } from "@/firebase";
+import { useUser, initiateEmailSignIn, initiateGoogleSignIn, useSupabase } from "@/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
   const handleAuthError = (err: any) => {
     console.error("Auth Error:", err);
     let friendlyMessage = "An unexpected error occurred. Please try again.";
-    
+
     if (err.code === "auth/invalid-credential") {
       friendlyMessage = "Incorrect email or password. Please check your credentials and try again.";
     } else if (err.code === "auth/user-not-found") {
@@ -55,7 +55,7 @@ export default function LoginPage() {
     }
 
     setError(friendlyMessage);
-    
+
     toast({
       variant: "destructive",
       title: "Sign In Failed",
@@ -70,12 +70,12 @@ export default function LoginPage() {
       return;
     }
     setError("");
-    initiateEmailSignIn(auth, email, password).catch(handleAuthError);
+    initiateEmailSignIn(supabase, email, password).catch(handleAuthError);
   };
 
   const handleGoogleSignIn = () => {
     setError("");
-    initiateGoogleSignIn(auth).catch(handleAuthError);
+    initiateGoogleSignIn(supabase).catch(handleAuthError);
   };
 
   if (isUserLoading) return null;
@@ -86,9 +86,9 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="flex flex-col gap-6">
           <div className="text-center space-y-2">
             <Link href="/" className="logo inline-block font-headline italic font-normal text-4xl text-black tracking-[-0.05em]">
-              Bella's Paradise
+              E-Moorm
             </Link>
-            <p className="login-subtitle text-muted-foreground text-sm font-normal">Welcome back! Please enter your details.</p>
+            <p className="login-subtitle text-muted-foreground text-sm font-normal">Welcome back! Sign in to your marketplace.</p>
           </div>
 
           {error && (
@@ -99,8 +99,8 @@ export default function LoginPage() {
 
           <div className="form-group space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
@@ -111,8 +111,8 @@ export default function LoginPage() {
 
           <div className="form-group space-y-2">
             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -129,7 +129,7 @@ export default function LoginPage() {
             <Link href="/forgot-password" title="Forgot password" className="forgot-link text-xs text-primary font-bold hover:underline transition-all">Forgot password?</Link>
           </div>
 
-          <button 
+          <button
             type="submit"
             className="login-btn bg-black text-white font-bold py-5 rounded-full hover:bg-primary transition-all transform active:scale-[0.98] shadow-md text-sm uppercase tracking-widest mt-2"
           >
@@ -141,7 +141,7 @@ export default function LoginPage() {
           or continue with
         </div>
 
-        <button 
+        <button
           type="button"
           onClick={handleGoogleSignIn}
           className="google-btn w-full bg-[#f8f8f8] border-none text-black font-bold py-5 rounded-full hover:bg-muted transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-widest"

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
@@ -7,18 +6,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
-import { 
-  Home, 
-  Calendar, 
-  MessageSquare, 
-  User, 
-  Bell, 
-  LogOut, 
+import {
+  Home,
+  ShoppingCart,
+  MessageSquare,
+  User,
+  Bell,
+  LogOut,
   LayoutDashboard,
-  Plus
+  Plus,
+  Store,
 } from "lucide-react";
-import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useUser, useSupabase, useDoc, useMemoFirebase, useFirebase } from "@/supabase";
 import Image from "next/image";
 
 function HeaderContent() {
@@ -28,20 +27,26 @@ function HeaderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isUserLoading, auth } = useFirebase();
-  const firestore = useFirestore();
-  
+  const supabase = useSupabase();
+
   const isAdmin = user?.email === 'kioalaquer301@gmail.com';
   const isBookDetailPage = pathname?.startsWith('/book/') && pathname !== '/book';
-  
+  const isSeller = isAdmin; // Sellers use admin pages
+
   // Hide bottom nav when "inside" a chat on mobile
   const isMessagePage = pathname === '/messages' || pathname === '/admin-messages';
   const hasActiveChat = searchParams.get('id') || searchParams.get('user');
-  const shouldHideBottomNav = isBookDetailPage || (isMessagePage && hasActiveChat);
+
+  // Pages that have a corresponding bottom nav item
+  const bottomNavPages = ['/', '/cart', '/notifications', '/messages', '/profile', '/admin-dashboard', '/admin-bookings', '/admin-messages'];
+  const isOnBottomNavPage = bottomNavPages.some(p => p === '/' ? pathname === '/' : pathname.startsWith(p));
+
+  const shouldHideBottomNav = isBookDetailPage || (isMessagePage && hasActiveChat) || !isOnBottomNavPage;
 
   const userProfileRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return doc(firestore, "users", user.uid);
-  }, [firestore, user]);
+    if (!user) return null;
+    return { table: "users", id: user.uid };
+  }, [user]);
 
   const { data: userProfile } = useDoc(userProfileRef);
 
@@ -157,7 +162,7 @@ function HeaderContent() {
       <div className="site-nav">
         <div className="nav-side left-side">
           <div className="brand">
-            <Link href="/" className="logo">Bella's Paradise</Link>
+            <Link href="/" className="logo">E-Moorm</Link>
           </div>
         </div>
 
@@ -165,14 +170,14 @@ function HeaderContent() {
           {isAdmin ? (
             <>
               <Link href="/admin-dashboard" className={cn(isLinkActive("/admin-dashboard") && "active")}>Dashboard</Link>
-              <Link href="/admin-bookings" className={cn(isLinkActive("/admin-bookings") && "active")}>Bookings</Link>
-              <Link href="/admin-facilities" className={cn(isLinkActive("/admin-facilities") && "active")}>Facilities</Link>
+              <Link href="/admin-bookings" className={cn(isLinkActive("/admin-bookings") && "active")}>Orders</Link>
+              <Link href="/admin-facilities" className={cn(isLinkActive("/admin-facilities") && "active")}>Products</Link>
               <Link href="/admin-messages" className={cn(isLinkActive("/admin-messages") && "active")}>Messages</Link>
             </>
           ) : (
             <>
               <Link href="/" className={cn(isLinkActive("/") && "active")}>Home</Link>
-              {!user && <Link href="/book" className={cn(isLinkActive("/book") && "active")}>Book</Link>}
+              <Link href="/cart" className={cn(isLinkActive("/cart") && "active")}>Cart</Link>
               {user && (
                 <Link href="/messages" className={cn(isLinkActive("/messages") && "active")}>Messages</Link>
               )}
@@ -189,17 +194,17 @@ function HeaderContent() {
                 </div>
 
                 <div className="dropdown relative">
-                  <div 
-                    className="h-10 w-10 rounded-full border border-white/20 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-transform" 
-                    id="profileBtn" 
-                    aria-label="Profile" 
+                  <div
+                    className="h-10 w-10 rounded-full border border-white/20 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                    id="profileBtn"
+                    aria-label="Profile"
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   >
-                    <Image 
-                      src={profilePic} 
-                      alt="User Profile" 
-                      width={40} 
-                      height={40} 
+                    <Image
+                      src={profilePic}
+                      alt="User Profile"
+                      width={40}
+                      height={40}
                       className="object-cover h-full w-full"
                     />
                   </div>
@@ -210,7 +215,7 @@ function HeaderContent() {
                         <p className="text-sm font-medium truncate">{user.email}</p>
                       </div>
                       <Link href="/profile" className="block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Profile</Link>
-                      {isAdmin && <Link href="/admin-dashboard" className="block px-5 py-3 text-sm font-bold text-primary hover:bg-black/5">Admin panel</Link>}
+                      {isAdmin && <Link href="/admin-dashboard" className="block px-5 py-3 text-sm font-bold text-primary hover:bg-black/5">Seller panel</Link>}
                       <button onClick={handleLogout} className="w-full text-left block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Logout</button>
                     </div>
                   )}
@@ -239,9 +244,9 @@ function HeaderContent() {
                 </Link>
                 <Link href="/admin-bookings" className={cn("mobile-nav-item", isLinkActive("/admin-bookings") && "active")}>
                   <div className="mobile-nav-icon">
-                    <Calendar className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/admin-bookings") ? "currentColor" : "none"} />
+                    <ShoppingCart className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/admin-bookings") ? "currentColor" : "none"} />
                   </div>
-                  <span>Bookings</span>
+                  <span>Orders</span>
                 </Link>
                 <Link href="/admin-messages" className={cn("mobile-nav-item", isLinkActive("/admin-messages") && "active")}>
                   <div className="mobile-nav-icon">
@@ -258,14 +263,12 @@ function HeaderContent() {
                   </div>
                   <span>Home</span>
                 </Link>
-                {!user && (
-                  <Link href="/book" className={cn("mobile-nav-item", isLinkActive("/book") && "active")}>
-                    <div className="mobile-nav-icon">
-                      <Calendar className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/book") ? "currentColor" : "none"} />
-                    </div>
-                    <span>Book</span>
-                  </Link>
-                )}
+                <Link href="/cart" className={cn("mobile-nav-item", isLinkActive("/cart") && "active")}>
+                  <div className="mobile-nav-icon">
+                    <ShoppingCart className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/cart") ? "currentColor" : "none"} />
+                  </div>
+                  <span>Cart</span>
+                </Link>
                 <Link href="/notifications" className={cn("mobile-nav-item", isLinkActive("/notifications") && "active")}>
                   <div className="mobile-nav-icon">
                     <Bell className="h-7 w-7" strokeWidth={1.5} fill={isLinkActive("/notifications") ? "currentColor" : "none"} />
@@ -304,27 +307,27 @@ function HeaderContent() {
         </div>
       )}
 
-      <div 
+      <div
         ref={mobileOverlayRef}
-        className={cn("mobile-menu-overlay", isMobileMenuOpen && "active")} 
+        className={cn("mobile-menu-overlay", isMobileMenuOpen && "active")}
         style={{ visibility: isMobileMenuOpen ? 'visible' : 'hidden' }}
         onClick={toggleMobileMenu}
       />
 
       <div ref={mobileMenuRef} className={cn("mobile-menu", isMobileMenuOpen && "active")}>
-        <h3 className="font-headline italic font-bold text-2xl mb-8 text-primary">Bella's Paradise</h3>
+        <h3 className="font-headline italic font-bold text-2xl mb-8 text-primary">E-Moorm</h3>
         <nav className="flex flex-col gap-3 mb-8">
           {isAdmin ? (
             <>
               <Link href="/admin-dashboard" className={cn("mobile-menu-link", isLinkActive("/admin-dashboard") && "active")}><LayoutDashboard className="h-5 w-5 mr-2" strokeWidth={1.5} /> Dashboard</Link>
-              <Link href="/admin-bookings" className={cn("mobile-menu-link", isLinkActive("/admin-bookings") && "active")}><Calendar className="h-5 w-5 mr-2" strokeWidth={1.5} /> Bookings</Link>
-              <Link href="/admin-facilities" className={cn("mobile-menu-link", isLinkActive("/admin-facilities") && "active")}><Plus className="h-5 w-5 mr-2" strokeWidth={1.5} /> Facilities</Link>
+              <Link href="/admin-bookings" className={cn("mobile-menu-link", isLinkActive("/admin-bookings") && "active")}><ShoppingCart className="h-5 w-5 mr-2" strokeWidth={1.5} /> Orders</Link>
+              <Link href="/admin-facilities" className={cn("mobile-menu-link", isLinkActive("/admin-facilities") && "active")}><Plus className="h-5 w-5 mr-2" strokeWidth={1.5} /> Products</Link>
               <Link href="/admin-messages" className={cn("mobile-menu-link", isLinkActive("/admin-messages") && "active")}><MessageSquare className="h-5 w-5 mr-2" strokeWidth={1.5} /> Messages</Link>
             </>
           ) : (
             <>
               <Link href="/" className={cn("mobile-menu-link", isLinkActive("/") && "active")}><Home className="h-5 w-5 mr-2" strokeWidth={1.5} /> Home</Link>
-              {!user && <Link href="/book" className={cn("mobile-menu-link", isLinkActive("/book") && "active")}><Calendar className="h-5 w-5 mr-2" strokeWidth={1.5} /> Book now</Link>}
+              {!user && <Link href="/book" className={cn("mobile-menu-link", isLinkActive("/book") && "active")}><ShoppingCart className="h-5 w-5 mr-2" strokeWidth={1.5} /> Shop</Link>}
               {user && (
                 <Link href="/messages" className={cn("mobile-menu-link", isLinkActive("/messages") && "active")}><MessageSquare className="h-5 w-5 mr-2" strokeWidth={1.5} /> Messages</Link>
               )}
@@ -336,7 +339,7 @@ function HeaderContent() {
             <Link href="/profile" className="mobile-menu-link">
               <div className="h-6 w-6 rounded-full overflow-hidden mr-2">
                 <Image src={profilePic} alt="PFP" width={24} height={24} className="object-cover h-full w-full" />
-              </div> 
+              </div>
               Profile
             </Link>
             <button onClick={handleLogout} className="w-full text-left mobile-menu-link text-destructive"><LogOut className="h-5 w-5 mr-2" strokeWidth={1.5} /> Logout</button>

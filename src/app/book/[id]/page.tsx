@@ -2,10 +2,10 @@
 
 import React, { useState, use, useMemo, useRef, useEffect } from "react";
 import { Footer } from "@/components/layout/footer";
-import { 
-  Heart, 
-  MapPin, 
-  Star, 
+import {
+  Heart,
+  MapPin,
+  Star,
   ArrowLeft,
   Calendar as CalendarIcon,
   Clock,
@@ -30,8 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
-import { useFirestore, useDoc, useMemoFirebase, useUser, addDocumentNonBlocking, useCollection } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { useSupabase, useDoc, useMemoFirebase, useUser, addDocumentNonBlocking, useCollection } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { format, differenceInDays, isSameDay } from "date-fns";
@@ -55,10 +54,21 @@ interface Facility {
   type: string;
   capacity: number;
   pricePerNight: number;
+  price?: number;
   description: string;
   imageUrl: string;
   status: string;
   amenities?: string[];
+  stock?: number;
+  isAuction?: boolean;
+  auctionEndDate?: string;
+  startingBid?: number;
+  currentBid?: number;
+  currentBidderId?: string;
+  bidCount?: number;
+  storeId?: string;
+  sellerId?: string;
+  sellerName?: string;
 }
 
 interface Booking {
@@ -71,39 +81,38 @@ interface Booking {
 
 const getAmenityIcon = (label: string) => {
   const l = label.toLowerCase();
-  if (l.includes('wi-fi') || l.includes('wifi')) return Wifi;
-  if (l.includes('air conditioning') || l.includes('ac')) return Wind;
-  if (l.includes('view') || l.includes('freshwater')) return Waves;
-  if (l.includes('pet')) return Dog;
-  if (l.includes('parking')) return Car;
-  if (l.includes('coffee')) return Coffee;
-  if (l.includes('pool')) return Zap;
-  if (l.includes('breakfast')) return Utensils;
-  if (l.includes('balcony')) return Sun;
-  if (l.includes('kitchen')) return Utensils;
-  if (l.includes('tv')) return Tv;
+  if (l.includes('organic')) return CheckCircle2;
+  if (l.includes('fresh') || l.includes('daily')) return Zap;
+  if (l.includes('local') || l.includes('sourced')) return MapPin;
+  if (l.includes('farm') || l.includes('direct')) return Sun;
+  if (l.includes('handmade') || l.includes('homemade')) return Coffee;
+  if (l.includes('free range')) return Dog;
+  if (l.includes('natural')) return Waves;
+  if (l.includes('halal') || l.includes('vegan')) return Utensils;
+  if (l.includes('packed') || l.includes('sealed')) return Wind;
+  if (l.includes('frozen')) return Wifi;
   return CheckCircle2;
 };
 
 const MOCK_REVIEWS = [
   {
-    name: "Maria & Carlo S.",
+    name: "Maria S.",
     date: "Oct 2025",
-    text: "Hello Po. Super ganda po ng place, relaxing po. Tsaka pool saktong sakto po sa mga kids.",
+    text: "Super fresh po yung mga gulay! Galing pa sa farm dito sa Mindoro. Will definitely order again.",
     avatar: "https://i.pravatar.cc/150?u=maria",
     stars: 5,
   },
   {
     name: "Krizzel F.",
     date: "Sept 2025",
-    text: "Amazing experience! The Freshwater views are to die for. Will definitely come back with the whole family.",
+    text: "Ang sarap ng dried fish! Authentic Mindoro quality. Fast delivery and well-packed.",
     avatar: "https://i.pravatar.cc/150?u=krizzel",
     stars: 5,
   },
   {
-    name: "Paolo & Friends",
+    name: "Paolo R.",
     date: "Nov 2025",
-    text: "Unreal vibe and super clean. Nature all around — easily the best resort experience in Mindoro!",
+    text: "Great quality products at very reasonable prices. Supporting local sellers feels good!",
     avatar: "https://i.pravatar.cc/150?u=paolo",
     stars: 5,
   },
@@ -112,14 +121,18 @@ const MOCK_REVIEWS = [
 export default function FacilityDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user } = useUser();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
   const router = useRouter();
-  
+
   const [isLiked, setIsLiked] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'onsite' | 'gcash'>('onsite');
   const [date, setDate] = useState<DateRange | undefined>(undefined);
+  const [quantity, setQuantity] = useState(1);
+  const [bidAmount, setBidAmount] = useState("");
+  const [bidPlaced, setBidPlaced] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const isAnimating = useRef(false);
@@ -128,17 +141,17 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const swipeContainerRef = useRef<HTMLDivElement>(null);
 
   const facilityRef = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return doc(firestore, "facilities", id);
-  }, [firestore, id]);
+    if (!id) return null;
+    return { table: "facilities", id };
+  }, [id]);
 
   const { data: facility, isLoading } = useDoc<Facility>(facilityRef);
 
   // Fetch bookings for this facility to show availability
   const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return query(collection(firestore, "bookings"), where("facilityId", "==", id));
-  }, [firestore, id]);
+    if (!id) return null;
+    return { table: "bookings", filters: [{ column: "facilityId", op: "eq" as const, value: id }] };
+  }, [id]);
 
   const { data: facilityBookings } = useCollection<Booking>(bookingsQuery);
 
@@ -176,16 +189,16 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
         const slide = document.getElementById(`slide-${i}`);
         if (slide) {
           if (i === currentIndex) {
-            gsap.set(slide, { 
-              x: 0, rotation: 0, scale: 1, opacity: 1, zIndex: 50, display: 'block', y: 0 
+            gsap.set(slide, {
+              x: 0, rotation: 0, scale: 1, opacity: 1, zIndex: 50, display: 'block', y: 0
             });
           } else {
             const nextIdx = (currentIndex + 1) % images.length;
             const prevIdx = (currentIndex - 1 + images.length) % images.length;
-            
+
             if (i === nextIdx || i === prevIdx) {
-              gsap.set(slide, { 
-                x: 0, rotation: 0, scale: 0.92, opacity: 0.4, zIndex: 40, display: 'block', y: 15 
+              gsap.set(slide, {
+                x: 0, rotation: 0, scale: 0.92, opacity: 0.4, zIndex: 40, display: 'block', y: 15
               });
             } else {
               gsap.set(slide, { display: 'none', opacity: 0, zIndex: 10 });
@@ -204,13 +217,13 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
 
   const handleMove = (clientX: number) => {
     if (dragStartX.current === null || isAnimating.current) return;
-    
+
     const deltaX = clientX - dragStartX.current;
     currentDragX.current = deltaX;
 
     const currentSlide = document.getElementById(`slide-${currentIndex}`);
-    const nextIdx = deltaX < 0 
-      ? (currentIndex + 1) % images.length 
+    const nextIdx = deltaX < 0
+      ? (currentIndex + 1) % images.length
       : (currentIndex - 1 + images.length) % images.length;
     const nextSlide = document.getElementById(`slide-${nextIdx}`);
 
@@ -241,8 +254,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     const deltaX = currentDragX.current;
     const threshold = 100;
     const currentSlide = document.getElementById(`slide-${currentIndex}`);
-    const nextIdx = deltaX < 0 
-      ? (currentIndex + 1) % images.length 
+    const nextIdx = deltaX < 0
+      ? (currentIndex + 1) % images.length
       : (currentIndex - 1 + images.length) % images.length;
     const nextSlide = document.getElementById(`slide-${nextIdx}`);
 
@@ -316,33 +329,26 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
       router.push("/login");
       return;
     }
-    
-    if (nights === 0) {
-      const availabilityTab = document.querySelector('[value="availability"]') as HTMLElement;
-      availabilityTab?.click();
-      return;
-    }
-
+    if (!facility) return;
     setShowCheckout(true);
   };
 
   const confirmBooking = () => {
-    if (!facility || !date?.from || !date?.to || !firestore || !user) return;
-
+    if (!facility || !user) return;
     const bookingData = {
       userId: user.uid,
       facilityId: facility.id,
-      startDate: date.from.toISOString(),
-      endDate: date.to.toISOString(),
-      numberOfGuests: 1, 
-      totalPrice: totalPrice,
-      paymentMethod: paymentMethod,
+      productId: facility.id,
+      quantity,
+      totalPrice: (facility.price || facility.pricePerNight || 0) * quantity,
+      paymentMethod,
       status: "Pending",
-      bookingDate: new Date().toISOString()
+      bookingDate: new Date().toISOString(),
+      storeId: facility.storeId || null,
+      shippingAddress: null,
+      trackingNumber: null
     };
-
-    addDocumentNonBlocking(collection(firestore, "bookings"), bookingData);
-
+    addDocumentNonBlocking(supabase, "bookings", bookingData);
     setShowCheckout(false);
     setShowSuccess(true);
     confetti({
@@ -357,7 +363,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     return (
       <div className="flex min-h-screen flex-col bg-white">
         <main className="flex-grow flex items-center justify-center">
-          <p className="text-muted-foreground italic animate-pulse">Loading paradise...</p>
+          <p className="text-muted-foreground italic animate-pulse">Loading product...</p>
         </main>
       </div>
     );
@@ -367,7 +373,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     return (
       <div className="flex min-h-screen flex-col bg-white">
         <main className="flex-grow flex flex-col items-center justify-center gap-4">
-          <p className="text-xl font-headline italic text-muted-foreground">Facility not found.</p>
+          <p className="text-xl font-headline italic text-muted-foreground">Product not found.</p>
           <button onClick={() => router.push('/')} className="text-primary font-bold tracking-tight flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" /> Return to discovery
           </button>
@@ -379,7 +385,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <main className="flex-grow container mx-auto px-4 pt-4 md:pt-12 pb-48 max-w-[700px]">
-        <div 
+        <div
           ref={swipeContainerRef}
           className="relative aspect-[1/1.1] md:aspect-video mb-8 bg-transparent cursor-grab active:cursor-grabbing select-none"
           onMouseDown={(e) => handleStart(e.clientX)}
@@ -391,14 +397,14 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           onTouchEnd={handleEnd}
         >
           {images.map((img, idx) => (
-            <div 
+            <div
               key={idx}
               id={`slide-${idx}`}
               className="absolute inset-0 shadow-sm rounded-[30px] overflow-hidden"
               style={{ display: idx === currentIndex ? 'block' : 'none' }}
             >
-              <Image 
-                src={img} 
+              <Image
+                src={img}
                 alt={`${facility.name} view ${idx + 1}`}
                 fill
                 className="object-cover pointer-events-none"
@@ -409,24 +415,24 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
 
           <div className="absolute top-4 left-0 right-0 z-[110] flex gap-1.5 px-6">
             {images.map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={cn(
                   "h-1 flex-1 rounded-full transition-all duration-300",
                   i === currentIndex ? "bg-white shadow-sm" : "bg-white/30"
-                )} 
+                )}
               />
             ))}
           </div>
-          
-          <button 
+
+          <button
             onClick={() => router.back()}
             className="absolute top-2 left-2 p-4 bg-white/10 backdrop-blur-xl rounded-full text-white hover:bg-white/30 transition-all border border-white/20 z-[120]"
           >
             <ArrowLeft className="h-6 w-6" />
           </button>
 
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setIsLiked(!isLiked);
@@ -445,7 +451,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               </h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span className="text-sm font-medium">Bongabong, Oriental Mindoro</span>
+                <span className="text-sm font-medium">Oriental Mindoro</span>
               </div>
             </div>
             <div className="flex flex-col items-end shrink-0">
@@ -460,7 +466,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="w-full bg-[#f8f8f8] p-1 h-14 rounded-full mb-8">
               <TabsTrigger value="details" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Details</TabsTrigger>
-              <TabsTrigger value="availability" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Availability</TabsTrigger>
+              <TabsTrigger value="availability" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Order</TabsTrigger>
               <TabsTrigger value="reviews" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Reviews</TabsTrigger>
             </TabsList>
 
@@ -471,8 +477,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     <Clock className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Duration</span>
-                    <span className="text-sm font-medium text-black/80">Day & night stay</span>
+                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Unit</span>
+                    <span className="text-sm font-medium text-black/80">Per piece / kilo</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 group">
@@ -480,8 +486,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     <CheckCircle2 className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Capacity</span>
-                    <span className="text-sm font-medium text-black/80">{facility.capacity} Guests max</span>
+                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Stock</span>
+                    <span className="text-sm font-medium text-black/80">{facility.capacity} Available</span>
                   </div>
                 </div>
               </div>
@@ -489,7 +495,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               <Separator className="bg-black/[0.05]" />
 
               <div className="space-y-4">
-                <h3 className="text-xl font-headline font-normal tracking-tight">About this escape</h3>
+                <h3 className="text-xl font-headline font-normal tracking-tight">About this product</h3>
                 <p className="text-muted-foreground text-base leading-relaxed opacity-80">
                   {facility.description}
                 </p>
@@ -499,7 +505,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                 <>
                   <Separator className="bg-black/[0.05]" />
                   <div className="space-y-6">
-                    <h3 className="text-xl font-headline font-normal tracking-tight">What this place offers</h3>
+                    <h3 className="text-xl font-headline font-normal tracking-tight">Product highlights</h3>
                     <div className="grid grid-cols-2 gap-6">
                       {facility.amenities.map((amenity, idx) => {
                         const Icon = getAmenityIcon(amenity);
@@ -519,94 +525,138 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
             </TabsContent>
 
             <TabsContent value="availability" className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-8">
-              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-headline font-normal tracking-tight">Check Availability</h3>
-                  <p className="text-sm text-muted-foreground">Plan your tropical escape. Dates in red are already reserved.</p>
-                </div>
-
-                <div className="flex flex-col gap-8">
-                  <div className="flex justify-center bg-[#fcfcfc] rounded-[24px] p-4 border border-black/[0.02]">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from || new Date()}
-                      selected={date}
-                      onSelect={setDate}
-                      numberOfMonths={1}
-                      disabled={[...reservedDates, { before: new Date() }]}
-                      modifiers={{ reserved: reservedDates }}
-                      modifiersStyles={{
-                        reserved: { 
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                          color: '#ef4444', 
-                          textDecoration: 'line-through',
-                          fontWeight: 'bold'
-                        }
-                      }}
-                      className="origin-top"
-                    />
+              {facility.isAuction ? (
+                /* Auction Mode */
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-headline font-normal tracking-tight">Place a Bid</h3>
+                    <p className="text-sm text-muted-foreground">This item is available via auction. Place your best bid below.</p>
                   </div>
 
-                  <div className="flex items-center justify-center gap-6 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full bg-primary" />
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Selected</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full bg-red-100 border border-red-200" />
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Reserved</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full bg-[#f8f8f8] border border-black/[0.05]" />
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Available</span>
-                    </div>
-                  </div>
-
-                  {date?.from && date?.to ? (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                      <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Your Stay</p>
-                            <p className="text-sm font-bold">{format(date.from, "MMM dd")} - {format(date.to, "MMM dd")}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Duration</p>
-                            <p className="text-sm font-bold text-primary">{nights} nights</p>
-                          </div>
-                        </div>
-                        <Separator className="bg-primary/10" />
-                        <div className="flex justify-between text-sm font-medium">
-                          <span>₱{facility.pricePerNight.toLocaleString()} x {nights} nights</span>
-                          <span>₱{totalPrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-base font-bold pt-2">
-                          <span>Estimated Total</span>
-                          <span className="text-primary">₱{totalPrice.toLocaleString()}</span>
-                        </div>
+                  <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Current Bid</p>
+                        <p className="text-2xl font-bold text-primary">₱{(facility.currentBid || facility.startingBid || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Total Bids</p>
+                        <p className="text-lg font-bold">{facility.bidCount || 0}</p>
                       </div>
                     </div>
+                    {facility.auctionEndDate && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>Ends {new Date(facility.auctionEndDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {bidPlaced ? (
+                    <div className="flex items-center gap-3 p-6 bg-green-50 rounded-[24px] text-green-700">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <p className="text-sm font-medium">Your bid has been placed!</p>
+                    </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-6 bg-muted/30 rounded-[24px] text-muted-foreground border border-dashed border-black/5">
-                      <AlertCircle className="h-5 w-5" />
-                      <p className="text-xs font-medium italic">Select your check-in and check-out dates to see pricing.</p>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Your Bid (₱)</label>
+                        <input
+                          type="number"
+                          value={bidAmount}
+                          onChange={(e) => setBidAmount(e.target.value)}
+                          placeholder={`Min ₱${((facility.currentBid || facility.startingBid || 0) + 1).toLocaleString()}`}
+                          className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all text-lg font-bold"
+                        />
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!user) { router.push("/login"); return; }
+                          const amt = parseFloat(bidAmount);
+                          if (!amt || amt <= (facility.currentBid || facility.startingBid || 0)) return;
+                          await supabase.from("bids").insert({ productId: facility.id, bidderId: user.uid, amount: amt });
+                          await supabase.from("facilities").update({ currentBid: amt, currentBidderId: user.uid, bidCount: (facility.bidCount || 0) + 1 }).eq("id", facility.id);
+                          setBidPlaced(true);
+                        }}
+                        className="w-full py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
+                      >
+                        Place Bid
+                      </button>
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                /* Standard Purchase Mode */
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-headline font-normal tracking-tight">Select Quantity</h3>
+                    <p className="text-sm text-muted-foreground">Choose your desired quantity and add to cart or buy directly.</p>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-6 p-6 bg-[#f8f8f8] rounded-[24px]">
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-bold hover:bg-primary/10 transition-colors">−</button>
+                    <span className="text-3xl font-bold w-16 text-center">{quantity}</span>
+                    <button onClick={() => setQuantity(Math.min(facility.capacity || 999, quantity + 1))} className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-bold hover:bg-primary/10 transition-colors">+</button>
+                  </div>
+
+                  <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Price per unit</p>
+                        <p className="text-sm font-bold">₱{(facility.price || facility.pricePerNight || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Quantity</p>
+                        <p className="text-sm font-bold text-primary">{quantity}</p>
+                      </div>
+                    </div>
+                    <Separator className="bg-primary/10" />
+                    <div className="flex justify-between text-base font-bold pt-2">
+                      <span>Total</span>
+                      <span className="text-primary">₱{((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!user) { router.push("/login"); return; }
+                        await supabase.from("cart_items").upsert({ userId: user.uid, productId: facility.id, quantity }, { onConflict: "userId,productId" });
+                        setAddedToCart(true);
+                        setTimeout(() => setAddedToCart(false), 2000);
+                      }}
+                      className={cn(
+                        "flex-1 py-5 rounded-full font-bold shadow-sm text-sm transition-all active:scale-95",
+                        addedToCart ? "bg-green-500 text-white" : "bg-[#f8f8f8] text-black hover:bg-black/10"
+                      )}
+                    >
+                      {addedToCart ? "✓ Added!" : "Add to Cart"}
+                    </button>
+                    <button
+                      onClick={handleBookingClick}
+                      className="flex-1 py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
+                    >
+                      Buy Now
+                    </button>
+                  </div>
+
+                  {(facility.stock !== undefined || facility.capacity > 0) && (
+                    <p className="text-xs text-muted-foreground text-center">{facility.stock || facility.capacity} available in stock</p>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="reviews" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
               <div className="space-y-8">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-headline font-normal tracking-tight">Guest Feedback</h3>
+                  <h3 className="text-xl font-headline font-normal tracking-tight">Buyer Reviews</h3>
                   <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 rounded-full">
                     <Star className="h-4 w-4 fill-primary text-primary" />
                     <span className="text-sm font-bold">5.0 Overall</span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-6">
                   {MOCK_REVIEWS.map((review, i) => (
                     <div key={i} className="p-6 bg-[#fcfcfc] border border-black/[0.03] rounded-[24px] space-y-4">
@@ -647,35 +697,64 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           <div className="flex flex-col">
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl font-bold tracking-tight">
-                {nights > 0 ? `₱${totalPrice.toLocaleString()}` : `₱${facility.pricePerNight.toLocaleString()}`}
+                {facility.isAuction
+                  ? `₱${(facility.currentBid || facility.startingBid || 0).toLocaleString()}`
+                  : `₱${((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}`
+                }
               </span>
               <span className="text-xs text-muted-foreground font-medium">
-                {nights > 0 ? `for ${nights} nights` : "/night"}
+                {facility.isAuction ? "current bid" : quantity > 1 ? `${quantity} items` : "/unit"}
               </span>
             </div>
-            <button 
-              className="text-[10px] font-bold text-primary tracking-tight hover:underline text-left mt-0.5"
+            {!facility.isAuction && (
+              <button
+                className="text-[10px] font-bold text-primary tracking-tight hover:underline text-left mt-0.5"
+                onClick={() => {
+                  const availabilityTab = document.querySelector('[value="availability"]') as HTMLElement;
+                  availabilityTab?.click();
+                  availabilityTab?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+              >
+                {quantity > 1 ? `${quantity} × ₱${(facility.price || facility.pricePerNight || 0).toLocaleString()}` : "Select quantity"}
+              </button>
+            )}
+          </div>
+
+          {facility.isAuction ? (
+            <button
               onClick={() => {
                 const availabilityTab = document.querySelector('[value="availability"]') as HTMLElement;
                 availabilityTab?.click();
                 availabilityTab?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
+              className="px-10 h-[52px] rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-xs tracking-tight shrink-0"
             >
-              {date?.from ? `${format(date.from, "MMM dd")} - ${date.to ? format(date.to, "MMM dd") : "..."}` : "Select dates"}
+              Place Bid
             </button>
-          </div>
-          
-          <button 
-            onClick={handleBookingClick}
-            className={cn(
-              "px-10 h-[52px] rounded-full font-bold shadow-lg transition-all text-xs tracking-tight shrink-0",
-              nights > 0 
-                ? "bg-primary text-white active:scale-95" 
-                : "bg-black text-white hover:bg-primary active:scale-95"
-            )}
-          >
-            Book now
-          </button>
+          ) : (
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={async () => {
+                  if (!user) { router.push("/login"); return; }
+                  await supabase.from("cart_items").upsert({ userId: user.uid, productId: facility.id, quantity }, { onConflict: "userId,productId" });
+                  setAddedToCart(true);
+                  setTimeout(() => setAddedToCart(false), 2000);
+                }}
+                className={cn(
+                  "px-5 h-[52px] rounded-full font-bold transition-all text-xs tracking-tight",
+                  addedToCart ? "bg-green-500 text-white" : "bg-[#f8f8f8] text-black hover:bg-black/10 active:scale-95"
+                )}
+              >
+                {addedToCart ? "✓" : "Cart"}
+              </button>
+              <button
+                onClick={handleBookingClick}
+                className="px-8 h-[52px] rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-xs tracking-tight"
+              >
+                Buy Now
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -684,7 +763,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           <div className="flex flex-col h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto p-8 md:p-12 pb-32">
               <div className="flex justify-between items-center mb-10">
-                <h2 className="text-3xl font-normal font-headline tracking-[-0.05em]">Booking <span className="text-primary">Overview</span></h2>
+                <h2 className="text-3xl font-normal font-headline tracking-[-0.05em]">Order <span className="text-primary">Overview</span></h2>
                 <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
                   <X className="h-6 w-6" />
                 </button>
@@ -694,28 +773,27 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                 <div className="bg-muted/30 rounded-[30px] p-6 space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="text-sm font-bold tracking-tight text-muted-foreground mb-1">Accommodation</h4>
+                      <h4 className="text-sm font-bold tracking-tight text-muted-foreground mb-1">Product</h4>
                       <p className="font-bold text-lg">{facility.name}</p>
                     </div>
                     <div className="text-right">
                       <h4 className="text-sm font-bold tracking-tight text-muted-foreground mb-1">Total</h4>
-                      <p className="font-black text-xl text-primary">₱{totalPrice.toLocaleString()}</p>
+                      <p className="font-black text-xl text-primary">₱{((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="flex gap-4 items-center pt-2 border-t border-black/5">
                     <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-bold">{date?.from ? format(date.from, "MMM dd") : ""} - {date?.to ? format(date.to, "MMM dd") : ""}</span>
+                      <span className="text-xs font-bold">₱{(facility.price || facility.pricePerNight || 0).toLocaleString()} × {quantity}</span>
                     </div>
                     <div className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-xs font-bold text-muted-foreground">{nights} nights stay</span>
+                    <span className="text-xs font-bold text-muted-foreground">{quantity} {quantity === 1 ? 'item' : 'items'}</span>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold tracking-tight text-muted-foreground ml-2">Select payment method</h4>
                   <div className="grid grid-cols-1 gap-3">
-                    <button 
+                    <button
                       onClick={() => setPaymentMethod('onsite')}
                       className={cn(
                         "flex items-center gap-4 p-5 rounded-[24px] border-2 transition-all",
@@ -727,11 +805,11 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-bold">Pay on site</p>
-                        <p className="text-[10px] text-muted-foreground font-medium tracking-tighter">Settle payment upon arrival</p>
+                        <p className="text-[10px] text-muted-foreground font-medium tracking-tighter">Settle payment upon delivery</p>
                       </div>
                     </button>
 
-                    <button 
+                    <button
                       onClick={() => setPaymentMethod('gcash')}
                       className={cn(
                         "flex items-center gap-4 p-5 rounded-[24px] border-2 transition-all",
@@ -757,19 +835,19 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex items-start gap-2 max-w-[240px] opacity-60">
                       <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                      <p className="text-[10px] font-medium leading-relaxed">Please save a screenshot of your receipt for verification upon check-in.</p>
+                      <p className="text-[10px] font-medium leading-relaxed">Please save a screenshot of your receipt for verification upon delivery.</p>
                     </div>
                   </div>
                 )}
 
                 <div className="pt-4">
-                  <button 
+                  <button
                     onClick={confirmBooking}
                     className="w-full py-5 rounded-full bg-black text-white font-bold shadow-xl active:scale-95 transition-all text-sm tracking-tight"
                   >
-                    Book now
+                    Order now
                   </button>
-                  <p className="text-[10px] text-center text-muted-foreground mt-4 font-medium italic">By clicking "Book Now", you agree to our resort policies.</p>
+                  <p className="text-[10px] text-center text-muted-foreground mt-4 font-medium italic">By clicking "Order Now", you agree to our marketplace policies.</p>
                 </div>
               </div>
             </div>
@@ -783,13 +861,13 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
             <div className="h-20 w-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
             </div>
-            <h2 className="text-3xl font-normal font-headline tracking-[-0.05em] mb-4">Reservation sent!</h2>
+            <h2 className="text-3xl font-normal font-headline tracking-[-0.05em] mb-4">Order placed!</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-10">
-              Your tropical escape at {facility.name} is being processed. Check your profile for status updates.
+              Your order for {facility.name} is being processed. Check your profile for status updates.
             </p>
             <div className="flex flex-col gap-4">
               <button onClick={() => router.push('/profile')} className="bg-black text-white py-5 rounded-full font-bold shadow-md active:scale-95 transition-all text-xs tracking-tight w-full">
-                View my stays
+                View my orders
               </button>
               <button onClick={() => setShowSuccess(false)} className="text-primary font-bold text-xs tracking-tight hover:underline">
                 Close

@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useAuth, useUser, initiateEmailSignUp, initiateGoogleSignIn } from "@/firebase";
-import { doc, serverTimestamp } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useFirestore } from "@/firebase/provider";
+import { useUser, initiateEmailSignUp, initiateGoogleSignIn, useSupabase, setDocumentNonBlocking } from "@/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SignUpPage() {
@@ -33,35 +30,39 @@ export default function SignUpPage() {
   const [barangays, setBarangays] = useState<any[]>([]);
   const [error, setError] = useState("");
 
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+
+  const supabase = useSupabase();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && !isUserLoading) {
-      const userRef = doc(firestore, "users", user.uid);
-      setDocumentNonBlocking(userRef, {
-        id: user.uid,
-        firstName: formData.firstName || user.displayName?.split(" ")[0] || "",
-        lastName: formData.lastName || user.displayName?.split(" ")[1] || "",
-        email: user.email,
-        mobile: formData.mobile || "",
-        province: formData.province || "",
-        city: formData.city || "",
-        barangay: formData.barangay || "",
-        street: formData.street || "",
-        createdAt: serverTimestamp()
-      }, { merge: true });
-      
-      router.push("/profile");
+    if (user && !isUserLoading && !showEmailConfirm) {
+      // Only allow profile creation if email is confirmed
+      if (user.email && user.emailVerified !== false) {
+        setDocumentNonBlocking(supabase, "users", {
+          id: user.uid,
+          firstName: formData.firstName || user.displayName?.split(" ")[0] || "",
+          lastName: formData.lastName || user.displayName?.split(" ")[1] || "",
+          email: user.email,
+          mobile: formData.mobile || "",
+          province: formData.province || "",
+          city: formData.city || "",
+          barangay: formData.barangay || "",
+          street: formData.street || "",
+          createdAt: new Date().toISOString()
+        });
+        router.push("/profile");
+      } else {
+        setShowEmailConfirm(true);
+      }
     }
-  }, [user, isUserLoading, router, firestore, formData]);
+  }, [user, isUserLoading, router, supabase, formData, showEmailConfirm]);
 
   useEffect(() => {
-    gsap.fromTo(".signup-card", 
-      { opacity: 0, y: 30 }, 
+    gsap.fromTo(".signup-card",
+      { opacity: 0, y: 30 },
       { opacity: 1, y: 0, duration: 1, ease: "power3.out" }
     );
   }, []);
@@ -103,9 +104,9 @@ export default function SignUpPage() {
     const { name, value } = e.target;
     if (name === "province") {
       const selected = provinces.find(p => p.name === value);
-      setFormData(prev => ({ 
-        ...prev, 
-        province: value, 
+      setFormData(prev => ({
+        ...prev,
+        province: value,
         provinceCode: selected?.code || "",
         city: "",
         cityCode: "",
@@ -113,9 +114,9 @@ export default function SignUpPage() {
       }));
     } else if (name === "city") {
       const selected = cities.find(c => c.name === value);
-      setFormData(prev => ({ 
-        ...prev, 
-        city: value, 
+      setFormData(prev => ({
+        ...prev,
+        city: value,
         cityCode: selected?.code || "",
         barangay: ""
       }));
@@ -127,7 +128,7 @@ export default function SignUpPage() {
   const handleAuthError = (err: any) => {
     console.error("Auth Error:", err);
     let friendlyMessage = "An unexpected error occurred. Please try again.";
-    
+
     if (err.code === "auth/email-already-in-use") {
       friendlyMessage = "This email is already registered. Try logging in instead.";
     } else if (err.code === "auth/weak-password") {
@@ -137,7 +138,7 @@ export default function SignUpPage() {
     }
 
     setError(friendlyMessage);
-    
+
     toast({
       variant: "destructive",
       title: "Sign up failed",
@@ -148,13 +149,13 @@ export default function SignUpPage() {
   const nextStep = (from: number) => {
     if (from === 1) {
       if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.includes('@')) {
-        setError('Please complete personal info'); 
+        setError('Please complete personal info');
         return;
       }
     }
     if (from === 2) {
       if (!formData.mobile || formData.mobile.length < 10 || !formData.province || !formData.city || !formData.barangay) {
-        setError('Please complete address'); 
+        setError('Please complete address');
         return;
       }
     }
@@ -168,7 +169,7 @@ export default function SignUpPage() {
     setStep(prev => prev - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match!");
@@ -178,12 +179,17 @@ export default function SignUpPage() {
       setError("Password too short");
       return;
     }
-    initiateEmailSignUp(auth, formData.email, formData.password).catch(handleAuthError);
+    try {
+      await initiateEmailSignUp(supabase, formData.email, formData.password);
+      setShowEmailConfirm(true);
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const handleGoogleSignIn = () => {
     setError("");
-    initiateGoogleSignIn(auth).catch(handleAuthError);
+    initiateGoogleSignIn(supabase).catch(handleAuthError);
   };
 
   if (isUserLoading) return null;
@@ -193,22 +199,21 @@ export default function SignUpPage() {
       <div className="signup-card bg-white rounded-[25px] p-8 md:p-12 w-full max-w-[560px] shadow-sm border-none">
         <div className="text-center space-y-2 mb-8">
           <Link href="/" className="logo inline-block font-headline italic font-normal text-4xl text-black tracking-[-0.05em]">
-            Bella's Paradise
+            E-Moorm
           </Link>
-          <p className="subtitle text-muted-foreground text-sm font-normal">Join us for a blissful resort experience.</p>
+          <p className="subtitle text-muted-foreground text-sm font-normal">Join the local marketplace of Oriental Mindoro.</p>
         </div>
 
         <div className="progress-container flex justify-center mb-10 gap-4">
           {[1, 2, 3].map((num) => (
-            <div 
+            <div
               key={num}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                step === num 
-                  ? 'bg-primary text-white scale-110 shadow-md' 
-                  : step > num 
-                    ? 'bg-primary/20 text-primary' 
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step === num
+                  ? 'bg-primary text-white scale-110 shadow-md'
+                  : step > num
+                    ? 'bg-primary/20 text-primary'
                     : 'bg-muted text-muted-foreground'
-              }`}
+                }`}
             >
               {num}
             </div>
@@ -228,14 +233,14 @@ export default function SignUpPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">First name</label>
-                  <input 
+                  <input
                     type="text" name="firstName" value={formData.firstName} onChange={handleChange}
                     placeholder="Juan" className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Last name</label>
-                  <input 
+                  <input
                     type="text" name="lastName" value={formData.lastName} onChange={handleChange}
                     placeholder="Dela Cruz" className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                   />
@@ -243,7 +248,7 @@ export default function SignUpPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Email address</label>
-                <input 
+                <input
                   type="email" name="email" value={formData.email} onChange={handleChange}
                   placeholder="juan@example.com" className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -259,14 +264,14 @@ export default function SignUpPage() {
               <h3 className="text-xl font-headline font-normal tracking-[-0.05em] mb-4 text-center">Contact & Address</h3>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Mobile (+63)</label>
-                <input 
+                <input
                   type="tel" name="mobile" value={formData.mobile} onChange={handleChange}
                   placeholder="9123456789" maxLength={10} className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Province</label>
-                <select 
+                <select
                   name="province" value={formData.province} onChange={handleChange}
                   className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
                 >
@@ -277,7 +282,7 @@ export default function SignUpPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">City / Municipality</label>
-                  <select 
+                  <select
                     name="city" value={formData.city} onChange={handleChange} disabled={!formData.provinceCode}
                     className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none disabled:opacity-50 cursor-pointer"
                   >
@@ -287,7 +292,7 @@ export default function SignUpPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Barangay</label>
-                  <select 
+                  <select
                     name="barangay" value={formData.barangay} onChange={handleChange} disabled={!formData.cityCode}
                     className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none disabled:opacity-50 cursor-pointer"
                   >
@@ -312,14 +317,14 @@ export default function SignUpPage() {
               <h3 className="text-xl font-headline font-normal tracking-[-0.05em] mb-4 text-center">Secure your account</h3>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Password</label>
-                <input 
+                <input
                   type="password" name="password" value={formData.password} onChange={handleChange}
                   placeholder="••••••••" className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Confirm password</label>
-                <input 
+                <input
                   type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
                   placeholder="••••••••" className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -340,7 +345,7 @@ export default function SignUpPage() {
           or join with
         </div>
 
-        <button 
+        <button
           type="button"
           onClick={handleGoogleSignIn}
           className="w-full bg-[#f8f8f8] border-none text-black font-bold py-5 rounded-full hover:bg-muted transition-all flex items-center justify-center gap-2 text-sm tracking-tight mb-8"

@@ -4,8 +4,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, query, orderBy, doc } from "firebase/firestore";
+import { useUser, useSupabase, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +17,7 @@ const ADMIN_EMAILS = ['kioalaquer301@gmail.com', 'mikefernandex227@gmail.com', '
 
 export default function AdminBookingsPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -31,17 +30,19 @@ export default function AdminBookingsPage() {
   }, [user, isUserLoading, router, isResortAdmin]);
 
   const bookingsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !isResortAdmin) return null;
-    return query(collection(firestore, "bookings"), orderBy("bookingDate", "desc"));
-  }, [firestore, user, isResortAdmin]);
+    if (!user || !isResortAdmin) return null;
+    return {
+      table: "bookings",
+      order: { column: "bookingDate", ascending: false }
+    };
+  }, [user, isResortAdmin]);
 
   const { data: bookings } = useCollection(bookingsQuery);
 
   const updateStatus = (id: string, status: string) => {
-    if (!firestore) return;
-    updateDocumentNonBlocking(doc(firestore, "bookings", id), { status });
+    updateDocumentNonBlocking(supabase, "bookings", id, { status });
     toast({
-      title: "Booking updated",
+      title: "Order updated",
       description: `Status changed to ${status}.`
     });
   };
@@ -53,17 +54,17 @@ export default function AdminBookingsPage() {
       <Header />
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 pt-0 md:pt-32 pb-24">
         <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">All <span className="text-primary">Reservations</span></h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage guest bookings and facility availability.</p>
+          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">All <span className="text-primary">Orders</span></h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage buyer orders and fulfillment.</p>
         </div>
 
         <Card className="border-none shadow-sm rounded-[25px] overflow-hidden bg-white">
           <Table>
             <TableHeader className="bg-[#fcfcfc]">
               <TableRow className="hover:bg-transparent border-b">
-                <TableHead className="py-8 px-8 tracking-tight text-xs font-bold text-muted-foreground">Booking ID</TableHead>
+                <TableHead className="py-8 px-8 tracking-tight text-xs font-bold text-muted-foreground">Order ID</TableHead>
                 <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Details</TableHead>
-                <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Stay period</TableHead>
+                <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Order date</TableHead>
                 <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Status</TableHead>
                 <TableHead className="py-8 px-8 text-right tracking-tight text-xs font-bold text-muted-foreground">Actions</TableHead>
               </TableRow>
@@ -74,14 +75,13 @@ export default function AdminBookingsPage() {
                   <TableCell className="font-bold font-mono text-xs py-8 px-8">{bk.id.slice(0, 10)}</TableCell>
                   <TableCell className="py-8">
                     <div className="space-y-2">
-                      <div className="flex items-center text-sm font-medium"><User className="h-4 w-4 mr-2 text-primary" /> {bk.numberOfGuests} guests</div>
+                      <div className="flex items-center text-sm font-medium"><User className="h-4 w-4 mr-2 text-primary" /> {bk.numberOfGuests || 1} items</div>
                       <div className="flex items-center font-black text-lg text-black"><CreditCard className="h-4 w-4 mr-2 text-primary" /> ₱{bk.totalPrice.toLocaleString()}</div>
                     </div>
                   </TableCell>
                   <TableCell className="py-8">
                     <div className="text-sm text-muted-foreground font-medium leading-relaxed">
-                      <div className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-primary" /> {new Date(bk.startDate).toLocaleDateString()}</div>
-                      <div className="ml-5.5 opacity-60">to {new Date(bk.endDate).toLocaleDateString()}</div>
+                      <div className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-primary" /> {new Date(bk.startDate || bk.bookingDate).toLocaleDateString()}</div>
                     </div>
                   </TableCell>
                   <TableCell className="py-8">
@@ -109,7 +109,7 @@ export default function AdminBookingsPage() {
                       )}
                       {bk.status === "Confirmed" && (
                         <Button size="sm" variant="outline" className="rounded-full px-8 h-12 shadow-sm border-none bg-primary text-white hover:bg-primary/90 transition-all font-bold" onClick={() => updateStatus(bk.id, "Completed")}>
-                          Mark completed
+                          Mark delivered
                         </Button>
                       )}
                     </div>
@@ -118,7 +118,7 @@ export default function AdminBookingsPage() {
               ))}
               {(!bookings || bookings.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-32 text-muted-foreground italic text-lg">No bookings found in the system.</TableCell>
+                  <TableCell colSpan={5} className="text-center py-32 text-muted-foreground italic text-lg">No orders found.</TableCell>
                 </TableRow>
               )}
             </TableBody>

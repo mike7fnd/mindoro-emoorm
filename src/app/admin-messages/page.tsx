@@ -3,28 +3,17 @@
 
 import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { Header } from "@/components/layout/header";
-import { 
-  useUser, 
-  useFirestore, 
-  useCollection, 
+import {
+  useUser,
+  useSupabase,
+  useCollection,
   useMemoFirebase
-} from "@/firebase";
-import { 
-  collectionGroup, 
-  query, 
-  orderBy, 
-  addDoc, 
-  serverTimestamp, 
-  doc,
-  setDoc,
-  collection,
-  Timestamp
-} from "firebase/firestore";
-import { 
-  MessagesSquare, 
-  ArrowLeft, 
-  MoreVertical, 
-  Smile, 
+} from "@/supabase";
+import {
+  MessagesSquare,
+  ArrowLeft,
+  MoreVertical,
+  Smile,
   Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,12 +33,12 @@ interface Message {
   senderId: string;
   recipientId: string;
   content: string;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
-function formatMessageTime(timestamp: Timestamp | null) {
+function formatMessageTime(timestamp: string | null) {
   if (!timestamp) return "";
-  const date = timestamp.toDate();
+  const date = new Date(timestamp);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -64,10 +53,10 @@ function formatMessageTime(timestamp: Timestamp | null) {
 
 function AdminMessagesContent() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const selectedUserId = searchParams.get('user');
   const [messageInput, setMessageInput] = useState("");
   const [isMobileView, setIsMobileView] = useState(false);
@@ -87,25 +76,28 @@ function AdminMessagesContent() {
   }, [user, isUserLoading, router]);
 
   const usersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, "users");
-  }, [firestore]);
+    return { table: "users" };
+  }, []);
   const { data: profiles } = useCollection<UserProfile>(usersQuery);
 
   const allConversationsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || user.email !== 'kioalaquer301@gmail.com') return null;
-    return query(collectionGroup(firestore, "conversations"), orderBy("updatedAt", "desc"));
-  }, [firestore, user]);
+    if (!user || user.email !== 'kioalaquer301@gmail.com') return null;
+    return {
+      table: "conversations",
+      order: { column: "updatedAt", ascending: false }
+    };
+  }, [user]);
 
   const { data: conversations } = useCollection(allConversationsQuery);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || user.email !== 'kioalaquer301@gmail.com' || !selectedUserId) return null;
-    return query(
-      collection(firestore, "users", selectedUserId, "conversations", "support", "messages"),
-      orderBy("createdAt", "asc")
-    );
-  }, [firestore, user, selectedUserId]);
+    if (!user || user.email !== 'kioalaquer301@gmail.com' || !selectedUserId) return null;
+    return {
+      table: "messages",
+      filters: [{ column: "conversationId", op: "eq" as const, value: "support" }],
+      order: { column: "createdAt", ascending: true }
+    };
+  }, [user, selectedUserId]);
 
   const { data: messages } = useCollection<Message>(messagesQuery);
 
@@ -115,33 +107,28 @@ function AdminMessagesContent() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !user || !firestore || !selectedUserId) return;
+    if (!messageInput.trim() || !user || !selectedUserId) return;
 
     const content = messageInput.trim();
     setMessageInput("");
 
-    const messagesRef = collection(
-      firestore, 
-      "users", 
-      selectedUserId, 
-      "conversations", 
-      "support", 
-      "messages"
-    );
+    const now = new Date().toISOString();
 
-    addDoc(messagesRef, {
+    supabase.from("messages").insert({
+      conversationId: "support",
       senderId: user.uid,
       recipientId: selectedUserId,
       content,
-      createdAt: serverTimestamp()
+      createdAt: now
     });
 
-    const convoRef = doc(firestore, "users", selectedUserId, "conversations", "support");
-    setDoc(convoRef, {
+    supabase.from("conversations").upsert({
+      id: "support",
+      userId: selectedUserId,
       lastMessage: content,
-      updatedAt: serverTimestamp(),
+      updatedAt: now,
       name: "Support"
-    }, { merge: true });
+    }, { onConflict: 'id' });
   };
 
   const getGuestProfile = (id: string) => {
@@ -161,7 +148,7 @@ function AdminMessagesContent() {
           "flex flex-col lg:flex-row md:h-[80vh] md:rounded-[25px] border border-black/[0.05] overflow-hidden bg-white shadow-2xl transition-all",
           isMobileView && selectedUserId ? "h-[100dvh] border-none rounded-none fixed inset-0 z-[1001]" : "h-screen"
         )}>
-          
+
           {showList && (
             <aside className="w-full lg:w-[380px] flex flex-col border-r border-black/[0.05] bg-white animate-in fade-in duration-300 h-full">
               <div className="p-6 md:p-8 flex items-center justify-between">
@@ -170,28 +157,28 @@ function AdminMessagesContent() {
                   <MoreVertical className="h-5 w-5 text-muted-foreground" />
                 </button>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto">
                 <div className="px-6 pb-4">
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Search..." 
+                    <input
+                      type="text"
+                      placeholder="Search..."
                       className="w-full bg-[#f2f2f2] rounded-[10px] py-2.5 px-4 text-sm outline-none placeholder:text-muted-foreground/50"
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-1">
                   {conversations?.map((convo) => {
                     const userId = convo.userId || convo.id;
                     const profile = getGuestProfile(userId);
                     const isActive = selectedUserId === userId;
-                    const guestName = profile ? `${profile.firstName} ${profile.lastName}` : `Guest ${userId.slice(0, 5).toUpperCase()}`;
+                    const guestName = profile ? `${profile.firstName} ${profile.lastName}` : `Buyer ${userId.slice(0, 5).toUpperCase()}`;
                     const guestPic = profile?.profilePictureUrl || "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
 
                     return (
-                      <div 
+                      <div
                         key={convo.id}
                         onClick={() => router.push(`/admin-messages?user=${userId}`)}
                         className={cn(
@@ -234,7 +221,7 @@ function AdminMessagesContent() {
                       )}
                       {(() => {
                         const profile = getGuestProfile(selectedUserId);
-                        const guestName = profile ? `${profile.firstName} ${profile.lastName}` : `Guest ${selectedUserId.slice(0, 8).toUpperCase()}`;
+                        const guestName = profile ? `${profile.firstName} ${profile.lastName}` : `Buyer ${selectedUserId.slice(0, 8).toUpperCase()}`;
                         const guestPic = profile?.profilePictureUrl || "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
                         return (
                           <>
@@ -255,18 +242,18 @@ function AdminMessagesContent() {
                     {messages?.map((msg) => {
                       const isMe = msg.senderId === user?.uid;
                       return (
-                        <div 
+                        <div
                           key={msg.id}
                           className={cn(
                             "max-w-[80%] md:max-w-[70%] flex flex-col group relative",
                             isMe ? "self-end items-end" : "self-start items-start"
                           )}
                         >
-                          <div 
+                          <div
                             className={cn(
                               "px-4 py-2.5 text-sm transition-all relative",
-                              isMe 
-                                ? "bg-primary text-white rounded-[22px] rounded-br-[4px]" 
+                              isMe
+                                ? "bg-primary text-white rounded-[22px] rounded-br-[4px]"
                                 : "bg-[#f2f2f2] text-black rounded-[22px] rounded-bl-[4px]"
                             )}
                           >
@@ -294,7 +281,7 @@ function AdminMessagesContent() {
                             <Smile className="h-5 w-5" />
                           </button>
                         </div>
-                        <input 
+                        <input
                           type="text"
                           placeholder="Message..."
                           className="w-full border border-black/[0.1] rounded-full pl-12 pr-12 h-[44px] outline-none focus:border-black/30 transition-all text-sm"
@@ -307,7 +294,7 @@ function AdminMessagesContent() {
                           </button>
                         </div>
                       </div>
-                      <button 
+                      <button
                         type="submit"
                         disabled={!messageInput.trim()}
                         className="text-primary font-bold text-[15px] px-3 disabled:opacity-30 hover:text-primary/80 transition-all shrink-0"
@@ -322,8 +309,8 @@ function AdminMessagesContent() {
                   <div className="h-24 w-24 rounded-full border-2 border-black/10 flex items-center justify-center mb-6">
                     <MessagesSquare className="h-12 w-12 text-black/20" />
                   </div>
-                  <h2 className="text-xl font-normal font-headline tracking-tight mb-2">Guest Inquiries</h2>
-                  <p className="text-sm text-muted-foreground max-w-[280px]">Select a guest conversation to start managing resort inquiries and support.</p>
+                  <h2 className="text-xl font-normal font-headline tracking-tight mb-2">Buyer Messages</h2>
+                  <p className="text-sm text-muted-foreground max-w-[280px]">Select a buyer conversation to manage inquiries and support.</p>
                 </div>
               )}
             </section>
