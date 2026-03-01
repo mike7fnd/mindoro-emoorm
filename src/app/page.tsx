@@ -229,7 +229,7 @@ export default function HomePage() {
       <div className="absolute top-0 left-0 w-full h-[160px] bg-gradient-to-b from-green-700/75 via-green-600/25 via-50% to-transparent pointer-events-none z-0" />
       <main className="flex-grow container mx-auto px-4 md:px-6 pt-0 md:pt-32 pb-24 max-w-[1480px] relative z-10">
         <div className="mb-10 mt-8 md:mt-0">
-          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] leading-tight text-white">
+          <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em] leading-tight text-green-800">
             {firstName ? `Hi, ${firstName}!` : "E-Moorm"} <br />
             <span className="text-black">discover local products.</span>
           </h1>
