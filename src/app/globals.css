@@ -32,7 +32,7 @@
     --nav-sticky-gap: 12px;
     --primary-color: #29a366;
     --mobile-nav-height: 70px;
-    --bottom-nav-height: 76px;
+    --bottom-nav-height: 84px;
 
     /* LIGHT MODE SOLID VARIABLES */
     --nav-bg-glass: rgba(255, 255, 255, 1);
@@ -282,14 +282,14 @@
       -webkit-backdrop-filter: blur(28px);
       border-top: 1px solid rgba(0, 0, 0, 0.05);
       box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-      padding: 8px 0;
-      padding-bottom: max(env(safe-area-inset-bottom), 12px);
-      height: var(--bottom-nav-height);
+      padding: 10px 0 0 0;
+      padding-bottom: max(env(safe-area-inset-bottom), 20px);
+      height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     }
 
     .page-content {
       padding-top: 0;
-      padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+      padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
     }
   }
 
