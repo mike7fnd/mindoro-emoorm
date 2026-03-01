@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ const categories = [
   "General",
 ];
 
-export default function AddProductPage() {
+function AddProductPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -348,5 +348,19 @@ export default function AddProductPage() {
         </div>
       </div>
     </SellerLayout>
+  );
+}
+
+export default function AddProductPage() {
+  return (
+    <Suspense fallback={
+      <SellerLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </SellerLayout>
+    }>
+      <AddProductPageInner />
+    </Suspense>
   );
 }
