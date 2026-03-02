@@ -29,7 +29,11 @@ import {
   ArrowUpRight,
   Heart,
   Trash2,
-  ShoppingCart
+  ShoppingCart,
+  Truck,
+  CreditCard,
+  Package,
+  ShoppingBag
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -498,84 +502,104 @@ export default function ProfilePage() {
                 {showQR && <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em] mt-6 animate-pulse">MEMBER PASS • READY</p>}
               </section>
 
-              {/* Orders as cards with status icons and unread dot */}
+              {/* Orders shortcut section */}
               <section className="space-y-4">
-                <h3 className="text-lg font-headline tracking-tight mb-2">My Orders</h3>
-                {enrichedBookings && enrichedBookings.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    {enrichedBookings.slice(0, 3).map((bk) => (
-                      <div key={bk.id} className="bg-white dark:bg-white/[0.03] rounded-[24px] p-4 flex items-center gap-5 group cursor-pointer hover:shadow-xl hover:shadow-black/[0.03] transition-all border border-black/[0.03] dark:border-white/[0.05] relative">
-                        <div className="relative h-16 w-16 rounded-[18px] overflow-hidden shrink-0 bg-muted">
-                          <Image src={bk.facilityImage || "https://picsum.photos/seed/product/400/300"} alt={bk.facilityName} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                          {/* Status icon */}
-                          <div className="absolute bottom-1 right-1">
-                            {bk.statusLabel === "Pending" && <BadgeCheck className="h-5 w-5 text-yellow-400" />}
-                            {bk.statusLabel === "Confirmed" && <BadgeCheck className="h-5 w-5 text-green-500" />}
-                            {bk.statusLabel === "Completed" && <Star className="h-5 w-5 text-primary" />}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-baseline mb-1">
-                            <h4 className="font-headline text-base tracking-tight text-black dark:text-white truncate pr-4">{bk.facilityName}</h4>
-                            <span className="font-medium text-primary text-base">₱{(bk.totalPrice || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5 text-primary/40" />
-                            <span>{new Date(bk.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {new Date(bk.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                          </div>
-                        </div>
-                        {/* Unread dot */}
-                        <div className="absolute top-3 right-3 h-3 w-3 rounded-full bg-primary animate-pulse" />
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-headline tracking-tight">My Orders</h3>
+                  <Button asChild variant="outline" className="rounded-full px-4 h-9 border-primary/20 text-primary hover:bg-primary/5 font-bold whitespace-nowrap">
+                    <Link href="/my-bookings">See All</Link>
+                  </Button>
+                </div>
+                <div className="flex gap-4 flex-1">
+                  {/* To Pay */}
+                  {(() => { const count = enrichedBookings?.filter(bk => bk.statusLabel === "To Pay").length || 0; return (
+                    <div className="flex flex-col items-center flex-1 relative">
+                      <div className="relative">
+                        <CreditCard className="h-7 w-7 text-black mb-1" strokeWidth={1.2} />
+                        {count > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary animate-pulse border-2 border-white" />}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-8 border-2 border-dashed border-black/5 dark:border-white/5 rounded-[24px] text-center bg-[#fcfcfc] dark:bg-transparent">
-                    <p className="text-base text-muted-foreground italic mb-4">No orders found yet.</p>
-                    <Button asChild variant="outline" className="rounded-full px-8 h-12 border-primary/20 text-primary hover:bg-primary/5 font-bold">
-                      <Link href="/">Browse products</Link>
-                    </Button>
-                  </div>
-                )}
+                      <span className="text-xs font-bold">To Pay</span>
+                    </div>
+                  ); })()}
+                  {/* To Ship */}
+                  {(() => { const count = enrichedBookings?.filter(bk => bk.statusLabel === "To Ship").length || 0; return (
+                    <div className="flex flex-col items-center flex-1 relative">
+                      <div className="relative">
+                        <Truck className="h-7 w-7 text-black mb-1" strokeWidth={1.2} />
+                        {count > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary animate-pulse border-2 border-white" />}
+                      </div>
+                      <span className="text-xs font-bold">To Ship</span>
+                    </div>
+                  ); })()}
+                  {/* To Receive */}
+                  {(() => { const count = enrichedBookings?.filter(bk => bk.statusLabel === "To Receive").length || 0; return (
+                    <div className="flex flex-col items-center flex-1 relative">
+                      <div className="relative">
+                        <Package className="h-7 w-7 text-black mb-1" strokeWidth={1.2} />
+                        {count > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary animate-pulse border-2 border-white" />}
+                      </div>
+                      <span className="text-xs font-bold">To Receive</span>
+                    </div>
+                  ); })()}
+                  {/* To Pickup */}
+                  {(() => { const count = enrichedBookings?.filter(bk => bk.statusLabel === "Ready to PickUp").length || 0; return (
+                    <div className="flex flex-col items-center flex-1 relative">
+                      <div className="relative">
+                        <ShoppingBag className="h-7 w-7 text-black mb-1" strokeWidth={1.2} />
+                        {count > 0 && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary animate-pulse border-2 border-white" />}
+                      </div>
+                      <span className="text-xs font-bold text-center">To Pickup</span>
+                    </div>
+                  ); })()}
+                </div>
               </section>
 
               {/* Wishlist Section */}
               <section className="space-y-4">
                 <h3 className="text-lg font-headline tracking-tight mb-2">My Wishlist</h3>
                 {wishlistProducts.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    {wishlistProducts.map((product: any) => (
-                      <div key={product.id} className="bg-white dark:bg-white/[0.03] rounded-[24px] overflow-hidden border border-black/[0.03] dark:border-white/[0.05] group">
-                        <Link href={`/book/${product.id}`}>
-                          <div className="relative aspect-square overflow-hidden">
-                            <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                            <button
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromWishlist(product.wishlistId); }}
-                              className="absolute top-2 right-2 z-10 p-2 bg-white/40 backdrop-blur-xl rounded-full hover:bg-red-500/80 transition-all"
-                            >
-                              <Trash2 className="h-4 w-4 text-white" />
-                            </button>
-                          </div>
-                        </Link>
-                        <div className="p-3">
-                          <div className="flex justify-between items-center mb-0.5">
-                            <h4 className="text-sm font-headline tracking-tight truncate pr-2">{product.name}</h4>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <Star className="h-3 w-3 fill-primary text-primary" />
-                              <span className="text-[11px] font-bold">{product.rating || 5.0}</span>
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      {wishlistProducts.slice(0, 4).map((product: any) => (
+                        <div key={product.id} className="bg-white dark:bg-white/[0.03] rounded-[24px] overflow-hidden border border-black/[0.03] dark:border-white/[0.05] group">
+                          <Link href={`/book/${product.id}`}>
+                            <div className="relative aspect-square overflow-hidden">
+                              <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromWishlist(product.wishlistId); }}
+                                className="absolute top-2 right-2 z-10 p-2 bg-white/40 backdrop-blur-xl rounded-full hover:bg-red-500/80 transition-all"
+                              >
+                                <Trash2 className="h-4 w-4 text-white" />
+                              </button>
                             </div>
+                          </Link>
+                          <div className="p-3">
+                            <div className="flex justify-between items-center mb-0.5">
+                              <h4 className="text-sm font-headline tracking-tight truncate pr-2">{product.name}</h4>
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <Star className="h-3 w-3 fill-primary text-primary" />
+                                <span className="text-[11px] font-bold">{product.rating || 5.0}</span>
+                              </div>
+                            </div>
+                            <p className="text-primary font-bold text-sm mb-2">₱{(product.price || product.pricePerNight || 0).toLocaleString()}</p>
+                            <Button
+                              onClick={() => addToCart(product.id)}
+                              className="w-full rounded-full py-2 bg-black text-white font-bold text-[11px] h-8 hover:bg-primary transition-all gap-1"
+                            >
+                              <ShoppingCart className="h-3 w-3" /> Add to Cart
+                            </Button>
                           </div>
-                          <p className="text-primary font-bold text-sm mb-2">₱{(product.price || product.pricePerNight || 0).toLocaleString()}</p>
-                          <Button
-                            onClick={() => addToCart(product.id)}
-                            className="w-full rounded-full py-2 bg-black text-white font-bold text-[11px] h-8 hover:bg-primary transition-all gap-1"
-                          >
-                            <ShoppingCart className="h-3 w-3" /> Add to Cart
-                          </Button>
                         </div>
+                      ))}
+                    </div>
+                    {wishlistProducts.length > 4 && (
+                      <div className="flex justify-center mt-4">
+                        <Button asChild variant="outline" className="rounded-full px-8 h-10 border-primary/20 text-primary hover:bg-primary/5 font-bold">
+                          <Link href="/wishlist">See All</Link>
+                        </Button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <div className="p-8 border-2 border-dashed border-black/5 dark:border-white/5 rounded-[24px] text-center bg-[#fcfcfc] dark:bg-transparent">
                     <Heart className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
@@ -588,7 +612,10 @@ export default function ProfilePage() {
               </section>
 
               {/* Two grid cards: My Shop / Become a Seller & Support */}
-              <section className="grid grid-cols-2 gap-3 md:gap-4 mt-8">
+              <div className="flex items-center justify-between mt-8 mb-2">
+                <h3 className="text-lg font-headline tracking-tight">Shop and Tools</h3>
+              </div>
+              <section className="grid grid-cols-2 gap-3 md:gap-4">
                 {userShop ? (
                   <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:from-primary/15 hover:to-primary/10 transition-all">
                     <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-primary/15 flex items-center justify-center mb-2 md:mb-3">

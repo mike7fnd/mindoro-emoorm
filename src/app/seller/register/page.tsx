@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+// For address autocomplete, you may use a PH address API or Google Places API (placeholder for now)
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -12,13 +13,27 @@ import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, setDocumentNonBloc
 export default function ShopRegistrationPage() {
   const [form, setForm] = useState({
     storeName: "",
+    description: "",
+    sold: 0,
+    // Shop Address
+    address: "",
+    city: "",
+    barangay: "",
+    // Owner Info
     ownerName: "",
     email: "",
     contact: "",
-    address: "",
+    // Valid ID
+    governmentIdType: "",
+    governmentIdFront: "",
+    governmentIdBack: "",
+    // Face Verification
+    selfieImage: "",
+    // Other
     category: "",
-    description: "",
     logo: "",
+    // Store Profile Image
+    storeProfileImage: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
@@ -41,6 +56,17 @@ export default function ShopRegistrationPage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, files } = e.target;
+    if (files && files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setForm((prev) => ({ ...prev, [name]: ev.target?.result as string }));
+      };
+      reader.readAsDataURL(files[0]);
+    }
   }
 
   const fireConfetti = useCallback(() => {
@@ -116,7 +142,6 @@ export default function ShopRegistrationPage() {
   return (
     <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
       <Header />
-
       <main className="flex-grow container mx-auto px-6 md:px-8 pt-8 md:pt-32 pb-24 max-w-2xl">
         {registered ? (
           <div className="flex flex-col items-center justify-center text-center py-24 animate-in fade-in zoom-in duration-500">
@@ -138,8 +163,9 @@ export default function ShopRegistrationPage() {
               }
             `}</style>
           </div>
-        ) : (
-          <>
+        ) : null}
+        {!registered && (
+          <React.Fragment>
             {/* Back button */}
             <button
               onClick={() => router.back()}
@@ -156,135 +182,231 @@ export default function ShopRegistrationPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Store Info */}
+              {/* Shop Profile */}
               <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-1 mb-4">Store Information</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[24px] overflow-hidden border border-black/[0.03] dark:border-white/[0.05]">
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Store Name</span>
+                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Shop Profile</h2>
+                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Shop Name</span>
                     <input
+                      id="storeName"
                       name="storeName"
                       value={form.storeName}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
                       placeholder="My Awesome Shop"
                       required
                     />
                   </div>
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Category</span>
-                    <select
-                      name="category"
-                      value={form.category}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
-                      required
-                    >
-                      <option value="">Select category</option>
-                      <option value="fashion">Fashion & Apparel</option>
-                      <option value="electronics">Electronics</option>
-                      <option value="food">Food & Beverages</option>
-                      <option value="beauty">Beauty & Health</option>
-                      <option value="home">Home & Living</option>
-                      <option value="sports">Sports & Outdoors</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div className="flex items-start gap-4 px-6 py-5">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Description</span>
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Description</span>
                     <textarea
+                      id="description"
                       name="description"
                       value={form.description}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 resize-none"
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4 resize-none"
                       placeholder="Tell buyers about your store..."
-                      rows={3}
+                      rows={2}
                       required
                     />
+                  </div>
+                  <div className="flex items-center gap-4 px-6 py-5">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Store Profile Image</span>
+                    <input
+                      name="storeProfileImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
+                      required
+                    />
+                    {form.storeProfileImage && (
+                      <img src={form.storeProfileImage} alt="Store Profile Preview" className="h-10 rounded-md ml-2" />
+                    )}
                   </div>
                 </div>
               </section>
 
-              {/* Owner & Contact */}
+              {/* Shop Address */}
               <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-1 mb-4">Owner & Contact</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[24px] overflow-hidden border border-black/[0.03] dark:border-white/[0.05]">
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Owner Name</span>
+                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Shop Address</h2>
+                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Municipality</span>
+                    <select
+                      name="city"
+                      value={form.city}
+                      onChange={handleChange}
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer ml-4"
+                      required
+                    >
+                      <option value="">Select Municipality</option>
+                      <option value="Baco">Baco</option>
+                      <option value="Bansud">Bansud</option>
+                      <option value="Bongabong">Bongabong</option>
+                      <option value="Bulalacao">Bulalacao</option>
+                      <option value="Calapan City">Calapan City</option>
+                      <option value="Gloria">Gloria</option>
+                      <option value="Mansalay">Mansalay</option>
+                      <option value="Naujan">Naujan</option>
+                      <option value="Pinamalayan">Pinamalayan</option>
+                      <option value="Pola">Pola</option>
+                      <option value="Puerto Galera">Puerto Galera</option>
+                      <option value="Roxas">Roxas</option>
+                      <option value="San Teodoro">San Teodoro</option>
+                      <option value="Socorro">Socorro</option>
+                      <option value="Victoria">Victoria</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Barangay</span>
+                    <input
+                      name="barangay"
+                      value={form.barangay}
+                      onChange={handleChange}
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
+                      placeholder="Barangay name"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-5">
+                    <span className="text-sm text-black/80 dark:text-white/80">Detailed Address</span>
+                    <input
+                      name="address"
+                      value={form.address}
+                      onChange={handleChange}
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
+                      placeholder="Street, Building, etc."
+                      required
+                    />
+                  </div>
+                  {/* TODO: Integrate PH address API for barangay autocomplete */}
+                  <div className="px-6 pb-4 text-xs text-muted-foreground">Province: Oriental Mindoro, Region: MIMAROPA (locked)</div>
+                </div>
+              </section>
+
+              {/* Owner Information */}
+              <section>
+                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Owner Information</h2>
+                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Owner Name</span>
                     <input
                       name="ownerName"
                       value={form.ownerName}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
                       placeholder="Juan Dela Cruz"
                       required
                     />
                   </div>
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Email</span>
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80">Email</span>
                     <input
                       name="email"
                       type="email"
                       value={form.email}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
                       placeholder="you@example.com"
                       required
                     />
                   </div>
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Mobile</span>
-                    <div className="flex items-center gap-1 flex-1 justify-end">
-                      <span className="text-sm text-muted-foreground/40">+63</span>
-                      <input
-                        name="contact"
-                        value={form.contact}
-                        onChange={handleChange}
-                        className="text-right text-sm bg-transparent outline-none border-none text-primary max-w-[120px]"
-                        placeholder="912 345 6789"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 px-6 py-5">
-                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Address</span>
+                  <div className="flex items-center justify-between px-6 py-5">
+                    <span className="text-sm text-black/80 dark:text-white/80">Phone Number</span>
                     <input
-                      name="address"
-                      value={form.address}
+                      name="contact"
+                      value={form.contact}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
-                      placeholder="City, Province"
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
+                      placeholder="09XXXXXXXXX"
                       required
                     />
                   </div>
                 </div>
               </section>
 
-              {/* Store Logo */}
+              {/* Valid ID Section */}
               <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-1 mb-4">Store Logo</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[24px] overflow-hidden border border-black/[0.03] dark:border-white/[0.05]">
-                  <div className="flex items-center gap-4 px-6 py-5">
-                    <Upload className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Logo URL</span>
-                    <input
-                      name="logo"
-                      value={form.logo}
+                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Valid Government ID</h2>
+                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
+                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">ID Type</span>
+                    <select
+                      name="governmentIdType"
+                      value={form.governmentIdType}
                       onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
-                      placeholder="https://..."
+                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
+                      required
+                    >
+                      <option value="">Select Valid PH ID</option>
+                      <option value="PHILHEALTH">PhilHealth ID</option>
+                      <option value="SSS">SSS ID</option>
+                      <option value="UMID">UMID</option>
+                      <option value="PASSPORT">Passport</option>
+                      <option value="DRIVER">Driver's License</option>
+                      <option value="PRC">PRC ID</option>
+                      <option value="POSTAL">Postal ID</option>
+                      <option value="VOTERS">Voter's ID</option>
+                      <option value="NATIONAL">National ID</option>
+                      <option value="TIN">TIN ID</option>
+                      <option value="PWD">PWD ID</option>
+                      <option value="OTHERS">Others</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Upload ID (Front)</span>
+                    <input
+                      name="governmentIdFront"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
+                      required
                     />
+                    {form.governmentIdFront && (
+                      <img src={form.governmentIdFront} alt="ID Front Preview" className="h-10 rounded-md ml-2" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 px-6 py-5">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Upload ID (Back)</span>
+                    <input
+                      name="governmentIdBack"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
+                      required
+                    />
+                    {form.governmentIdBack && (
+                      <img src={form.governmentIdBack} alt="ID Back Preview" className="h-10 rounded-md ml-2" />
+                    )}
                   </div>
                 </div>
               </section>
 
+              {/* Face Verification (Selfie) */}
+              <section>
+                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Face Verification (Selfie)</h2>
+                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
+                  <div className="flex items-center gap-4 px-6 py-5">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Selfie</span>
+                    <input
+                      name="selfieImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
+                      required
+                    />
+                    {form.selfieImage && (
+                      <img src={form.selfieImage} alt="Selfie Preview" className="h-10 rounded-md ml-2" />
+                    )}
+                  </div>
+                </div>
+              </section>
+              
               {/* Submit */}
               <div className="pt-2">
                 <Button
@@ -296,10 +418,9 @@ export default function ShopRegistrationPage() {
                 </Button>
               </div>
             </form>
-          </>
+          </React.Fragment>
         )}
       </main>
-
       <Footer />
     </div>
   );

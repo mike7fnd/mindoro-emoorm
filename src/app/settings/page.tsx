@@ -89,10 +89,29 @@ export default function SettingsPage() {
   }, [profile]);
 
   useEffect(() => {
+    // Detect saved theme or system preference
     const savedTheme = localStorage.getItem("theme");
-    const isDark = savedTheme === "dark";
+    let isDark = false;
+    if (savedTheme === "dark") {
+      isDark = true;
+    } else if (savedTheme === "light") {
+      isDark = false;
+    } else {
+      // No saved theme, use system preference
+      isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
     setIsDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem("theme")) {
+        setIsDarkMode(e.matches);
+        document.documentElement.classList.toggle("dark", e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
 
     fetch('https://psgc.gitlab.io/api/provinces.json')
       .then(res => res.json())
@@ -100,6 +119,10 @@ export default function SettingsPage() {
         setProvinces(data.sort((a: any, b: any) => a.name.localeCompare(b.name)));
       })
       .catch(err => console.error("Error loading provinces:", err));
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
   }, []);
 
   const handleDarkModeToggle = (checked: boolean) => {

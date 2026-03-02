@@ -18,8 +18,18 @@ import {
   ArrowLeft,
   MapPin,
   Clock,
-  Filter
+  Filter,
+  MoreVertical
 } from "lucide-react";
+
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,7 +54,16 @@ interface Facility {
   imageUrl: string;
 }
 
-const STATUS_FILTERS = ["All", "Pending", "Confirmed", "Completed", "Cancelled"];
+const STATUS_FILTERS = [
+  "All",
+  "To Pay",
+  "Pending",
+  "Confirmed",
+  "To Ship",
+  "To Receive",
+  "To Pickup",
+  "Completed"
+];
 
 export default function MyBookingsPage() {
   const { user, isUserLoading } = useUser();
@@ -122,11 +141,34 @@ export default function MyBookingsPage() {
 
       <main className="flex-1 w-full max-w-4xl mx-auto pt-0 md:pt-32 pb-24 px-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 mt-8 md:mt-0">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="p-2 hover:bg-muted rounded-full transition-all">
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h1 className="text-3xl font-normal font-headline tracking-[-0.05em]">My <span className="text-primary">Orders</span></h1>
+          <div className="flex-1 flex flex-col gap-0">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white">My Orders</h1>
+                <p className="text-muted-foreground text-sm mt-0.5">{filteredBookings.length} order{filteredBookings.length !== 1 ? 's' : ''}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none flex items-center">
+                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl dark:bg-black/30">
+                  <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Order Actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+                  <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+                    Deselect All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+                    Remove Selected
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
+                  <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3 text-red-600">
+                    Clear Orders
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           <div className="relative w-full md:w-64">
@@ -141,7 +183,7 @@ export default function MyBookingsPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {STATUS_FILTERS.map(status => (
             <button
               key={status}
