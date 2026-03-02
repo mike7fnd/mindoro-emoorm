@@ -54,6 +54,7 @@ export default function SellerSettingsPage() {
     city: "",
     street: "",
     barangay: "",
+    qrphUrl: "",
   });
 
   // Populate form when store data loads
@@ -68,9 +69,27 @@ export default function SellerSettingsPage() {
         city: s.city || "",
         street: s.street || "",
         barangay: s.barangay || "",
+        qrphUrl: s.qrphUrl || "",
       });
     }
   }, [store]);
+  // QR PH upload
+  const [uploadingQR, setUploadingQR] = useState(false);
+  const qrInputRef = React.useRef<HTMLInputElement>(null);
+  const handleQRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingQR(true);
+    try {
+      const url = await uploadImage(supabase, "stores", file, `qrph/${user.uid}`);
+      setForm(prev => ({ ...prev, qrphUrl: url }));
+    } catch (err) {
+      console.error("QR upload error:", err);
+      alert("Failed to upload QR PH code.");
+    } finally {
+      setUploadingQR(false);
+    }
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,6 +118,7 @@ export default function SellerSettingsPage() {
       city: form.city,
       street: form.street,
       barangay: form.barangay,
+      qrphUrl: form.qrphUrl,
       updatedAt: new Date().toISOString(),
     });
 
@@ -193,6 +213,33 @@ export default function SellerSettingsPage() {
               <div>
                 <p className="text-sm font-medium">Shop Logo</p>
                 <p className="text-xs text-muted-foreground">{uploadingLogo ? "Uploading..." : "Click to upload • 200×200px"}</p>
+              </div>
+            </div>
+
+            {/* QR PH Upload */}
+            <div
+              className="flex items-center gap-4 cursor-pointer mt-4"
+              onClick={() => qrInputRef.current?.click()}
+              title="Upload QR PH Code"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center relative group overflow-hidden">
+                {form.qrphUrl ? (
+                  <img src={form.qrphUrl} alt="QR PH code" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">QR PH</span>
+                )}
+                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  {uploadingQR ? (
+                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </div>
+                <input ref={qrInputRef} type="file" accept="image/*" className="hidden" onChange={handleQRUpload} disabled={uploadingQR} />
+              </div>
+              <div>
+                <p className="text-sm font-medium">QR PH Code</p>
+                <p className="text-xs text-muted-foreground">{uploadingQR ? "Uploading..." : form.qrphUrl ? "Click to change QR code" : "Click to upload QR PH code"}</p>
               </div>
             </div>
 

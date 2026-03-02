@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/footer";
 import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking } from "@/supabase";
+import { sendOrderAutoMessage } from "@/lib/auto-message";
 import type { FilterOp } from "@/supabase/use-collection";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -60,6 +61,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cod");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<string>("delivery");
   // Address book
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number>(0);
   const [newAddress, setNewAddress] = useState({
@@ -71,6 +73,18 @@ export default function CheckoutPage() {
     barangay: "",
     street: "",
   });
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrTimeout, setQRTimeout] = useState(600); // 10 min in seconds
+  const [qrProof, setQRProof] = useState<File | null>(null);
+  const [qrProofUrl, setQRProofUrl] = useState<string>("");
+  const [qrRef, setQRRef] = useState("");
+  const [qrUploading, setQRUploading] = useState(false);
+  // Timer effect
+  React.useEffect(() => {
+    if (!showQRModal || qrTimeout <= 0) return;
+    const timer = setInterval(() => setQRTimeout(t => t - 1), 1000);
+    return () => clearInterval(timer);
+  }, [showQRModal, qrTimeout]);
   const [showAddAddress, setShowAddAddress] = useState(false);
 
   const cartQuery = useStableMemo(() => {
@@ -182,6 +196,7 @@ export default function CheckoutPage() {
           quantity: item.quantity,
           totalPrice: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
           paymentMethod,
+          fulfillmentMethod,
           status: "To Pay",
           shippingAddress: formattedAddress,
           bookingDate: new Date().toISOString(),
@@ -190,7 +205,19 @@ export default function CheckoutPage() {
           numberOfGuests: item.quantity,
           createdAt: new Date().toISOString(),
         };
-        await addDocumentNonBlocking(supabase, "bookings", orderData);
+        const bookingId = await addDocumentNonBlocking(supabase, "bookings", orderData);
+        // Auto-message seller after order placed
+        if (item.product.storeId && storesData) {
+          const store = storesData.find((s: any) => s.id === item.product.storeId);
+          if (store && store.sellerId) {
+            sendOrderAutoMessage({
+              buyerId: user.uid,
+              sellerId: store.sellerId,
+              storeName: store.name,
+              orderId: bookingId?.id || ""
+            });
+          }
+        }
       }
       // Clear cart
       for (const item of cartItems) {
@@ -206,6 +233,79 @@ export default function CheckoutPage() {
       console.error("Order error:", error);
     } finally {
       setIsProcessing(false);
+    }
+  };
+  
+  // Handle QR PH order submit (after proof upload)
+  const handleQRSubmit = async () => {
+    if (!user || !qrProofUrl) return;
+    setIsProcessing(true);
+    try {
+      for (const item of cartItems) {
+        const orderData = {
+          userId: user.uid,
+          facilityId: item.product.id,
+          storeId: item.product.storeId || null,
+          quantity: item.quantity,
+          totalPrice: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
+          paymentMethod: "qrph",
+          status: "To Pay",
+          fulfillmentMethod,
+          shippingAddress: formattedAddress,
+          bookingDate: new Date().toISOString(),
+          startDate: new Date().toISOString(),
+          endDate: new Date().toISOString(),
+          numberOfGuests: item.quantity,
+          createdAt: new Date().toISOString(),
+          qrphProofUrl: qrProofUrl,
+          qrphRef: qrRef,
+        };
+        const bookingId = await addDocumentNonBlocking(supabase, "bookings", orderData);
+        // Auto-message seller after order placed
+        if (item.product.storeId && storesData) {
+          const store = storesData.find((s: any) => s.id === item.product.storeId);
+          if (store && store.sellerId) {
+            sendOrderAutoMessage({
+              buyerId: user.uid,
+              sellerId: store.sellerId,
+              storeName: store.name,
+              orderId: bookingId?.id || ""
+            });
+          }
+        }
+      }
+      for (const item of cartItems) {
+        await supabase.from("cart_items").delete().eq("id", item.id);
+      }
+      setShowQRModal(false);
+      setOrderSuccess(true);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    } catch (error) {
+      console.error("QR Order error:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Handle QR proof upload
+  const handleQRProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setQRUploading(true);
+    try {
+      const { data, error } = await supabase.storage.from("seller-assets").upload(`qrproof/${user.uid}_${Date.now()}`, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("seller-assets").getPublicUrl(data.path);
+      setQRProofUrl(urlData.publicUrl);
+      setQRProof(file);
+    } catch (err) {
+      alert("Failed to upload payment proof.");
+    } finally {
+      setQRUploading(false);
     }
   };
 
@@ -285,6 +385,36 @@ export default function CheckoutPage() {
       </div>
     );
   }
+  
+  // QR PH Modal
+  const qrStore = storesData && itemsByStore.length === 1 ? storesData.find((s: any) => s.id === itemsByStore[0].storeId) : null;
+  const qrphUrl = qrStore?.qrphUrl;
+  
+  const QRModal = showQRModal && (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md relative">
+        <button className="absolute top-2 right-2 text-muted-foreground" onClick={() => setShowQRModal(false)}>&times;</button>
+        <h2 className="text-xl font-bold mb-2">Pay via QR PH</h2>
+        <p className="text-sm mb-4">Scan the seller's QR code below and upload your payment proof. You have <span className="font-bold">{Math.floor(qrTimeout/60)}:{(qrTimeout%60).toString().padStart(2,'0')}</span> minutes.</p>
+        {qrphUrl ? (
+          <img src={qrphUrl} alt="Seller QR PH" className="w-48 h-48 object-contain mx-auto mb-4 border rounded-xl" />
+        ) : (
+          <div className="w-48 h-48 flex items-center justify-center bg-gray-100 rounded-xl mx-auto mb-4 text-xs text-muted-foreground">No QR code uploaded by seller</div>
+        )}
+        <div className="mb-3">
+          <label className="block text-xs mb-1 font-medium">Reference Number</label>
+          <input type="text" className="w-full border rounded px-3 py-2 mb-2" value={qrRef} onChange={e => setQRRef(e.target.value)} placeholder="Enter reference number" />
+          <label className="block text-xs mb-1 font-medium">Upload Payment Proof</label>
+          <input type="file" accept="image/*" onChange={handleQRProofUpload} disabled={qrUploading} />
+          {qrProofUrl && <img src={qrProofUrl} alt="Proof" className="w-32 h-32 object-contain mt-2 border rounded" />}
+        </div>
+        <Button onClick={handleQRSubmit} disabled={!qrProofUrl || !qrRef || qrTimeout <= 0 || qrUploading || isProcessing} className="w-full rounded-full h-12 mt-2">
+          {isProcessing ? "Submitting..." : qrTimeout <= 0 ? "Timeout" : "Submit Payment"}
+        </Button>
+        {qrTimeout <= 0 && <div className="text-xs text-red-500 mt-2">Time expired. Please try again.</div>}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -334,7 +464,38 @@ export default function CheckoutPage() {
                 </div>
               )}
             </div>
-            {/* Payment Method Section */}
+            {/* Fulfillment Method Section */}
+            <div>
+              <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Delivery or Pickup</h2>
+              <div className="space-y-3">
+                {[
+                  { value: "delivery", label: "Delivery", desc: "Order will be delivered to your address" },
+                  { value: "pickup", label: "Pickup", desc: "You will pick up the order at the shop" },
+                ].map((method) => (
+                  <button
+                    key={method.value}
+                    onClick={() => setFulfillmentMethod(method.value)}
+                    className={cn(
+                      "w-full flex items-center gap-4 p-5 rounded-[20px] text-left transition-all",
+                      fulfillmentMethod === method.value
+                        ? "bg-primary/5 border-2 border-primary"
+                        : "bg-[#f8f8f8] border-2 border-transparent hover:bg-black/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                      fulfillmentMethod === method.value ? "border-primary" : "border-muted-foreground/30"
+                    )}>
+                      {fulfillmentMethod === method.value && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{method.label}</p>
+                      <p className="text-xs text-muted-foreground">{method.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Payment Method</h2>
               <div className="space-y-3">
@@ -379,10 +540,15 @@ export default function CheckoutPage() {
               <p className="text-xs text-muted-foreground">{formattedAddress}</p>
               <p className="text-xs text-muted-foreground">{selectedAddress.mobile}</p>
               <div className="flex items-center gap-2 mt-4 mb-2">
+                <Package className="h-4 w-4 text-primary" />
+                <span className="text-sm font-bold">{fulfillmentMethod === "pickup" ? "Pickup" : "Delivery"}</span>
+              </div>
+              <p className="text-sm mb-1">{fulfillmentMethod === "pickup" ? "You will pick up the order at the shop." : "Order will be delivered to your address."}</p>
+              <div className="flex items-center gap-2 mt-2 mb-2">
                 <CreditCard className="h-4 w-4 text-primary" />
                 <span className="text-sm font-bold">Payment</span>
               </div>
-              <p className="text-sm mb-4">{paymentMethod === "cod" ? "Cash on Delivery" : "GCash"}</p>
+              <p className="text-sm mb-4">{paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod === "qrph" ? "QR PH" : "GCash"}</p>
               <div className="space-y-5 mb-4">
                 {itemsByStore.map(storeGroup => (
                   <div key={storeGroup.storeId} className="mb-2">

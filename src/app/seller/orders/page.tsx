@@ -208,13 +208,24 @@ export default function SellerOrdersPage() {
                               </Badge>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Delivery</span>
-                              <span className="text-xs">{order.shippingAddress || "N/A"}</span>
+                              <span className="text-xs text-muted-foreground">{order.fulfillmentMethod === "pickup" ? "Pickup" : "Delivery"}</span>
+                              <span className="text-xs">{order.fulfillmentMethod === "pickup" ? "Pick up at shop" : (order.shippingAddress || "N/A")}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Payment</span>
                               <span className="text-xs capitalize">{order.paymentMethod || "cod"}</span>
                             </div>
+                            {order.paymentMethod === "qrph" && (
+                              <div className="flex flex-col gap-2 mt-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                                <span className="text-xs font-bold mb-1">QR PH Payment Proof</span>
+                                {order.qrphProofUrl ? (
+                                  <img src={order.qrphProofUrl} alt="QR PH Proof" className="w-32 h-32 object-contain border rounded mb-1" />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No proof uploaded</span>
+                                )}
+                                <span className="text-xs">Reference: <span className="font-mono">{order.qrphRef || "N/A"}</span></span>
+                              </div>
+                            )}
                             {order.trackingNumber && (
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Tracking</span>
@@ -224,12 +235,12 @@ export default function SellerOrdersPage() {
                             <div className="flex gap-2 pt-1">
                               {status === "To Pay" && (
                                 <>
-                                  <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>
-                                    Accept Order
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="rounded-full flex-1 text-xs h-9 border-black/[0.06]" onClick={() => handleUpdateStatus(order.id, "Cancelled")}>
-                                    Decline
-                                  </Button>
+                                  {order.paymentMethod === "qrph" && order.qrphProofUrl ? (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Confirm Payment</Button>
+                                  ) : (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Accept Order</Button>
+                                  )}
+                                  <Button size="sm" variant="outline" className="rounded-full flex-1 text-xs h-9 border-black/[0.06]" onClick={() => handleUpdateStatus(order.id, "Cancelled")}>Decline</Button>
                                 </>
                               )}
                               {status === "To Ship" && (
