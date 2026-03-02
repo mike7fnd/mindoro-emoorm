@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/footer";
 import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking } from "@/supabase";
+import type { FilterOp } from "@/supabase/use-collection";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,15 @@ interface UserProfile {
   city: string;
   barangay: string;
   street: string;
+  addresses?: Array<{
+    label: string;
+    fullName: string;
+    mobile: string;
+    province: string;
+    city: string;
+    barangay: string;
+    street: string;
+  }>;
 }
 
 type Step = 1 | 2 | 3;
@@ -47,13 +57,13 @@ export default function CheckoutPage() {
   const supabase = useSupabase();
   const router = useRouter();
 
-  const [step, setStep] = useState<Step>(1);
   const [paymentMethod, setPaymentMethod] = useState<string>("cod");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-
-  // Shipping address form
-  const [shippingAddress, setShippingAddress] = useState({
+  // Address book
+  const [selectedAddressIdx, setSelectedAddressIdx] = useState<number>(0);
+  const [newAddress, setNewAddress] = useState({
+    label: "",
     fullName: "",
     mobile: "",
     province: "Oriental Mindoro",
@@ -61,10 +71,11 @@ export default function CheckoutPage() {
     barangay: "",
     street: "",
   });
+  const [showAddAddress, setShowAddAddress] = useState(false);
 
   const cartQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "cart_items", filters: [{ column: "userId", op: "eq", value: user.uid }] };
+    return { table: "cart_items", filters: [{ column: "userId", op: 'eq' as FilterOp, value: user.uid }] };
   }, [user]);
 
   const { data: cartData } = useCollection<CartItem>(cartQuery);
@@ -82,20 +93,30 @@ export default function CheckoutPage() {
 
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
-  // Populate shipping from user profile
+  // Address book logic
+  const [addressBook, setAddressBook] = useState<UserProfile["addresses"]>([]);
   React.useEffect(() => {
     if (userProfile) {
-      setShippingAddress(prev => ({
-        fullName: prev.fullName || `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim(),
-        mobile: prev.mobile || userProfile.mobile || "",
-        province: prev.province || userProfile.province || "Oriental Mindoro",
-        city: prev.city || userProfile.city || "",
-        barangay: prev.barangay || userProfile.barangay || "",
-        street: prev.street || userProfile.street || "",
-      }));
+      // Use addresses array if exists, else fallback to profile address
+      if (userProfile.addresses && userProfile.addresses.length > 0) {
+        setAddressBook(userProfile.addresses);
+      } else {
+        setAddressBook([
+          {
+            label: "Default",
+            fullName: `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim(),
+            mobile: userProfile.mobile || "",
+            province: userProfile.province || "Oriental Mindoro",
+            city: userProfile.city || "",
+            barangay: userProfile.barangay || "",
+            street: userProfile.street || "",
+          },
+        ]);
+      }
     }
   }, [userProfile]);
 
+  // Group cart items by storeId
   const cartItems = useMemo(() => {
     if (!cartData || !productsData) return [];
     return cartData.map(c => {
@@ -104,6 +125,36 @@ export default function CheckoutPage() {
     }).filter(Boolean) as (CartItem & { product: Product })[];
   }, [cartData, productsData]);
 
+  // Group items by storeId
+  const itemsByStore = useMemo(() => {
+    const groups: Record<string, { storeId: string; items: (CartItem & { product: Product })[] }> = {};
+    for (const item of cartItems) {
+      const storeId = item.product.storeId || 'unknown';
+      if (!groups[storeId]) {
+        groups[storeId] = { storeId, items: [] };
+      }
+      groups[storeId].items.push(item);
+    }
+    return Object.values(groups);
+  }, [cartItems]);
+
+  // Fetch all unique storeIds
+  const storeIds = useMemo(() => itemsByStore.map(g => g.storeId).filter(id => id !== 'unknown'), [itemsByStore]);
+
+  // Fetch store data for all storeIds
+  const storesQuery = useStableMemo(() => {
+    if (!storeIds.length) return null;
+    return { table: "stores", filters: [{ column: "id", op: "in" as FilterOp, value: `(${storeIds.join(",")})` }] };
+  }, [storeIds]);
+  const { data: storesData } = useCollection<any>(storesQuery);
+
+  // Helper to get store name by id
+  const getStoreName = (storeId: string) => {
+    if (!storesData) return "Shop";
+    const store = storesData.find((s: any) => s.id === storeId);
+    return store?.name || "Shop";
+  };
+
   const totalPrice = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + (item.product.price || item.product.pricePerNight || 0) * item.quantity, 0);
   }, [cartItems]);
@@ -111,18 +162,16 @@ export default function CheckoutPage() {
   const shippingFee = 50;
   const grandTotal = totalPrice + shippingFee;
 
-  const formattedAddress = [shippingAddress.street, shippingAddress.barangay, shippingAddress.city, shippingAddress.province].filter(Boolean).join(", ");
+  const selectedAddress = (addressBook && addressBook[selectedAddressIdx]) || newAddress;
+  const formattedAddress = [selectedAddress.street, selectedAddress.barangay, selectedAddress.city, selectedAddress.province].filter(Boolean).join(", ");
 
-  const canProceed = () => {
-    if (step === 1) return shippingAddress.fullName && shippingAddress.mobile && shippingAddress.city;
-    if (step === 2) return paymentMethod;
-    return true;
+  const canPlaceOrder = () => {
+    return selectedAddress.fullName && selectedAddress.mobile && selectedAddress.city && paymentMethod;
   };
 
   const handlePlaceOrder = async () => {
     if (!user || isProcessing) return;
     setIsProcessing(true);
-
     try {
       // Create order for each cart item
       for (const item of cartItems) {
@@ -143,12 +192,10 @@ export default function CheckoutPage() {
         };
         await addDocumentNonBlocking(supabase, "bookings", orderData);
       }
-
       // Clear cart
       for (const item of cartItems) {
         await supabase.from("cart_items").delete().eq("id", item.id);
       }
-
       setOrderSuccess(true);
       confetti({
         particleCount: 100,
@@ -160,6 +207,25 @@ export default function CheckoutPage() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Save new address to address book
+  const handleSaveNewAddress = async () => {
+    if (!userProfile) return;
+    const updatedAddresses = [...(addressBook || []), newAddress];
+    await supabase.from("users").update({ addresses: updatedAddresses }).eq("id", userProfile.id);
+    setAddressBook(updatedAddresses);
+    setShowAddAddress(false);
+    setNewAddress({
+      label: "",
+      fullName: "",
+      mobile: "",
+      province: "Oriental Mindoro",
+      city: "",
+      barangay: "",
+      street: "",
+    });
+    setSelectedAddressIdx(updatedAddresses.length - 1);
   };
 
   if (isUserLoading) return (
@@ -220,222 +286,173 @@ export default function CheckoutPage() {
     );
   }
 
-  const steps = [
-    { num: 1 as Step, label: "Shipping", icon: MapPin },
-    { num: 2 as Step, label: "Payment", icon: CreditCard },
-    { num: 3 as Step, label: "Review", icon: Package },
-  ];
-
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <Header />
-      <main className="flex-grow container mx-auto px-4 md:px-6 pt-0 md:pt-32 pb-24 max-w-[700px]">
-        <button onClick={() => step > 1 ? setStep((step - 1) as Step) : router.back()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors mt-4 md:mt-0 mb-6">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-
-        <h1 className="text-3xl font-headline font-normal tracking-[-0.05em] mb-8">Checkout</h1>
-
-        {/* Step Indicator */}
-        <div className="flex items-center gap-2 mb-10">
-          {steps.map((s, i) => (
-            <React.Fragment key={s.num}>
-              <div className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                step >= s.num ? "bg-primary text-white" : "bg-[#f8f8f8] text-muted-foreground"
-              )}>
-                <s.icon className="h-4 w-4" />
-                <span className="hidden md:inline">{s.label}</span>
-                <span className="md:hidden">{s.num}</span>
-              </div>
-              {i < steps.length - 1 && <div className={cn("flex-1 h-[2px]", step > s.num ? "bg-primary" : "bg-muted")} />}
-            </React.Fragment>
-          ))}
+      <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
+        <div className="p-6 md:p-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white mb-1">Checkout</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</p>
+          </div>
         </div>
-
-        {/* Step 1: Shipping */}
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Shipping Information</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</label>
-                <input
-                  type="text" value={shippingAddress.fullName}
-                  onChange={(e) => setShippingAddress(p => ({ ...p, fullName: e.target.value }))}
-                  className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Mobile Number</label>
-                <input
-                  type="tel" value={shippingAddress.mobile}
-                  onChange={(e) => setShippingAddress(p => ({ ...p, mobile: e.target.value }))}
-                  placeholder="09XX XXX XXXX"
-                  className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Province</label>
-                <input
-                  type="text" value={shippingAddress.province} readOnly
-                  className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-muted-foreground outline-none cursor-not-allowed"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">City/Municipality</label>
-                  <input
-                    type="text" value={shippingAddress.city}
-                    onChange={(e) => setShippingAddress(p => ({ ...p, city: e.target.value }))}
-                    className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-6 md:px-8">
+          {/* Info Section */}
+          <div className="md:col-span-2 space-y-8">
+            {/* Address Book Section */}
+            <div>
+              <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Shipping Address</h2>
+              {addressBook && addressBook.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {addressBook.map((addr, idx) => (
+                    <div key={idx} className={cn("p-4 rounded-xl border flex items-center gap-4 cursor-pointer", selectedAddressIdx === idx ? "border-primary bg-primary/5" : "border-black/10 bg-[#f8f8f8]")}
+                      onClick={() => { setSelectedAddressIdx(idx); setShowAddAddress(false); }}>
+                      <input type="radio" checked={selectedAddressIdx === idx} onChange={() => setSelectedAddressIdx(idx)} className="accent-primary" />
+                      <div className="flex-1">
+                        <div className="font-bold text-sm">{addr.label || "Address"}</div>
+                        <div className="text-xs">{addr.fullName} | {addr.mobile}</div>
+                        <div className="text-xs text-muted-foreground">{[addr.street, addr.barangay, addr.city, addr.province].filter(Boolean).join(", ")}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Barangay</label>
-                  <input
-                    type="text" value={shippingAddress.barangay}
-                    onChange={(e) => setShippingAddress(p => ({ ...p, barangay: e.target.value }))}
-                    className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
+              )}
+              <Button variant="outline" className="rounded-full mb-2" onClick={() => { setShowAddAddress(true); setSelectedAddressIdx(-1); }}>+ Add New Address</Button>
+              {showAddAddress && (
+                <div className="p-4 rounded-xl border border-primary bg-primary/5 space-y-2 mt-2">
+                  <input type="text" placeholder="Label (e.g. Home, Office)" value={newAddress.label} onChange={e => setNewAddress({ ...newAddress, label: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="Full Name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="Mobile" value={newAddress.mobile} onChange={e => setNewAddress({ ...newAddress, mobile: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="Province" value={newAddress.province} onChange={e => setNewAddress({ ...newAddress, province: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="City" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="Barangay" value={newAddress.barangay} onChange={e => setNewAddress({ ...newAddress, barangay: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <input type="text" placeholder="Street / House No." value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                  <div className="flex gap-2 mt-2">
+                    <Button onClick={handleSaveNewAddress} className="flex-1 rounded-full bg-primary text-white">Save Address</Button>
+                    <Button variant="outline" onClick={() => setShowAddAddress(false)} className="flex-1 rounded-full">Cancel</Button>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Street / House No.</label>
-                <input
-                  type="text" value={shippingAddress.street}
-                  onChange={(e) => setShippingAddress(p => ({ ...p, street: e.target.value }))}
-                  className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
+              )}
+            </div>
+            {/* Payment Method Section */}
+            <div>
+              <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Payment Method</h2>
+              <div className="space-y-3">
+                {[
+                  { value: "cod", label: "Cash on Delivery", desc: "Pay when you receive your order" },
+                  { value: "gcash", label: "GCash", desc: "Pay via GCash mobile wallet" },
+                ].map((method) => (
+                  <button
+                    key={method.value}
+                    onClick={() => setPaymentMethod(method.value)}
+                    className={cn(
+                      "w-full flex items-center gap-4 p-5 rounded-[20px] text-left transition-all",
+                      paymentMethod === method.value
+                        ? "bg-primary/5 border-2 border-primary"
+                        : "bg-[#f8f8f8] border-2 border-transparent hover:bg-black/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                      paymentMethod === method.value ? "border-primary" : "border-muted-foreground/30"
+                    )}>
+                      {paymentMethod === method.value && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{method.label}</p>
+                      <p className="text-xs text-muted-foreground">{method.desc}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        )}
-
-        {/* Step 2: Payment */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Payment Method</h2>
-            <div className="space-y-3">
-              {[
-                { value: "cod", label: "Cash on Delivery", desc: "Pay when you receive your order" },
-                { value: "gcash", label: "GCash", desc: "Pay via GCash mobile wallet" },
-              ].map((method) => (
-                <button
-                  key={method.value}
-                  onClick={() => setPaymentMethod(method.value)}
-                  className={cn(
-                    "w-full flex items-center gap-4 p-5 rounded-[20px] text-left transition-all",
-                    paymentMethod === method.value
-                      ? "bg-primary/5 border-2 border-primary"
-                      : "bg-[#f8f8f8] border-2 border-transparent hover:bg-black/5"
-                  )}
-                >
-                  <div className={cn(
-                    "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                    paymentMethod === method.value ? "border-primary" : "border-muted-foreground/30"
-                  )}>
-                    {paymentMethod === method.value && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm">{method.label}</p>
-                    <p className="text-xs text-muted-foreground">{method.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Review */}
-        {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Order Review</h2>
-
-            {/* Shipping Summary */}
-            <div className="p-5 rounded-[20px] bg-[#f8f8f8]">
+          {/* Order Review Section */}
+          <div className="md:col-span-1 space-y-8">
+            <div className="rounded-2xl border border-black/10 bg-[#f8f8f8] p-6">
+              <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Order Summary</h2>
               <div className="flex items-center gap-2 mb-2">
                 <MapPin className="h-4 w-4 text-primary" />
                 <span className="text-sm font-bold">Shipping to</span>
               </div>
-              <p className="text-sm">{shippingAddress.fullName}</p>
+              <p className="text-sm">{selectedAddress.fullName}</p>
               <p className="text-xs text-muted-foreground">{formattedAddress}</p>
-              <p className="text-xs text-muted-foreground">{shippingAddress.mobile}</p>
-            </div>
-
-            {/* Payment Summary */}
-            <div className="p-5 rounded-[20px] bg-[#f8f8f8]">
-              <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs text-muted-foreground">{selectedAddress.mobile}</p>
+              <div className="flex items-center gap-2 mt-4 mb-2">
                 <CreditCard className="h-4 w-4 text-primary" />
                 <span className="text-sm font-bold">Payment</span>
               </div>
-              <p className="text-sm">{paymentMethod === "cod" ? "Cash on Delivery" : "GCash"}</p>
-            </div>
-
-            {/* Items Summary */}
-            <div className="space-y-3">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-3 p-4 rounded-[20px] bg-[#f8f8f8]">
-                  <div className="h-16 w-16 rounded-[12px] overflow-hidden shrink-0">
-                    <Image src={item.product.imageUrl} alt={item.product.name} width={64} height={64} className="object-cover h-full w-full" />
+              <p className="text-sm mb-4">{paymentMethod === "cod" ? "Cash on Delivery" : "GCash"}</p>
+              <div className="space-y-5 mb-4">
+                {itemsByStore.map(storeGroup => (
+                  <div key={storeGroup.storeId} className="mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Store className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold">{getStoreName(storeGroup.storeId)}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full px-3 py-1 text-xs h-7"
+                        onClick={() => router.push(`/messages?id=${storeGroup.storeId}`)}
+                      >
+                        Message Seller
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {storeGroup.items.map(item => (
+                        <div key={item.id} className="flex gap-3 p-2 rounded-[12px] bg-white">
+                          <div className="h-12 w-12 rounded-[8px] overflow-hidden shrink-0">
+                            <Image src={item.product.imageUrl} alt={item.product.name} width={48} height={48} className="object-cover h-full w-full" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-xs font-medium line-clamp-1">{item.product.name}</h3>
+                            <p className="text-[11px] text-muted-foreground">Qty: {item.quantity}</p>
+                          </div>
+                          <p className="text-xs font-bold shrink-0">₱{((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium line-clamp-1">{item.product.name}</h3>
-                    <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                  </div>
-                  <p className="text-sm font-bold shrink-0">₱{((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}</p>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>₱{totalPrice.toLocaleString()}</span>
                 </div>
-              ))}
-            </div>
-
-            {/* Totals */}
-            <div className="p-5 rounded-[20px] bg-[#f8f8f8] space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>₱{totalPrice.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>₱{shippingFee.toLocaleString()}</span>
-              </div>
-              <div className="border-t border-black/5 pt-2 flex justify-between">
-                <span className="font-bold">Total</span>
-                <span className="text-xl font-bold text-primary">₱{grandTotal.toLocaleString()}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>₱{shippingFee.toLocaleString()}</span>
+                </div>
+                <div className="border-t border-black/5 pt-2 flex justify-between">
+                  <span className="font-bold">Total</span>
+                  <span className="text-xl font-bold text-primary">₱{grandTotal.toLocaleString()}</span>
+                </div>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Navigation Buttons */}
-        <div className="flex gap-4 mt-10">
-          {step > 1 && (
-            <Button
-              onClick={() => setStep((step - 1) as Step)}
-              variant="outline"
-              className="flex-1 rounded-full py-6 h-14"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back
-            </Button>
-          )}
-          {step < 3 ? (
-            <Button
-              onClick={() => setStep((step + 1) as Step)}
-              disabled={!canProceed()}
-              className="flex-1 rounded-full py-6 bg-black text-white font-bold h-14 hover:bg-primary transition-all disabled:opacity-50"
-            >
-              Next <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
+        </div>
+      </main>
+      {/* Fixed checkout bar */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-black/5 shadow-2xl p-4 md:pb-4 pb-4">
+          <div className="max-w-3xl mx-auto flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Total ({cartItems.length} items)</p>
+              <p className="text-2xl font-bold text-primary">₱{grandTotal.toLocaleString()}</p>
+            </div>
             <Button
               onClick={handlePlaceOrder}
-              disabled={isProcessing}
-              className="flex-1 rounded-full py-6 bg-primary text-white font-bold h-14 hover:bg-primary/90 transition-all disabled:opacity-50"
+              disabled={isProcessing || !canPlaceOrder()}
+              className="rounded-full px-10 py-6 bg-black text-white font-bold text-sm h-14 hover:bg-primary transition-all disabled:opacity-50"
             >
               {isProcessing ? "Processing..." : "Place Order"}
             </Button>
-          )}
+          </div>
         </div>
-      </main>
+      )}
       <Footer />
     </div>
   );
