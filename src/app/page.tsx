@@ -12,6 +12,9 @@ import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Filter } from "lucide-react";
 import gsap from "gsap";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+
 
 interface Product {
   id: string;
@@ -33,6 +36,7 @@ interface Product {
   bidCount?: number;
   type?: string;
   pricePerNight?: number;
+  sold?: number;
 }
 
 interface StoreItem {
@@ -81,7 +85,7 @@ export default function HomePage() {
   };
 
   const productsQuery = useStableMemo(() => {
-    return { table: "facilities" };
+    return { table: "facilities", columns: "* , sold" };
   }, []);
 
   const storesQuery = useStableMemo(() => {
@@ -186,39 +190,116 @@ export default function HomePage() {
 
   const openFilter = () => {
     setShowFilter(true);
-    if (isMobile && filterPillRef.current && filterCardRef.current) {
-      const pillRect = filterPillRef.current.getBoundingClientRect();
-      const card = filterCardRef.current;
-      gsap.set(card, {
-        x: pillRect.left,
-        y: pillRect.top,
-        width: pillRect.width,
-        height: pillRect.height,
-        opacity: 0.7,
-        borderRadius: 999,
-        scale: 1,
-      });
-      gsap.to(card, {
-        x: 0,
-        y: 0,
-        width: '100vw',
-        height: 'auto',
-        opacity: 1,
-        borderRadius: 32,
-        scale: 1,
-        duration: 0.55,
-        ease: "power3.out"
-      });
-    }
   };
   const closeFilter = () => {
     setShowFilter(false);
   };
 
   const filterPillRef = useRef<HTMLButtonElement | null>(null);
-  const filterCardRef = useRef<HTMLDivElement | null>(null);
 
-  if (isUserLoading) return null;
+  const filterContent = (
+    <>
+      {/* Municipality Filter */}
+      <div className="mb-4">
+        <label className="block text-xs font-bold mb-2">Municipality</label>
+        <select
+          value={municipality}
+          onChange={e => setMunicipality(e.target.value)}
+          className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
+        >
+          {municipalities.map(m => (
+            <option key={m} value={m}>{m === "All" ? "All Municipalities" : m}</option>
+          ))}
+        </select>
+      </div>
+      {/* Category Filter (for products) */}
+      {activeTab === "products" && (
+        <div className="mb-4">
+          <label className="block text-xs font-bold mb-2">Category</label>
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
+          >
+            <option value="">All Categories</option>
+            {categories.filter(c => c !== "All").map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {/* Price Range Filter */}
+      {activeTab === "products" && (
+        <div className="mb-4 flex gap-2">
+          <div className="flex-1">
+            <label className="block text-xs font-bold mb-2">Min Price</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="0"
+              className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
+              value={minPrice || ""}
+              onChange={e => setMinPrice(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-bold mb-2">Max Price</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Any"
+              className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
+              value={maxPrice || ""}
+              onChange={e => setMaxPrice(Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      )}
+      {/* Auction Only Filter */}
+      {activeTab === "products" && (
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="auctionOnly"
+            checked={auctionOnly}
+            onChange={e => setAuctionOnly(e.target.checked)}
+            className="accent-primary h-4 w-4 rounded"
+          />
+          <label htmlFor="auctionOnly">Auction items only</label>
+        </div>
+      )}
+      <button
+        className="w-full bg-primary text-white py-4 rounded-full mt-4 shadow-md text-sm tracking-tight font-bold"
+        onClick={closeFilter}
+      >
+        Apply Filters
+      </button>
+    </>
+  );
+
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <div className="absolute top-0 left-0 w-full h-[160px] bg-gradient-to-b from-green-700/75 via-green-600/25 via-50% to-transparent pointer-events-none z-0" />
+      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-[1480px]">
+        <div className="mt-8 md:mt-0 space-y-4 mb-10">
+          <Skeleton className="h-8 w-48 rounded-full" />
+          <Skeleton className="h-5 w-72 rounded-full" />
+        </div>
+        <Skeleton className="h-12 w-full rounded-full mb-8" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <Skeleton className="aspect-square w-full rounded-[32px]" />
+              <Skeleton className="h-4 w-3/4 rounded-full" />
+              <Skeleton className="h-3 w-1/2 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 
   const firstName = user ? (userProfile?.firstName || user.displayName?.split(" ")[0] || "Shopper") : null;
 
@@ -307,107 +388,38 @@ export default function HomePage() {
               </button>
             )}
           </div>
-          {/* Filter Popover/Modal/Card */}
-          {showFilter && (
-            <div
-              className={cn(
-                "fixed inset-0 z-[2000] flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all",
-                isMobile ? "p-0" : "p-8"
-              )}
-              onClick={closeFilter}
-            >
+          {/* Filter — Bottom Sheet on mobile, centered dialog on desktop */}
+          {isMobile ? (
+            <Sheet open={showFilter} onOpenChange={setShowFilter}>
+              <SheetContent side="bottom" className="rounded-t-[32px] px-6 pb-8 pt-2 border-none bg-white max-h-[85dvh] overflow-y-auto">
+                <div className="mx-auto mt-2 mb-4 h-1 w-10 rounded-full bg-muted" />
+                <SheetHeader className="mb-4">
+                  <SheetTitle className="text-xl font-headline tracking-[-0.03em]">Filter Options</SheetTitle>
+                </SheetHeader>
+                {filterContent}
+              </SheetContent>
+            </Sheet>
+          ) : (
+            showFilter && (
               <div
-                ref={filterCardRef}
-                className={cn(
-                  "bg-white rounded-[32px] shadow-2xl w-full max-w-[420px] p-8 relative",
-                  isMobile && "rounded-[32px] h-auto max-w-[95vw] p-6"
-                )}
-                onClick={e => e.stopPropagation()}
+                className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/30 backdrop-blur-sm transition-all p-8"
+                onClick={closeFilter}
               >
-                <button
-                  className="absolute top-4 right-4 text-muted-foreground hover:text-primary"
-                  onClick={closeFilter}
+                <div
+                  className="bg-white rounded-[32px] shadow-2xl w-full max-w-[420px] p-8 relative"
+                  onClick={e => e.stopPropagation()}
                 >
-                  ✕
-                </button>
-                <h3 className="text-xl mb-6">Filter Options</h3>
-                {/* Municipality Filter */}
-                <div className="mb-4">
-                  <label className="block text-xs font-bold mb-2">Municipality</label>
-                  <select
-                    value={municipality}
-                    onChange={e => setMunicipality(e.target.value)}
-                    className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
+                  <button
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-primary"
+                    onClick={closeFilter}
                   >
-                    {municipalities.map(m => (
-                      <option key={m} value={m}>{m === "All" ? "All Municipalities" : m}</option>
-                    ))}
-                  </select>
+                    ✕
+                  </button>
+                  <h3 className="text-xl mb-6 font-headline tracking-[-0.03em]">Filter Options</h3>
+                  {filterContent}
                 </div>
-                {/* Category Filter (for products) */}
-                {activeTab === "products" && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-bold mb-2">Category</label>
-                    <select
-                      value={categoryFilter}
-                      onChange={e => setCategoryFilter(e.target.value)}
-                      className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
-                    >
-                      <option value="">All Categories</option>
-                      {categories.filter(c => c !== "All").map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {/* Price Range Filter */}
-                {activeTab === "products" && (
-                  <div className="mb-4 flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold mb-2">Min Price</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="0"
-                        className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
-                        value={minPrice || ""}
-                        onChange={e => setMinPrice(Number(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold mb-2">Max Price</label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="Any"
-                        className="w-full bg-[#f8f8f8] rounded-full py-4 px-6 text-sm outline-none border-none font-medium"
-                        value={maxPrice || ""}
-                        onChange={e => setMaxPrice(Number(e.target.value) || 0)}
-                      />
-                    </div>
-                  </div>
-                )}
-                {/* Auction Only Filter */}
-                {activeTab === "products" && (
-                  <div className="mb-4 flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="auctionOnly"
-                      checked={auctionOnly}
-                      onChange={e => setAuctionOnly(e.target.checked)}
-                      className="accent-primary h-4 w-4 rounded"
-                    />
-                    <label htmlFor="auctionOnly">Auction items only</label>
-                  </div>
-                )}
-                <button
-                  className="w-full bg-primary text-white py-4 rounded-full mt-4 shadow-md text-sm tracking-tight"
-                  onClick={closeFilter}
-                >
-                  Apply Filters
-                </button>
               </div>
-            </div>
+            )
           )}
         </section>
 
@@ -415,7 +427,13 @@ export default function HomePage() {
         {activeTab === "products" && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
             {isProductsLoading ? (
-              <div className="col-span-full text-center py-20 text-muted-foreground italic">Finding local products...</div>
+              <>{Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <Skeleton className="aspect-square w-full rounded-[32px]" />
+                  <Skeleton className="h-4 w-3/4 rounded-full" />
+                  <Skeleton className="h-3 w-1/2 rounded-full" />
+                </div>
+              ))}</>
             ) : filteredProducts.length === 0 ? (
               <div className="col-span-full text-center py-20 text-muted-foreground italic">No products found.</div>
             ) : filteredProducts.map((product) => (
@@ -455,19 +473,16 @@ export default function HomePage() {
                     <Link href={`/book/${product.id}`}>
                       <h3 className="text-lg md:text-xl font-normal font-headline tracking-[-0.05em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
                     </Link>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                       <span className="text-xs font-bold">{product.rating || 5.0}</span>
+                      <span className="mx-1 text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground font-medium">{(product.sold ?? product.totalSales ?? 0)} Sold</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex -space-x-3">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-7 w-7 rounded-full border-2 border-white overflow-hidden bg-muted">
-                          <img src={`https://i.pravatar.cc/100?u=${product.id}${i}`} alt="Buyer" className="h-full w-full object-cover" />
-                        </div>
-                      ))}
-                      <div className="h-7 w-7 rounded-full border-2 border-white bg-primary/10 text-primary text-[8px] flex items-center justify-center font-bold">15+</div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                      <span>{product.city || product.municipality || "Unknown Location"}</span>
                     </div>
                     <p className="text-primary font-bold text-base">
                       {product.isAuction
@@ -489,7 +504,20 @@ export default function HomePage() {
         {activeTab === "stores" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isStoresLoading ? (
-              <div className="col-span-full text-center py-20 text-muted-foreground italic">Finding local stores...</div>
+              <>{Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-[32px] overflow-hidden border border-black/[0.02] bg-[#f8f8f8]">
+                  <Skeleton className="h-32 w-full" />
+                  <div className="p-5 -mt-8 relative">
+                    <Skeleton className="h-16 w-16 rounded-full mb-3" />
+                    <Skeleton className="h-5 w-40 rounded-full mb-2" />
+                    <Skeleton className="h-3 w-full rounded-full mb-2" />
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-3 w-12 rounded-full" />
+                      <Skeleton className="h-3 w-24 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}</>
             ) : filteredStores.length === 0 ? (
               <div className="col-span-full text-center py-20 text-muted-foreground italic">No stores found. Be the first to open a store!</div>
             ) : filteredStores.map((store) => (
@@ -533,7 +561,13 @@ export default function HomePage() {
         {activeTab === "deals" && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
             {isProductsLoading ? (
-              <div className="col-span-full text-center py-20 text-muted-foreground italic">Finding deals...</div>
+              <>{Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <Skeleton className="aspect-square w-full rounded-[32px]" />
+                  <Skeleton className="h-4 w-3/4 rounded-full" />
+                  <Skeleton className="h-3 w-1/2 rounded-full" />
+                </div>
+              ))}</>
             ) : dealProducts.length === 0 ? (
               <div className="col-span-full text-center py-20 text-muted-foreground italic">No deals available right now. Check back soon!</div>
             ) : dealProducts.map((product) => (
@@ -603,6 +637,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
