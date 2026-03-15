@@ -1,10 +1,19 @@
 // Utility to send an automated message to the seller when an order is placed
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      supabaseUrl || 'https://placeholder.supabase.co',
+      supabaseAnonKey || 'placeholder-key'
+    );
+  }
+  return _supabase;
+}
 
 interface SendOrderAutoMessageParams {
   buyerId: string;
@@ -16,6 +25,7 @@ interface SendOrderAutoMessageParams {
 export async function sendOrderAutoMessage({ buyerId, sellerId, storeName, orderId }: SendOrderAutoMessageParams) {
   if (!buyerId || !sellerId || !storeName || !orderId) return;
   // Find or create conversation between buyer and seller
+  const supabase = getSupabase();
   let { data: conversation } = await supabase
     .from('conversations')
     .select('*')
