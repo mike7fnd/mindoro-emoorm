@@ -65,7 +65,7 @@ export default function AdminFacilitiesPage() {
   });
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.email !== 'kioalaquer301@gmail.com')) {
+    if (!isUserLoading && (!user || user.email !== 'creationsliora@gmail.com')) {
       router.push("/");
     }
   }, [user, isUserLoading, router]);
@@ -160,7 +160,7 @@ export default function AdminFacilitiesPage() {
     }));
   };
 
-  if (isUserLoading || !user || user.email !== 'kioalaquer301@gmail.com') return null;
+  if (isUserLoading || !user || user.email !== 'creationsliora@gmail.com') return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f9f9f9]">

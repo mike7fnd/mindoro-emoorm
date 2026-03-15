@@ -41,7 +41,7 @@ const data = [
   { name: 'Jul', revenue: 95000 },
 ];
 
-const ADMIN_EMAILS = ['kioalaquer301@gmail.com', 'mikefernandex227@gmail.com', 'mikefernandez227@gmail.com'];
+const ADMIN_EMAILS = ['creationsliora@gmail.com'];
 
 export default function SellerDashboard() {
   const { user, isUserLoading } = useUser();
