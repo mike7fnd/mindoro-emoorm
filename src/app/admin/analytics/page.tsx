@@ -2,7 +2,8 @@
 
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,13 +44,13 @@ const COLORS = ["hsl(152, 60%, 40%)", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"
 export default function AdminAnalyticsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const ordersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -75,7 +76,7 @@ export default function AdminAnalyticsPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const isLoading = ordersLoading || usersLoading || productsLoading || storesLoading;
 

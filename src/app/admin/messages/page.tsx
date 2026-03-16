@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ function AdminMessagesContent() {
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(
     searchParams.get("conversation") || null
   );
@@ -38,10 +39,10 @@ function AdminMessagesContent() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   // Fetch conversations
   const convConfig = useStableMemo(() => {
@@ -107,7 +108,7 @@ function AdminMessagesContent() {
     }
   };
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const filteredConversations = (conversations ?? []).filter((c: any) => {
     if (!searchQuery) return true;

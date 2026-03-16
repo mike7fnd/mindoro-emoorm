@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Shield } from "lucide-react";
 import { useUser, useSupabase } from "@/supabase";
 import { initiateEmailSignIn } from "@/supabase/auth";
-import { ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { useIsAdmin, checkEmailIsAdmin } from "@/hooks/use-is-admin";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -16,16 +16,17 @@ export default function AdminLoginPage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
   const router = useRouter();
+  const { isAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
-    if (user && !isUserLoading) {
-      if (user.email && ADMIN_EMAILS.includes(user.email)) {
+    if (!isUserLoading && !isAdminLoading && user) {
+      if (isAdmin) {
         router.push("/admin/dashboard");
       } else {
         setError("Access denied. This account does not have admin privileges.");
       }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,15 +35,17 @@ export default function AdminLoginPage() {
       return;
     }
 
-    // Pre-check if email is an admin email
-    if (!ADMIN_EMAILS.includes(email.toLowerCase().trim())) {
-      setError("Access denied. This email is not registered as an admin.");
-      return;
-    }
-
     setError("");
     setLoading(true);
     try {
+      // Pre-check if email belongs to an admin in the database
+      const emailIsAdmin = await checkEmailIsAdmin(supabase, email);
+      if (!emailIsAdmin) {
+        setError("Access denied. This email is not registered as an admin.");
+        setLoading(false);
+        return;
+      }
+
       await initiateEmailSignIn(supabase, email, password);
       // Auth state change will redirect via useEffect
     } catch (err: any) {

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,15 +45,15 @@ export default function AdminUsersPage() {
   const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const usersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -60,7 +61,7 @@ export default function AdminUsersPage() {
   }, [user, isAdmin]);
   const { data: allUsers, isLoading } = useCollection(usersConfig);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const filteredUsers = (allUsers ?? []).filter((u: any) => {
     const matchesSearch =
@@ -71,7 +72,7 @@ export default function AdminUsersPage() {
       roleFilter === "all" ||
       (roleFilter === "seller" && u.role === "seller") ||
       (roleFilter === "buyer" && (!u.role || u.role === "buyer")) ||
-      (roleFilter === "admin" && ADMIN_EMAILS.includes(u.email || ""));
+      (roleFilter === "admin" && u.role === "admin");
     return matchesSearch && matchesRole;
   });
 
@@ -187,7 +188,7 @@ export default function AdminUsersPage() {
               ) : (
                 <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                   {filteredUsers.map((u: any) => {
-                    const isAdminUser = ADMIN_EMAILS.includes(u.email || "");
+                    const isAdminUser = u.role === "admin";
                     const profilePic =
                       u.profilePictureUrl ||
                       "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";

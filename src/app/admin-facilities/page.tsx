@@ -13,6 +13,7 @@ import { Plus, Pencil, Trash2, X, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 const AMENITY_OPTIONS = [
   "Organic",
@@ -50,6 +51,7 @@ export default function AdminFacilitiesPage() {
   const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
+  const { isAdmin, isAdminLoading } = useIsAdmin();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customAmenity, setCustomAmenity] = useState("");
   const [formData, setFormData] = useState({
@@ -65,10 +67,10 @@ export default function AdminFacilitiesPage() {
   });
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.email !== 'creationsliora@gmail.com')) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
@@ -160,7 +162,7 @@ export default function AdminFacilitiesPage() {
     }));
   };
 
-  if (isUserLoading || !user || user.email !== 'creationsliora@gmail.com') return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f9f9f9]">
