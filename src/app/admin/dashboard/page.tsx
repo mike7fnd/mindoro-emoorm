@@ -108,6 +108,21 @@ export default function AdminDashboardPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
 
+  // Chart data — monthly aggregation
+  const monthlyData = React.useMemo(() => {
+    if (!allOrders) return [];
+    const months: Record<string, number> = {};
+    allOrders.forEach((o: any) => {
+      const d = new Date(o.createdAt || o.bookingDate);
+      const key = d.toLocaleString("default", { month: "short" });
+      months[key] = (months[key] || 0) + (Number(o.totalPrice) || 0);
+    });
+    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return monthOrder
+      .filter((m) => months[m] !== undefined)
+      .map((m) => ({ name: m, revenue: months[m] }));
+  }, [allOrders]);
+
   if (isAdminLoading || !user || !isAdmin) return null;
 
   const isLoading = usersLoading || ordersLoading || productsLoading || storesLoading;
@@ -159,21 +174,6 @@ export default function AdminDashboardPage() {
       positive: true,
     },
   ];
-
-  // Chart data — monthly aggregation
-  const monthlyData = React.useMemo(() => {
-    if (!allOrders) return [];
-    const months: Record<string, number> = {};
-    allOrders.forEach((o: any) => {
-      const d = new Date(o.createdAt || o.bookingDate);
-      const key = d.toLocaleString("default", { month: "short" });
-      months[key] = (months[key] || 0) + (Number(o.totalPrice) || 0);
-    });
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return monthOrder
-      .filter((m) => months[m] !== undefined)
-      .map((m) => ({ name: m, revenue: months[m] }));
-  }, [allOrders]);
 
   const chartData =
     monthlyData.length > 0

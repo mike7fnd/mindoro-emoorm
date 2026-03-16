@@ -5,6 +5,16 @@
 			"label": "git-commit-push",
 			"type": "shell",
 			"command": "cd C:\\Users\\Admin\\Documents\\BellasParadise-emoorm; git add -A; git commit -m 'Route admin users to admin dashboard on login, use DB role check in header'; git push"
+		},
+		{
+			"label": "git-fix-hooks",
+			"type": "shell",
+			"command": "git add -A && git commit -m 'Fix hooks order in admin dashboard - move early return below useMemo' && git push"
+		},
+		{
+			"label": "git-fix-hooks2",
+			"type": "shell",
+			"command": "cd C:\\Users\\Admin\\Documents\\BellasParadise-emoorm; git add -A; git commit -m 'Fix hooks order in admin dashboard - move early return below useMemo'; git push"
 		}
 	]
 }
