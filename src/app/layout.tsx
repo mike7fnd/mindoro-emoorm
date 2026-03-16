@@ -4,6 +4,7 @@ import { SupabaseProvider } from '@/supabase';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { ThemeColorMeta } from '@/components/theme-color-meta';
+import { AdminRouteGuard } from '@/components/admin-route-guard';
 
 export const metadata: Metadata = {
   title: "E-Moorm - Hyperlocal Marketplace",
@@ -52,7 +53,9 @@ export default function RootLayout({
         }}
       >
         <SupabaseProvider>
-          {children}
+          <AdminRouteGuard>
+            {children}
+          </AdminRouteGuard>
           <Toaster />
           <PWAInstallPrompt />
           <ThemeColorMeta />

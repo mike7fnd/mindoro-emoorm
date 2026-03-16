@@ -39,7 +39,7 @@ function HeaderContent() {
   const hasActiveChat = searchParams.get('id') || searchParams.get('user');
 
   // Pages that have a corresponding bottom nav item
-  const bottomNavPages = ['/', '/cart', '/notifications', '/messages', '/profile', '/admin/dashboard', '/admin/orders', '/admin/messages'];
+  const bottomNavPages = ['/', '/cart', '/notifications', '/messages', '/profile', '/admin/dashboard', '/admin/orders', '/admin/messages', '/admin/settings'];
   const isOnBottomNavPage = bottomNavPages.some(p => p === '/' ? pathname === '/' : pathname.startsWith(p));
 
   const shouldHideBottomNav = isBookDetailPage || (isMessagePage && hasActiveChat) || !isOnBottomNavPage;
@@ -216,7 +216,11 @@ function HeaderContent() {
                         <p className="text-xs font-bold text-muted-foreground tracking-tight">Account</p>
                         <p className="text-sm font-medium truncate">{user.email}</p>
                       </div>
-                      <Link href="/profile" className="block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Profile</Link>
+                      {isAdmin ? (
+                        <Link href="/admin/settings" className="block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Settings</Link>
+                      ) : (
+                        <Link href="/profile" className="block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Profile</Link>
+                      )}
                       {isAdmin && <Link href="/admin/dashboard" className="block px-5 py-3 text-sm font-bold text-primary hover:bg-black/5">Admin Panel</Link>}
                       <button onClick={handleLogout} className="w-full text-left block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Logout</button>
                     </div>
@@ -288,15 +292,27 @@ function HeaderContent() {
               </>
             )}
             {user ? (
-              <Link href="/profile" className={cn("mobile-nav-item", isLinkActive("/profile") && "active")}>
-                <div className={cn(
-                  "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
-                  isLinkActive("/profile") ? "border-primary scale-110 shadow-lg" : "border-muted"
-                )}>
-                  <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" unoptimized />
-                </div>
-                <span>Profile</span>
-              </Link>
+              isAdmin ? (
+                <Link href="/admin/settings" className={cn("mobile-nav-item", isLinkActive("/admin/settings") && "active")}>
+                  <div className={cn(
+                    "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
+                    isLinkActive("/admin/settings") ? "border-primary scale-110 shadow-lg" : "border-muted"
+                  )}>
+                    <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" unoptimized />
+                  </div>
+                  <span>Settings</span>
+                </Link>
+              ) : (
+                <Link href="/profile" className={cn("mobile-nav-item", isLinkActive("/profile") && "active")}>
+                  <div className={cn(
+                    "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
+                    isLinkActive("/profile") ? "border-primary scale-110 shadow-lg" : "border-muted"
+                  )}>
+                    <Image src={profilePic} alt="PFP" width={32} height={32} className="object-cover h-full w-full" unoptimized />
+                  </div>
+                  <span>Profile</span>
+                </Link>
+              )
             ) : (
               <Link href="/login" className={cn("mobile-nav-item", isLinkActive("/login") && "active")}>
                 <div className="mobile-nav-icon">
@@ -321,10 +337,10 @@ function HeaderContent() {
         <nav className="flex flex-col gap-3 mb-8">
           {isAdmin ? (
             <>
-              <Link href="/admin-dashboard" className={cn("mobile-menu-link", isLinkActive("/admin-dashboard") && "active")}><LayoutDashboard className="h-5 w-5 mr-2" strokeWidth={1.5} /> Dashboard</Link>
-              <Link href="/admin-bookings" className={cn("mobile-menu-link", isLinkActive("/admin-bookings") && "active")}><ShoppingCart className="h-5 w-5 mr-2" strokeWidth={1.5} /> Orders</Link>
-              <Link href="/admin-facilities" className={cn("mobile-menu-link", isLinkActive("/admin-facilities") && "active")}><Plus className="h-5 w-5 mr-2" strokeWidth={1.5} /> Products</Link>
-              <Link href="/admin-messages" className={cn("mobile-menu-link", isLinkActive("/admin-messages") && "active")}><MessageSquare className="h-5 w-5 mr-2" strokeWidth={1.5} /> Messages</Link>
+              <Link href="/admin/dashboard" className={cn("mobile-menu-link", isLinkActive("/admin/dashboard") && "active")}><LayoutDashboard className="h-5 w-5 mr-2" strokeWidth={1.5} /> Dashboard</Link>
+              <Link href="/admin/orders" className={cn("mobile-menu-link", isLinkActive("/admin/orders") && "active")}><ShoppingCart className="h-5 w-5 mr-2" strokeWidth={1.5} /> Orders</Link>
+              <Link href="/admin/products" className={cn("mobile-menu-link", isLinkActive("/admin/products") && "active")}><Plus className="h-5 w-5 mr-2" strokeWidth={1.5} /> Products</Link>
+              <Link href="/admin/messages" className={cn("mobile-menu-link", isLinkActive("/admin/messages") && "active")}><MessageSquare className="h-5 w-5 mr-2" strokeWidth={1.5} /> Messages</Link>
             </>
           ) : (
             <>
@@ -338,11 +354,11 @@ function HeaderContent() {
         </nav>
         {user ? (
           <div className="pt-6 border-t border-black/10">
-            <Link href="/profile" className="mobile-menu-link">
+            <Link href={isAdmin ? "/admin/settings" : "/profile"} className="mobile-menu-link">
               <div className="h-6 w-6 rounded-full overflow-hidden mr-2">
                 <Image src={profilePic} alt="PFP" width={24} height={24} className="object-cover h-full w-full" unoptimized />
               </div>
-              Profile
+              {isAdmin ? "Settings" : "Profile"}
             </Link>
             <button onClick={handleLogout} className="w-full text-left mobile-menu-link text-destructive"><LogOut className="h-5 w-5 mr-2" strokeWidth={1.5} /> Logout</button>
           </div>
