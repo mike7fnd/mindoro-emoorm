@@ -30,6 +30,7 @@ import {
 import Link from "next/link";
 import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import { cn } from "@/lib/utils";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 const data = [
   { name: 'Jan', revenue: 45000 },
@@ -41,20 +42,17 @@ const data = [
   { name: 'Jul', revenue: 95000 },
 ];
 
-const ADMIN_EMAILS = ['creationsliora@gmail.com'];
-
 export default function SellerDashboard() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
   const router = useRouter();
-
-  const isResortAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin: isResortAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isResortAdmin)) {
+    if (!isAdminLoading && !isResortAdmin) {
       router.push("/");
     }
-  }, [user, isUserLoading, router, isResortAdmin]);
+  }, [isResortAdmin, isAdminLoading, router]);
 
   const ordersQuery = useStableMemo(() => {
     if (!user || !isResortAdmin) return null;

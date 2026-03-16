@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,14 +29,14 @@ import { cn } from "@/lib/utils";
 export default function AdminReportsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
   const [timeRange, setTimeRange] = useState<string>("all");
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const ordersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -61,7 +62,7 @@ export default function AdminReportsPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const isLoading = ordersLoading || usersLoading || productsLoading || storesLoading;
 

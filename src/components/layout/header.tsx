@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useUser, useSupabase, useDoc, useStableMemo, useSupabaseAuth } from "@/supabase";
 import Image from "next/image";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 function HeaderContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -28,17 +29,17 @@ function HeaderContent() {
   const searchParams = useSearchParams();
   const { user, isUserLoading, auth } = useSupabaseAuth();
   const supabase = useSupabase();
+  const { isAdmin } = useIsAdmin();
 
-  const isAdmin = user?.email === 'kioalaquer301@gmail.com';
   const isBookDetailPage = pathname?.startsWith('/book/') && pathname !== '/book';
   const isSeller = isAdmin; // Sellers use admin pages
 
   // Hide bottom nav when "inside" a chat on mobile
-  const isMessagePage = pathname === '/messages' || pathname === '/admin-messages';
+  const isMessagePage = pathname === '/messages' || pathname === '/admin/messages';
   const hasActiveChat = searchParams.get('id') || searchParams.get('user');
 
   // Pages that have a corresponding bottom nav item
-  const bottomNavPages = ['/', '/cart', '/notifications', '/messages', '/profile', '/admin-dashboard', '/admin-bookings', '/admin-messages'];
+  const bottomNavPages = ['/', '/cart', '/notifications', '/messages', '/profile', '/admin/dashboard', '/admin/orders', '/admin/messages'];
   const isOnBottomNavPage = bottomNavPages.some(p => p === '/' ? pathname === '/' : pathname.startsWith(p));
 
   const shouldHideBottomNav = isBookDetailPage || (isMessagePage && hasActiveChat) || !isOnBottomNavPage;
@@ -169,10 +170,10 @@ function HeaderContent() {
         <nav className="navlinks">
           {isAdmin ? (
             <>
-              <Link href="/admin-dashboard" className={cn(isLinkActive("/admin-dashboard") && "active")}>Dashboard</Link>
-              <Link href="/admin-bookings" className={cn(isLinkActive("/admin-bookings") && "active")}>Orders</Link>
-              <Link href="/admin-facilities" className={cn(isLinkActive("/admin-facilities") && "active")}>Products</Link>
-              <Link href="/admin-messages" className={cn(isLinkActive("/admin-messages") && "active")}>Messages</Link>
+              <Link href="/admin/dashboard" className={cn(isLinkActive("/admin/dashboard") && "active")}>Dashboard</Link>
+              <Link href="/admin/orders" className={cn(isLinkActive("/admin/orders") && "active")}>Orders</Link>
+              <Link href="/admin/products" className={cn(isLinkActive("/admin/products") && "active")}>Products</Link>
+              <Link href="/admin/messages" className={cn(isLinkActive("/admin/messages") && "active")}>Messages</Link>
             </>
           ) : (
             <>
@@ -216,7 +217,7 @@ function HeaderContent() {
                         <p className="text-sm font-medium truncate">{user.email}</p>
                       </div>
                       <Link href="/profile" className="block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Profile</Link>
-                      {isAdmin && <Link href="/admin-dashboard" className="block px-5 py-3 text-sm font-bold text-primary hover:bg-black/5">Seller panel</Link>}
+                      {isAdmin && <Link href="/admin/dashboard" className="block px-5 py-3 text-sm font-bold text-primary hover:bg-black/5">Admin Panel</Link>}
                       <button onClick={handleLogout} className="w-full text-left block px-5 py-3 text-sm text-muted-foreground hover:bg-black/5 hover:text-primary transition-colors">Logout</button>
                     </div>
                   )}
@@ -237,21 +238,21 @@ function HeaderContent() {
           <div className="mobile-nav-container">
             {isAdmin ? (
               <>
-                <Link href="/admin-dashboard" className={cn("mobile-nav-item", isLinkActive("/admin-dashboard") && "active")}>
+                <Link href="/admin/dashboard" className={cn("mobile-nav-item", isLinkActive("/admin/dashboard") && "active")}>
                   <div className="mobile-nav-icon">
-                    <LayoutDashboard className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-dashboard") ? "currentColor" : "none"} />
+                    <LayoutDashboard className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin/dashboard") ? "currentColor" : "none"} />
                   </div>
                   <span>Dashboard</span>
                 </Link>
-                <Link href="/admin-bookings" className={cn("mobile-nav-item", isLinkActive("/admin-bookings") && "active")}>
+                <Link href="/admin/orders" className={cn("mobile-nav-item", isLinkActive("/admin/orders") && "active")}>
                   <div className="mobile-nav-icon">
-                    <ShoppingCart className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-bookings") ? "currentColor" : "none"} />
+                    <ShoppingCart className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin/orders") ? "currentColor" : "none"} />
                   </div>
                   <span>Orders</span>
                 </Link>
-                <Link href="/admin-messages" className={cn("mobile-nav-item", isLinkActive("/admin-messages") && "active")}>
+                <Link href="/admin/messages" className={cn("mobile-nav-item", isLinkActive("/admin/messages") && "active")}>
                   <div className="mobile-nav-icon">
-                    <MessageSquare className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin-messages") ? "currentColor" : "none"} />
+                    <MessageSquare className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/admin/messages") ? "currentColor" : "none"} />
                   </div>
                   <span>Inbox</span>
                 </Link>

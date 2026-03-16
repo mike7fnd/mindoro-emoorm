@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useUser, useSupabase } from "@/supabase";
 import { initiateEmailSignIn } from "@/supabase/auth";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,12 +16,17 @@ export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
   const router = useRouter();
+  const { isAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
-    if (user && !isUserLoading) {
-      router.push("/profile");
+    if (user && !isUserLoading && !isAdminLoading) {
+      if (isAdmin) {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/profile");
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

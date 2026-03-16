@@ -2,7 +2,8 @@
 
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,15 +68,14 @@ const statusConfig: Record<string, { icon: React.ElementType; className: string 
 };
 
 export default function AdminDashboardPage() {
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading, user } = useIsAdmin();
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   // Fetch all users
   const usersConfig = useStableMemo(() => {
@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !user || !isAdmin) return null;
 
   const isLoading = usersLoading || ordersLoading || productsLoading || storesLoading;
 

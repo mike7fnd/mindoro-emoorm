@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 interface UserProfile {
   id: string;
@@ -56,6 +57,7 @@ function AdminMessagesContent() {
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isAdmin, isAdminLoading } = useIsAdmin();
 
   const selectedUserId = searchParams.get('user');
   const [messageInput, setMessageInput] = useState("");
@@ -70,10 +72,10 @@ function AdminMessagesContent() {
   }, []);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.email !== 'creationsliora@gmail.com')) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/");
     }
-  }, [user, isUserLoading, router]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const usersQuery = useStableMemo(() => {
     return { table: "users" };
@@ -81,23 +83,23 @@ function AdminMessagesContent() {
   const { data: profiles } = useCollection<UserProfile>(usersQuery);
 
   const allConversationsQuery = useStableMemo(() => {
-    if (!user || user.email !== 'creationsliora@gmail.com') return null;
+    if (!isAdmin) return null;
     return {
       table: "conversations",
       order: { column: "updatedAt", ascending: false }
     };
-  }, [user]);
+  }, [isAdmin]);
 
   const { data: conversations } = useCollection(allConversationsQuery);
 
   const messagesQuery = useStableMemo(() => {
-    if (!user || user.email !== 'creationsliora@gmail.com' || !selectedUserId) return null;
+    if (!isAdmin || !selectedUserId) return null;
     return {
       table: "messages",
       filters: [{ column: "conversationId", op: "eq" as const, value: "support" }],
       order: { column: "createdAt", ascending: true }
     };
-  }, [user, selectedUserId]);
+  }, [isAdmin, selectedUserId]);
 
   const { data: messages } = useCollection<Message>(messagesQuery);
 
@@ -135,7 +137,7 @@ function AdminMessagesContent() {
     return profiles?.find(p => p.id === id);
   };
 
-  if (isUserLoading || !user || user.email !== 'creationsliora@gmail.com') return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const showList = !isMobileView || !selectedUserId;
   const showChat = !isMobileView || selectedUserId;

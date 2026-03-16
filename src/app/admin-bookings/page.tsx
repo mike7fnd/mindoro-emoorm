@@ -12,22 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Check, X, Calendar, User, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-
-const ADMIN_EMAILS = ['creationsliora@gmail.com'];
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export default function AdminBookingsPage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
-
-  const isResortAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin: isResortAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isResortAdmin)) {
+    if (!isAdminLoading && !isResortAdmin) {
       router.push("/");
     }
-  }, [user, isUserLoading, router, isResortAdmin]);
+  }, [isResortAdmin, isAdminLoading, router]);
 
   const bookingsQuery = useStableMemo(() => {
     if (!user || !isResortAdmin) return null;

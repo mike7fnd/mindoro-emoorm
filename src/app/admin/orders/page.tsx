@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,15 +51,15 @@ export default function AdminOrdersPage() {
   const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   const ordersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -69,7 +70,7 @@ export default function AdminOrdersPage() {
   }, [user, isAdmin]);
   const { data: allOrders, isLoading } = useCollection(ordersConfig);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const filteredOrders = (allOrders ?? []).filter((o: any) => {
     const matchesSearch =

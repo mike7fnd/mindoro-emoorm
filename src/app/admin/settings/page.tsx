@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminLayout, ADMIN_EMAILS } from "@/components/layout/admin-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,7 @@ export default function AdminSettingsPage() {
   const { auth } = useSupabaseAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
+  const { isAdmin, isAdminLoading } = useIsAdmin();
 
   // Settings state
   const [platformName, setPlatformName] = useState("E-Moorm");
@@ -56,10 +57,10 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || !isAdmin)) {
+    if (!isAdminLoading && !isAdmin) {
       router.push("/admin");
     }
-  }, [user, isUserLoading, router, isAdmin]);
+  }, [isAdmin, isAdminLoading, router]);
 
   // Fetch admin profile
   const profileRef = useStableMemo(() => {
@@ -68,7 +69,7 @@ export default function AdminSettingsPage() {
   }, [user]);
   const { data: profile, isLoading: profileLoading } = useDoc(profileRef);
 
-  if (isUserLoading || !user || !isAdmin) return null;
+  if (isAdminLoading || !isAdmin) return null;
 
   const profilePic =
     (profile as any)?.profilePictureUrl ||
@@ -264,30 +265,28 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Admin Emails */}
+        {/* Admin Users */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8">
             <h2 className="text-xl font-normal font-headline tracking-[-0.05em] flex items-center gap-2 mb-6">
               <Users className="h-5 w-5 text-primary" />
-              Admin Emails
+              Admin Users
             </h2>
             <div className="space-y-3">
-              {ADMIN_EMAILS.map((email) => (
-                <div key={email} className="flex items-center justify-between p-3 rounded-2xl bg-[#f8f8f8] dark:bg-white/[0.05]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10">
-                      <Mail className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="text-sm">{email}</span>
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-[#f8f8f8] dark:bg-white/[0.05]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-primary/10">
+                    <Mail className="h-4 w-4 text-primary" />
                   </div>
-                  <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-3">
-                    Admin
-                  </Badge>
+                  <span className="text-sm">{user?.email || "Admin"}</span>
                 </div>
-              ))}
+                <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-3">
+                  Admin
+                </Badge>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              To add or remove admin access, update the ADMIN_EMAILS array in the codebase.
+              Admin access is managed via the database. Set a user&apos;s role to &quot;admin&quot; in the users table.
             </p>
           </CardContent>
         </Card>
