@@ -1,8 +1,8 @@
 // Utility to send an automated message to the seller when an order is placed
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ypnoqmkjpvqiddfiapys.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlwbm9xbWtqcHZxaWRkZmlhcHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxNjQ0NzEsImV4cCI6MjA4Nzc0MDQ3MX0.Ucd2KGBt8pRiQlaW1-vh_fpzNiMGhmZKjns2rL0sH4k';
 
 let _supabase: SupabaseClient | null = null;
 function getSupabase() {

@@ -25,6 +25,11 @@
 			"label": "check-env",
 			"type": "shell",
 			"command": "if (Test-Path '.env.local') { Get-Content '.env.local' } else { Write-Host 'NO .env.local FOUND' }; if (Test-Path '.env') { Get-Content '.env' } else { Write-Host 'NO .env FOUND' }"
+		},
+		{
+			"label": "deploy-fix",
+			"type": "shell",
+			"command": "git add -A; git commit -m 'Fix: hardcode Supabase public URL and anon key as fallbacks for Vercel deployment'; git push"
 		}
 	]
 }
