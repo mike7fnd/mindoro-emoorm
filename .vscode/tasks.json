@@ -20,6 +20,11 @@
 			"label": "git-commit-push",
 			"type": "shell",
 			"command": "git add -A; git commit -m 'Restrict admin accounts to admin pages only with AdminRouteGuard'; git push"
+		},
+		{
+			"label": "check-env",
+			"type": "shell",
+			"command": "if (Test-Path '.env.local') { Get-Content '.env.local' } else { Write-Host 'NO .env.local FOUND' }; if (Test-Path '.env') { Get-Content '.env' } else { Write-Host 'NO .env FOUND' }"
 		}
 	]
 }

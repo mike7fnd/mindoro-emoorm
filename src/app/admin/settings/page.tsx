@@ -155,8 +155,8 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div>
-                <p className="text-lg font-medium">{(profile as any)?.name || user.displayName || "Admin"}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <p className="text-lg font-medium">{(profile as any)?.name || user?.displayName || "Admin"}</p>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
                 <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-3 py-0.5 mt-1">
                   Super Admin
                 </Badge>
