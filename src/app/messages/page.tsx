@@ -33,7 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FirstTimeIntro } from "@/components/first-time-intro";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Conversation {
   id: string;
@@ -187,7 +187,33 @@ function MessagesContent() {
   const showList = !isMobileView || !activeConversationId;
   const showChat = !isMobileView || activeConversationId;
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-grow container mx-auto p-0 md:p-8 pt-0 md:pt-32 pb-0 max-w-7xl">
+        <div className="flex flex-col lg:flex-row md:h-[80vh] md:rounded-[25px] border border-black/[0.05] overflow-hidden bg-white shadow-2xl">
+          <div className="w-full lg:w-80 border-r border-black/[0.05] p-4 space-y-3">
+            <Skeleton className="h-10 w-full rounded-full mb-4" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3">
+                <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-28 rounded-full" />
+                  <Skeleton className="h-3 w-full rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 p-6 flex flex-col items-center justify-center">
+            <Skeleton className="h-16 w-16 rounded-full mb-4" />
+            <Skeleton className="h-5 w-48 rounded-full mb-2" />
+            <Skeleton className="h-4 w-64 rounded-full" />
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -400,12 +426,6 @@ function MessagesContent() {
         </div>
       </main>
 
-      <FirstTimeIntro
-        storageKey="messages"
-        title="Messages"
-        description="Chat directly with sellers, ask questions, and negotiate. All your conversations stay organized here."
-        icon={<MessagesSquare className="h-7 w-7" />}
-      />
       {!activeConversationId && <Footer />}
     </div>
   );

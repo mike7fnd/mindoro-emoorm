@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FirstTimeIntro } from "@/components/first-time-intro";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Notification {
   id: string;
@@ -46,7 +46,29 @@ export default function NotificationsPage() {
 
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-1 w-full max-w-2xl mx-auto pt-0 md:pt-32 pb-24">
+        <div className="p-6 md:p-8">
+          <Skeleton className="h-7 w-40 rounded-full mb-6" />
+        </div>
+        <div className="px-6 md:px-8 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-4 p-4 rounded-[20px] border border-black/[0.02]">
+              <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4 rounded-full" />
+                <Skeleton className="h-3 w-full rounded-full" />
+                <Skeleton className="h-3 w-24 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -127,12 +149,6 @@ export default function NotificationsPage() {
           )}
         </div>
       </main>
-      <FirstTimeIntro
-        storageKey="notifications"
-        title="Notifications"
-        description="Stay updated with order confirmations, booking reminders, promotions, and important announcements."
-        icon={<Bell className="h-7 w-7" />}
-      />
       <Footer />
     </div>
   );

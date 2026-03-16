@@ -70,7 +70,7 @@ function AdminMessagesContent() {
   }, []);
 
   useEffect(() => {
-    if (!isUserLoading && (!user || user.email !== 'kioalaquer301@gmail.com')) {
+    if (!isUserLoading && (!user || user.email !== 'creationsliora@gmail.com')) {
       router.push("/");
     }
   }, [user, isUserLoading, router]);
@@ -81,7 +81,7 @@ function AdminMessagesContent() {
   const { data: profiles } = useCollection<UserProfile>(usersQuery);
 
   const allConversationsQuery = useStableMemo(() => {
-    if (!user || user.email !== 'kioalaquer301@gmail.com') return null;
+    if (!user || user.email !== 'creationsliora@gmail.com') return null;
     return {
       table: "conversations",
       order: { column: "updatedAt", ascending: false }
@@ -91,7 +91,7 @@ function AdminMessagesContent() {
   const { data: conversations } = useCollection(allConversationsQuery);
 
   const messagesQuery = useStableMemo(() => {
-    if (!user || user.email !== 'kioalaquer301@gmail.com' || !selectedUserId) return null;
+    if (!user || user.email !== 'creationsliora@gmail.com' || !selectedUserId) return null;
     return {
       table: "messages",
       filters: [{ column: "conversationId", op: "eq" as const, value: "support" }],
@@ -135,7 +135,7 @@ function AdminMessagesContent() {
     return profiles?.find(p => p.id === id);
   };
 
-  if (isUserLoading || !user || user.email !== 'kioalaquer301@gmail.com') return null;
+  if (isUserLoading || !user || user.email !== 'creationsliora@gmail.com') return null;
 
   const showList = !isMobileView || !selectedUserId;
   const showChat = !isMobileView || selectedUserId;

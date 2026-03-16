@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSupabaseAuth, useStableMemo, useDoc, useCollection } from "@/supabase";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,9 +150,30 @@ export default function SellerDashboardPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-6 md:p-8">
+                  <Skeleton className="h-12 w-12 rounded-2xl mb-6" />
+                  <Skeleton className="h-3 w-20 rounded-full mb-2" />
+                  <Skeleton className="h-7 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 rounded-[32px] border border-black/[0.02] bg-white p-6">
+              <Skeleton className="h-5 w-36 rounded-full mb-4" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 py-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4 rounded-full" />
+                    <Skeleton className="h-3 w-1/2 rounded-full" />
+                  </div>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             {/* Stats Grid */}

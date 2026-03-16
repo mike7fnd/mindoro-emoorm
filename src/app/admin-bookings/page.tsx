@@ -13,7 +13,7 @@ import { Check, X, Calendar, User, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_EMAILS = ['kioalaquer301@gmail.com', 'mikefernandex227@gmail.com', 'mikefernandez227@gmail.com'];
+const ADMIN_EMAILS = ['creationsliora@gmail.com'];
 
 export default function AdminBookingsPage() {
   const { user, isUserLoading } = useUser();

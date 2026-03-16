@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { FirstTimeIntro } from "@/components/first-time-intro";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -89,10 +89,29 @@ export default function SettingsPage() {
   }, [profile]);
 
   useEffect(() => {
+    // Detect saved theme or system preference
     const savedTheme = localStorage.getItem("theme");
-    const isDark = savedTheme === "dark";
+    let isDark = false;
+    if (savedTheme === "dark") {
+      isDark = true;
+    } else if (savedTheme === "light") {
+      isDark = false;
+    } else {
+      // No saved theme, use system preference
+      isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
     setIsDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem("theme")) {
+        setIsDarkMode(e.matches);
+        document.documentElement.classList.toggle("dark", e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
 
     fetch('https://psgc.gitlab.io/api/provinces.json')
       .then(res => res.json())
@@ -100,6 +119,10 @@ export default function SettingsPage() {
         setProvinces(data.sort((a: any, b: any) => a.name.localeCompare(b.name)));
       })
       .catch(err => console.error("Error loading provinces:", err));
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
   }, []);
 
   const handleDarkModeToggle = (checked: boolean) => {
@@ -132,7 +155,31 @@ export default function SettingsPage() {
     }
   };
 
-  if (isUserLoading) return null;
+  if (isUserLoading) return (
+    <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
+      <Header />
+      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-2xl">
+        <div className="mt-8 md:mt-0 mb-8">
+          <Skeleton className="h-7 w-32 rounded-full mb-2" />
+          <Skeleton className="h-4 w-56 rounded-full" />
+        </div>
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-6">
+              <Skeleton className="h-3 w-24 rounded-full mb-4" />
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="flex items-center justify-between py-4">
+                  <Skeleton className="h-4 w-28 rounded-full" />
+                  <Skeleton className="h-4 w-32 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!user) {
     if (typeof window !== "undefined") router.push("/login");
     return null;
@@ -329,12 +376,6 @@ export default function SettingsPage() {
             </div>
           </main>
 
-          <FirstTimeIntro
-            storageKey="settings"
-            title="Settings"
-            description="Customize your experience. Update your personal info, notification preferences, and account security."
-            icon={<Shield className="h-7 w-7" />}
-          />
           <div className="md:hidden">
             <Footer />
           </div>

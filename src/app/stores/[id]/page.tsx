@@ -10,6 +10,7 @@ import { useDoc, useCollection, useStableMemo, useUser, useSupabase } from "@/su
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StoreData {
   id: string;
@@ -79,7 +80,37 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  if (storeLoading) return null;
+  if (storeLoading) return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <Header />
+      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-5xl">
+        <div className="relative rounded-[32px] overflow-hidden mb-8">
+          <Skeleton className="h-48 md:h-64 w-full" />
+          <div className="p-6 -mt-12 relative">
+            <Skeleton className="h-20 w-20 rounded-full mb-4" />
+            <Skeleton className="h-6 w-48 rounded-full mb-2" />
+            <Skeleton className="h-4 w-72 rounded-full mb-4" />
+            <div className="flex gap-4">
+              <Skeleton className="h-4 w-16 rounded-full" />
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-4 w-20 rounded-full" />
+            </div>
+          </div>
+        </div>
+        <Skeleton className="h-6 w-32 rounded-full mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <Skeleton className="aspect-square w-full rounded-[25px]" />
+              <Skeleton className="h-4 w-3/4 rounded-full" />
+              <Skeleton className="h-3 w-1/2 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
   if (!store) return (
     <div className="flex min-h-screen flex-col bg-white">
       <Header />
@@ -160,7 +191,13 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
         <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-6">Products</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
           {productsLoading ? (
-            <div className="col-span-full text-center py-20 text-muted-foreground italic">Loading products...</div>
+            <>{Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <Skeleton className="aspect-square w-full rounded-[25px]" />
+                <Skeleton className="h-4 w-3/4 rounded-full" />
+                <Skeleton className="h-3 w-1/2 rounded-full" />
+              </div>
+            ))}</>
           ) : !products || products.length === 0 ? (
             <div className="col-span-full text-center py-20 text-muted-foreground italic">This store hasn&apos;t listed any products yet.</div>
           ) : products.map((product) => (

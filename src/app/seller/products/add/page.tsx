@@ -140,6 +140,7 @@ function AddProductPageInner() {
       status: "Available",
       rating: 5.0,
       type: form.category || "General",
+      sold: isEditing && existingProduct && typeof existingProduct.sold === 'number' ? existingProduct.sold : 0,
       updatedAt: new Date().toISOString(),
     };
 

@@ -42,7 +42,15 @@ export default function RootLayout({
           `
         }} />
       </head>
-      <body className="font-body antialiased bg-white text-foreground dark:bg-[#050505] transition-colors duration-300">
+      <body
+        className="font-body antialiased bg-white text-foreground dark:bg-[#050505] transition-colors duration-300"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          WebkitPaddingTop: 'env(safe-area-inset-top)',
+          WebkitPaddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+      >
         <SupabaseProvider>
           {children}
           <Toaster />
