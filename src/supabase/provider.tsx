@@ -47,6 +47,15 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
+        // If refresh token is invalid/expired, sign out to clear stale tokens
+        if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+          console.warn('Invalid refresh token detected, signing out to clear stale session.');
+          supabase.auth.signOut().then(() => {
+            setUser(null);
+            setIsUserLoading(false);
+          });
+          return;
+        }
         setUserError(error);
       } else {
         setUser(mapUser(session?.user ?? null));
@@ -55,9 +64,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapUser(session?.user ?? null));
-      setIsUserLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        setUser(mapUser(session?.user ?? null));
+        setIsUserLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();

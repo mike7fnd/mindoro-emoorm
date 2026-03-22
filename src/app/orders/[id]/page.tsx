@@ -22,6 +22,8 @@ import {
   ShoppingBag,
   Clock,
   ArrowLeft,
+  Banknote,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -221,13 +223,19 @@ export default function OrderDetailsPage({
           {/* Status banner */}
           <div
             className={cn(
-              "rounded-[20px] p-5 border flex items-center justify-between",
+              "rounded-[32px] p-5 border flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.04)]",
               statusColor[order.status] || "bg-gray-50 text-gray-700 border-gray-200"
             )}
           >
             <div className="flex items-center gap-3">
               {order.status === "Completed" ? (
                 <CheckCircle2 className="h-6 w-6" />
+              ) : order.status === "Cancelled" ? (
+                <XCircle className="h-6 w-6" />
+              ) : order.status === "To Receive" ? (
+                <Truck className="h-6 w-6" />
+              ) : order.status === "To Ship" ? (
+                <Package className="h-6 w-6" />
               ) : (
                 <Clock className="h-6 w-6" />
               )}
@@ -260,13 +268,13 @@ export default function OrderDetailsPage({
           </div>
 
           {/* Product info */}
-          <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+          <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
             <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
               <ShoppingBag className="h-4 w-4 text-primary" /> Product
             </h3>
             <div className="flex gap-4">
-              {product?.imageUrl && (
-                <div className="h-20 w-20 rounded-[14px] overflow-hidden shrink-0 border border-black/[0.04]">
+              <div className="h-20 w-20 rounded-2xl overflow-hidden shrink-0 border border-black/[0.04] bg-gray-100">
+                {product?.imageUrl ? (
                   <Image
                     src={product.imageUrl}
                     alt={product.name || "Product"}
@@ -274,8 +282,12 @@ export default function OrderDetailsPage({
                     height={80}
                     className="object-cover h-full w-full"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="h-6 w-6 text-muted-foreground/40" />
+                  </div>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm line-clamp-2">
                   {product?.name || "Product"}
@@ -293,7 +305,7 @@ export default function OrderDetailsPage({
           {/* Order details grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Payment */}
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-primary" /> Payment
               </h3>
@@ -308,9 +320,9 @@ export default function OrderDetailsPage({
             </div>
 
             {/* Fulfillment */}
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                <Truck className="h-4 w-4 text-primary" /> Fulfillment
+                {order.fulfillmentMethod === "pickup" ? <Package className="h-4 w-4 text-primary" /> : <Truck className="h-4 w-4 text-primary" />} Fulfillment
               </h3>
               <p className="text-sm capitalize">
                 {order.fulfillmentMethod || "—"}
@@ -318,7 +330,7 @@ export default function OrderDetailsPage({
             </div>
 
             {/* Shipping address */}
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" /> Shipping Address
               </h3>
@@ -328,7 +340,7 @@ export default function OrderDetailsPage({
             </div>
 
             {/* Date */}
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" /> Order Date
               </h3>
@@ -348,16 +360,21 @@ export default function OrderDetailsPage({
 
           {/* Buyer info (visible to seller) */}
           {isSeller && buyer && (
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Buyer
               </h3>
               <p className="text-sm font-medium">
-                {buyer.firstName} {buyer.lastName}
+                {buyer.displayName || buyer.name || `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() || '—'}
               </p>
               {buyer.mobile && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {buyer.mobile}
+                </p>
+              )}
+              {buyer.email && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {buyer.email}
                 </p>
               )}
             </div>
@@ -365,9 +382,9 @@ export default function OrderDetailsPage({
 
           {/* Store info */}
           {store && (
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4 text-primary" /> Store
+                <ShoppingBag className="h-4 w-4 text-primary" /> Store
               </h3>
               <p className="text-sm font-medium">{store.name}</p>
             </div>
@@ -375,7 +392,7 @@ export default function OrderDetailsPage({
 
           {/* GCash proof (if applicable) */}
           {order.gcashProofUrl && (
-            <div className="bg-white rounded-[24px] p-5 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-5 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-blue-600" /> GCash Payment
                 Proof
@@ -395,21 +412,24 @@ export default function OrderDetailsPage({
 
           {/* Seller actions */}
           {isSeller && (
-            <div className="bg-white rounded-[24px] p-6 border border-black/[0.04] shadow-sm">
+            <div className="bg-white dark:bg-white/[0.03] rounded-[32px] p-6 border border-black/[0.02] shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
               <h3 className="text-sm font-bold mb-4">Seller Actions</h3>
 
               {order.status === "To Pay" && (
                 <div className="space-y-3">
                   <div className="bg-yellow-50 rounded-xl p-3 mb-3">
-                    <p className="text-xs text-yellow-800">
-                      <strong>
-                        {order.paymentMethod === "cod"
-                          ? "💵 Cash on Delivery"
-                          : order.paymentMethod === "gcash"
-                          ? "💳 GCash Payment"
-                          : "💳 Payment"}
-                      </strong>{" "}
-                      — {order.paymentMethod === "cod" ? "Accept this COD order to proceed." : "Confirm once the buyer has paid you."}
+                    <p className="text-xs text-yellow-800 flex items-start gap-1.5">
+                      {order.paymentMethod === "cod" ? <Banknote className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <CreditCard className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                      <span>
+                        <strong>
+                          {order.paymentMethod === "cod"
+                            ? "Cash on Delivery"
+                            : order.paymentMethod === "gcash"
+                            ? "GCash Payment"
+                            : "Payment"}
+                        </strong>{" "}
+                        — {order.paymentMethod === "cod" ? "Accept this COD order to proceed." : "Confirm once the buyer has paid you."}
+                      </span>
                     </p>
                   </div>
                   <div className="flex gap-3">
@@ -463,11 +483,14 @@ export default function OrderDetailsPage({
 
           {/* Buyer info message */}
           {isBuyer && order.status === "To Pay" && order.paymentMethod === "cod" && (
-            <div className="bg-orange-50 rounded-[24px] p-5 border border-orange-100">
-              <p className="text-sm text-orange-800">
-                <strong>💵 Cash on Delivery</strong> — Show the QR code to the
-                seller when paying. The seller will scan it and confirm your
-                payment here.
+            <div className="bg-orange-50 rounded-[32px] p-5 border border-orange-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)]">
+              <p className="text-sm text-orange-800 flex items-start gap-2">
+                <Banknote className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Cash on Delivery</strong> — Show the QR code to the
+                  seller when paying. The seller will scan it and confirm your
+                  payment here.
+                </span>
               </p>
             </div>
           )}

@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   Filter,
@@ -21,6 +20,10 @@ import {
   Loader2,
   ScanLine,
   X,
+  User,
+  CreditCard,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { useSupabaseAuth, useSupabase, useStableMemo, useCollection, updateDocumentNonBlocking } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +33,7 @@ const statusConfig: Record<string, { icon: React.ElementType; className: string;
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "To Pay" },
   "To Ship": { icon: Package, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400", label: "To Ship" },
   "To Receive": { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400", label: "To Receive" },
+  "To Pickup": { icon: Package, className: "text-orange-600 bg-orange-50 dark:bg-orange-500/10 dark:text-orange-400", label: "To Pickup" },
   "Completed": { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400", label: "Completed" },
   "Cancelled": { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400", label: "Cancelled" },
   pending: { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "Pending" },
@@ -120,29 +124,59 @@ export default function SellerOrdersPage() {
   }, [user]);
   const { data: orders, isLoading } = useCollection(ordersConfig);
 
+  // Fetch all products (facilities) to show product info per order
+  const productsConfig = useStableMemo(() => {
+    return { table: "facilities" };
+  }, []);
+  const { data: productsData } = useCollection<any>(productsConfig);
+
+  // Fetch all buyer users to show buyer name per order
+  const usersConfig = useStableMemo(() => {
+    return { table: "users" };
+  }, []);
+  const { data: usersData } = useCollection<any>(usersConfig);
+
+  // Helpers
+  const getProduct = (facilityId: string) => productsData?.find((p: any) => p.id === facilityId);
+  const getBuyer = (userId: string) => usersData?.find((u: any) => u.id === userId);
+
   const allOrders = orders ?? [];
 
   const filteredOrders = allOrders.filter((o: any) => {
+    const product = getProduct(o.facilityId);
+    const buyer = getBuyer(o.userId);
+    const searchLower = search.toLowerCase();
     const matchSearch =
-      (o.id || "").toLowerCase().includes(search.toLowerCase()) ||
-      (o.shippingAddress || "").toLowerCase().includes(search.toLowerCase());
+      (o.id || "").toLowerCase().includes(searchLower) ||
+      (o.shippingAddress || "").toLowerCase().includes(searchLower) ||
+      (product?.name || "").toLowerCase().includes(searchLower) ||
+      (buyer?.displayName || buyer?.name || "").toLowerCase().includes(searchLower);
     if (tab === "all") return matchSearch;
-    return matchSearch && (o.status || "").toLowerCase() === tab.toLowerCase();
+    if (tab === "Completed") return matchSearch && ((o.status || "").toLowerCase() === "completed");
+    return matchSearch && (o.status || "") === tab;
   });
 
-  const getCount = (status: string) => allOrders.filter((o: any) => (o.status || "").toLowerCase() === status.toLowerCase()).length;
+  const getCount = (status: string) => allOrders.filter((o: any) => (o.status || "") === status).length;
 
   const counts = {
     all: allOrders.length,
     "To Pay": getCount("To Pay"),
     "To Ship": getCount("To Ship"),
     "To Receive": getCount("To Receive"),
+    "To Pickup": getCount("To Pickup"),
     Completed: getCount("Completed") + getCount("completed"),
+    Cancelled: getCount("Cancelled"),
   };
 
-  const handleUpdateStatus = (orderId: string, newStatus: string) => {
-    updateDocumentNonBlocking(supabase, "bookings", orderId, { status: newStatus });
-    window.location.reload();
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    setUpdating(orderId);
+    await updateDocumentNonBlocking(supabase, "bookings", orderId, { status: newStatus });
+    // Optimistically update local state by re-fetching after a short delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   return (
@@ -193,14 +227,21 @@ export default function SellerOrdersPage() {
         )}
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           {[
             { label: "To Pay", count: counts["To Pay"], color: "text-yellow-600" },
             { label: "To Ship", count: counts["To Ship"], color: "text-blue-600" },
             { label: "To Receive", count: counts["To Receive"], color: "text-purple-600" },
+            { label: "To Pickup", count: counts["To Pickup"], color: "text-orange-600" },
             { label: "Completed", count: counts.Completed, color: "text-green-600" },
           ].map((s) => (
-            <Card key={s.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+            <Card
+              key={s.label}
+              className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] cursor-pointer transition-all hover:scale-[1.02] ${
+                tab === s.label ? "border-primary ring-2 ring-primary/20" : "border-black/[0.02]"
+              }`}
+              onClick={() => setTab(tab === s.label ? "all" : s.label)}
+            >
               <CardContent className="p-5 md:p-6 text-center">
                 <p className={`text-xl md:text-3xl font-normal font-headline tracking-[-0.05em] ${s.color}`}>{s.count}</p>
                 <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{s.label}</p>
@@ -225,26 +266,32 @@ export default function SellerOrdersPage() {
           </Button>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-black/[0.03] dark:bg-white/[0.03] rounded-full p-1 h-auto flex-wrap">
-            <TabsTrigger value="all" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-3">
-              All
-            </TabsTrigger>
-            <TabsTrigger value="To Pay" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-3">
-              To Pay
-            </TabsTrigger>
-            <TabsTrigger value="To Ship" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-3">
-              To Ship
-            </TabsTrigger>
-            <TabsTrigger value="To Receive" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-3">
-              To Receive
-            </TabsTrigger>
-            <TabsTrigger value="Completed" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-3">
-              Completed
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Status Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+          {[
+            { value: "all", label: "All", count: counts.all },
+            { value: "To Pay", label: "To Pay", count: counts["To Pay"] },
+            { value: "To Ship", label: "To Ship", count: counts["To Ship"] },
+            { value: "To Receive", label: "To Receive", count: counts["To Receive"] },
+            { value: "To Pickup", label: "To Pickup", count: counts["To Pickup"] },
+            { value: "Completed", label: "Completed", count: counts.Completed },
+            { value: "Cancelled", label: "Cancelled", count: counts.Cancelled },
+          ].map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setTab(t.value)}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                tab === t.value
+                  ? "bg-black text-white dark:bg-white dark:text-black"
+                  : t.value === "Cancelled"
+                  ? "bg-[#f8f8f8] text-red-500 hover:bg-red-50 dark:bg-white/5"
+                  : "bg-[#f8f8f8] text-muted-foreground hover:bg-muted dark:bg-white/5"
+              }`}
+            >
+              {t.label} {t.count > 0 && <span className="ml-1 opacity-70">({t.count})</span>}
+            </button>
+          ))}
+        </div>
 
         {isLoading ? (
           <div className="space-y-3">
@@ -270,50 +317,96 @@ export default function SellerOrdersPage() {
                 const config = statusConfig[status] || statusConfig["To Pay"];
                 const StatusIcon = config.icon;
                 const isExpanded = expandedOrder === order.id;
+                const product = getProduct(order.facilityId);
+                const buyer = getBuyer(order.userId);
 
                 return (
                   <Card key={order.id} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
                     <CardContent className="p-0">
                       <button
-                        className="w-full p-4 flex items-center justify-between text-left hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors"
+                        className="w-full p-4 flex items-center gap-3 text-left hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors"
                         onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`p-2.5 rounded-2xl shrink-0 ${config.className}`}>
-                            <StatusIcon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium truncate">Order #{order.id?.slice(0, 8)}</p>
-                              <span className="text-[10px] text-muted-foreground shrink-0">×{order.quantity || 1}</span>
+                        {/* Product Image */}
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-black/[0.04]">
+                          {product?.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name || "Product"} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="h-5 w-5 text-muted-foreground/40" />
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {order.paymentMethod || "cod"} · {new Date(order.createdAt).toLocaleDateString()}
-                            </p>
+                          )}
+                        </div>
+                        {/* Product & Buyer Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{product?.name || `Order #${order.id?.slice(0, 8)}`}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-muted-foreground">Qty: <span className="font-medium text-foreground">{order.quantity || 1}</span></span>
+                            <span className="text-muted-foreground/40">·</span>
+                            <span className="text-xs text-muted-foreground capitalize">{order.paymentMethod || "cod"}</span>
+                            <span className="text-muted-foreground/40">·</span>
+                            <span className="text-xs text-muted-foreground inline-flex items-center gap-0.5">{order.fulfillmentMethod === "pickup" ? <><Package className="h-3 w-3" /> Pickup</> : <><Truck className="h-3 w-3" /> Delivery</>}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] text-muted-foreground truncate inline-flex items-center gap-0.5"><User className="h-3 w-3" /> {buyer?.displayName || buyer?.name || "Buyer"}</span>
+                            <span className="text-muted-foreground/40">·</span>
+                            <span className="text-[11px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-3 shrink-0">
-                          <div className="text-right">
-                            <p className="text-sm font-medium">₱{Number(order.totalPrice || 0).toLocaleString()}</p>
-                            <p className="text-[10px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                        {/* Price & Status */}
+                        <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
+                          <p className="text-sm font-bold">₱{Number(order.totalPrice || 0).toLocaleString()}</p>
+                          <Badge className={`rounded-full text-[9px] px-2 py-0 border-0 capitalize ${config.className}`}>
+                            {config.label}
+                          </Badge>
+                          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                         </div>
                       </button>
 
                       {isExpanded && (
                         <div className="px-4 pb-4 pt-0 border-t border-black/[0.04] dark:border-white/[0.04]">
                           <div className="pt-3 space-y-3">
+                            {/* Order ID */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Order ID</span>
+                              <span className="text-xs font-mono">{order.id?.slice(0, 12)}</span>
+                            </div>
+                            {/* Buyer Info */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Buyer</span>
+                              <span className="text-xs font-medium">{buyer?.displayName || buyer?.name || "—"}</span>
+                            </div>
+                            {buyer?.phone && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Phone</span>
+                                <span className="text-xs">{buyer.phone}</span>
+                              </div>
+                            )}
+                            {buyer?.email && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Email</span>
+                                <span className="text-xs truncate max-w-[180px]">{buyer.email}</span>
+                              </div>
+                            )}
+                            {/* Status */}
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Status</span>
                               <Badge className={`rounded-full text-[10px] border-0 capitalize ${config.className}`}>
                                 {config.label}
                               </Badge>
                             </div>
+                            {/* Fulfillment & Address */}
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">{order.fulfillmentMethod === "pickup" ? "Pickup" : "Delivery"}</span>
-                              <span className="text-xs">{order.fulfillmentMethod === "pickup" ? "Pick up at shop" : (order.shippingAddress || "N/A")}</span>
+                              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">{order.fulfillmentMethod === "pickup" ? <><Package className="h-3 w-3" /> Pickup</> : <><Truck className="h-3 w-3" /> Delivery</>}</span>
+                              <span className="text-xs text-right max-w-[200px]">{order.fulfillmentMethod === "pickup" ? "Pick up at shop" : (order.shippingAddress || "N/A")}</span>
                             </div>
+                            {order.fulfillmentMethod !== "pickup" && order.shippingAddress && (
+                              <div className="flex gap-2 p-2.5 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-black/[0.04]">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                                <span className="text-xs text-foreground leading-relaxed">{order.shippingAddress}</span>
+                              </div>
+                            )}
+                            {/* Payment */}
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Payment</span>
                               <span className="text-xs capitalize">{order.paymentMethod || "cod"}</span>
@@ -331,7 +424,7 @@ export default function SellerOrdersPage() {
                             )}
                             {order.paymentMethod === "gcash" && (
                               <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                <span className="text-xs font-bold mb-1 text-blue-700">💳 GCash Payment Proof</span>
+                                <span className="text-xs font-bold mb-1 text-blue-700 inline-flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> GCash Payment Proof</span>
                                 {order.gcashProofUrl ? (
                                   <img src={order.gcashProofUrl} alt="GCash Proof" className="w-32 h-32 object-contain border border-blue-200 rounded-lg mb-1 bg-white" />
                                 ) : (
@@ -348,29 +441,51 @@ export default function SellerOrdersPage() {
                                 <span className="text-xs">{order.trackingNumber}</span>
                               </div>
                             )}
+                            {/* Shortcut to order details */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full rounded-full text-xs h-8 gap-1.5 border-black/[0.06]"
+                              onClick={() => router.push(`/orders/${order.id}`)}
+                            >
+                              <ExternalLink className="h-3 w-3" /> View Full Order Details
+                            </Button>
                             <div className="flex gap-2 pt-1">
                               {status === "To Pay" && (
                                 <>
                                   {order.paymentMethod === "gcash" && order.gcashProofUrl ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 bg-blue-600 hover:bg-blue-700" onClick={() => handleUpdateStatus(order.id, "To Ship")}>✅ Confirm GCash Payment</Button>
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 bg-blue-600 hover:bg-blue-700" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Confirm GCash</>}</Button>
                                   ) : order.paymentMethod === "cod" ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Accept COD Order</Button>
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept COD Order"}</Button>
                                   ) : order.paymentMethod === "qrph" && order.qrphProofUrl ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Confirm Payment</Button>
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm Payment"}</Button>
                                   ) : (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Accept Order</Button>
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept Order"}</Button>
                                   )}
-                                  <Button size="sm" variant="outline" className="rounded-full flex-1 text-xs h-9 border-black/[0.06]" onClick={() => handleUpdateStatus(order.id, "Cancelled")}>Decline</Button>
+                                  <Button size="sm" variant="outline" className="rounded-full flex-1 text-xs h-9 border-black/[0.06]" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Cancelled")}>Decline</Button>
                                 </>
                               )}
                               {status === "To Ship" && (
-                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" onClick={() => handleUpdateStatus(order.id, "To Receive")}>
-                                  <Truck className="h-3.5 w-3.5" /> Mark as Shipped
+                                <>
+                                  {order.fulfillmentMethod === "pickup" ? (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Pickup")}>
+                                      {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Package className="h-3.5 w-3.5" /> Ready for Pickup</>}
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Receive")}>
+                                      {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Truck className="h-3.5 w-3.5" /> Mark as Shipped</>}
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {status === "To Pickup" && (
+                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Completed")}>
+                                  {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Picked Up — Complete</>}
                                 </Button>
                               )}
                               {status === "To Receive" && (
-                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" onClick={() => handleUpdateStatus(order.id, "Completed")}>
-                                  <CheckCircle2 className="h-3.5 w-3.5" /> Mark as Delivered
+                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Completed")}>
+                                  {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Mark as Delivered</>}
                                 </Button>
                               )}
                             </div>

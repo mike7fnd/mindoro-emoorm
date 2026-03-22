@@ -258,7 +258,7 @@ export default function CheckoutPage() {
           totalPrice: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
           paymentMethod,
           fulfillmentMethod,
-          status: paymentMethod === "cod" ? "To Ship" : "To Pay",
+          status: "To Pay",
           shippingAddress: formattedAddress,
           bookingDate: new Date().toISOString(),
           startDate: new Date().toISOString(),

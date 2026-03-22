@@ -24,7 +24,6 @@ import {
   useStableMemo
 } from "@/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
-import { bellasBot } from "@/ai/flows/bellas-bot-flow";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -152,12 +151,12 @@ function MessagesContent() {
     if (activeConversationId === 'bella-bot') {
       setIsBotTyping(true);
       try {
-        const history = messages?.slice(-5).map(m => ({
-          role: m.senderId === user.uid ? 'user' as const : 'model' as const,
-          content: m.content
-        })) || [];
-
-        const aiResponse = await bellasBot({ message: content, history });
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: content }),
+        });
+        const aiResponse = await res.json();
 
         const replyTime = new Date().toISOString();
 
