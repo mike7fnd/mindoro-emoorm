@@ -21,6 +21,7 @@ import {
   User,
   ShoppingBag,
   Clock,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -471,32 +472,14 @@ export default function OrderDetailsPage({
             </div>
           )}
 
-          {/* Back buttons */}
+          {/* Back button */}
           <div className="flex gap-3 justify-center pt-4">
-            {isSeller && (
-              <Button
-                onClick={() => router.push("/seller/orders")}
-                variant="outline"
-                className="rounded-full px-6 h-11"
-              >
-                Back to Orders
-              </Button>
-            )}
-            {isBuyer && (
-              <Button
-                onClick={() => router.push("/my-bookings")}
-                variant="outline"
-                className="rounded-full px-6 h-11"
-              >
-                My Orders
-              </Button>
-            )}
             <Button
-              onClick={() => router.push("/")}
+              onClick={() => router.back()}
               variant="outline"
-              className="rounded-full px-6 h-11"
+              className="rounded-full px-8 h-11"
             >
-              Home
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
           </div>
         </div>
