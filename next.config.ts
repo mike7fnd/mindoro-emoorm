@@ -66,7 +66,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
-  serverExternalPackages: ['@xenova/transformers', 'onnxruntime-node'],
+  serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node'],
   typescript: {
     ignoreBuildErrors: true,
   },

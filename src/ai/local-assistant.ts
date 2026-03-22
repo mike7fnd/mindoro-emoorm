@@ -1,108 +1,133 @@
-/**
- * Local AI Assistant Module
- * Uses google/gemma-3-270m-it via @xenova/transformers for CPU-based inference.
- * No external API calls, no paid services.
- */
+// 🌟 AI Assistant Module – Super Friendly Version 🌟
+// Uses Qwen2.5-72B-Instruct via HuggingFace Inference API (free tier, po)
+// Make sure HF_TOKEN is set in .env.local, po
 
-import { pipeline, type TextGenerationPipeline } from '@xenova/transformers';
+import { createClient } from '@supabase/supabase-js';
+import { supabaseConfig } from '@/supabase/config';
 
-const MODEL_ID = 'google/gemma-3-270m-it';
+const MODEL_ID = 'Qwen/Qwen2.5-72B-Instruct';
+const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
-// ── Singleton: load model once, reuse across requests ──────────────────────
-let generatorInstance: TextGenerationPipeline | null = null;
-let loadingPromise: Promise<TextGenerationPipeline> | null = null;
-
-async function getGenerator(): Promise<TextGenerationPipeline> {
-  if (generatorInstance) return generatorInstance;
-  if (loadingPromise) return loadingPromise;
-
-  loadingPromise = pipeline('text-generation', MODEL_ID, {
-    dtype: 'q4',            // 4-bit quantized for CPU performance
-  }).then((gen) => {
-    generatorInstance = gen;
-    loadingPromise = null;
-    console.log(`[local-assistant] Model "${MODEL_ID}" loaded.`);
-    return gen;
-  });
-
-  return loadingPromise;
+// ── Supabase server client (singleton, super reliable, po) ────────────────
+function getServerSupabase() {
+  return createClient(supabaseConfig.url, supabaseConfig.anonKey);
 }
 
-// ── Preload (call at server start to warm up) ──────────────────────────────
-export async function preloadModel(): Promise<void> {
-  await getGenerator();
-}
-
-// ── Context placeholder — wire to your DB ──────────────────────────────────
-/**
- * Fetch relevant product/FAQ/order data for the user's message.
- * Replace the body with your actual database query logic.
- */
+// ── Context: gently pull the most relevant data from Supabase, po ─────────
 export async function getRelevantData(message: string): Promise<string> {
-  // TODO: implement real DB lookup (products, FAQs, orders, etc.)
-  return [
-    'Product: Dried Mangoes — ₱120/pack, in stock.',
-    'Shipping: Free delivery within Oriental Mindoro for orders over ₱500.',
-    'Returns: Items may be returned within 7 days if unopened.',
-    'Payment: We accept COD and GCash.',
-  ].join('\n');
+  const sb = getServerSupabase();
+  const lines: string[] = [];
+
+  // Always include friendly marketplace FAQ context, po
+  lines.push(
+    'E-Moorm is a warm and hyperlocal digital marketplace in Oriental Mindoro, Philippines, po.',
+    'Payment methods: Cash on Delivery (COD) and GCash, po.',
+    'Free delivery within Oriental Mindoro for orders over ₱500, po!',
+    'Returns: Items may be returned within 7 days if unopened, po.',
+    'Categories: Vegetables, Fruits, Seafood, Meat, Snacks, Rice & Grains, Beverages, Condiments, po.',
+    'For order issues, please kindly reach out to Customer Support through the Messages tab, po.'
+  );
+
+  try {
+    const keywords = message
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(w => w.length > 2)
+      .slice(0, 3);
+
+    if (keywords.length > 0) {
+      const searchTerm = `%${keywords.join('%')}%`;
+      const { data: products } = await sb
+        .from('facilities')
+        .select('name, category, price, stock, description, status, sold')
+        .or(keywords.map(k => `name.ilike.%${k}%,description.ilike.%${k}%,category.ilike.%${k}%`).join(','))
+        .limit(5);
+
+      if (products && products.length > 0) {
+        lines.push('\n✨ Smartly recommended products just for you, po:');
+        for (const p of products) {
+          const inStock = (p.stock ?? 0) > 0 ? 'In stock' : 'Out of stock';
+          lines.push(`- ${p.name} (${p.category}) — ₱${p.price} — ${inStock}${p.description ? '. ' + p.description.slice(0, 80) : ''}`);
+        }
+      }
+
+      const { data: stores } = await sb
+        .from('stores')
+        .select('name, description, city, category')
+        .or(keywords.map(k => `name.ilike.%${k}%,description.ilike.%${k}%,category.ilike.%${k}%`).join(','))
+        .limit(3);
+
+      if (stores && stores.length > 0) {
+        lines.push('\n🏪 Friendly stores that might interest you, po:');
+        for (const s of stores) {
+          lines.push(`- ${s.name} in ${s.city} (${s.category})${s.description ? ': ' + s.description.slice(0, 60) : ''}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[getRelevantData] Oops, DB error, po:', err);
+  }
+
+  return lines.join('\n');
 }
 
-// ── Core function ──────────────────────────────────────────────────────────
+// ── Core function: ask our super smart and kind assistant, po ──────────────
 export async function askAssistant(
   message: string,
-  context: string,
+  context: string
 ): Promise<string> {
-  const generator = await getGenerator();
+  const token = process.env.HF_TOKEN;
+  if (!token) {
+    console.error('[ai-assistant] HF_TOKEN is missing, po.');
+    return "Sorry po, I'm having a little trouble right now. Please try again later, po!";
+  }
 
-  const prompt = buildPrompt(message, context);
-
-  const outputs = await generator(prompt, {
-    max_new_tokens: 128,
-    temperature: 0.3,
-    do_sample: true,
-    repetition_penalty: 1.2,
-  });
-
-  const raw: string =
-    Array.isArray(outputs) && outputs.length > 0
-      ? (outputs[0] as { generated_text: string }).generated_text
-      : '';
-
-  return extractReply(raw, prompt);
-}
-
-// ── Prompt builder ─────────────────────────────────────────────────────────
-function buildPrompt(message: string, context: string): string {
-  return `<start_of_turn>user
-You are a helpful eCommerce customer support assistant for E-Moorm marketplace.
-Answer ONLY using the context below. If the answer is not in the context, say exactly: "Sorry, I don't have that information."
-Keep your answer to 2–3 sentences maximum.
+  const systemPrompt = `You are E-Moorm Bot, a friendly, warm, and super smart shopping assistant for E-Moorm, a local eCommerce marketplace in Oriental Mindoro, Philippines, po.
+Answer ONLY using the context below, po. If the answer is not in the context, politely say: "Sorry po, I don't have that information. You can message Customer Support for more help, po."
+Keep your answer warm, helpful, and clear in 10-20 sentences, po.
+Do NOT use asterisks (*) anywhere in your answer.
 
 Context:
-${context}
+${context}`;
 
-Customer question: ${message}<end_of_turn>
-<start_of_turn>model
-`;
-}
+  try {
+    const res = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: MODEL_ID,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 1000,
+        temperature: 0.3
+      })
+    });
 
-// ── Extract model reply, strip prompt echo ─────────────────────────────────
-function extractReply(raw: string, prompt: string): string {
-  let reply = raw;
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[ai-assistant] HF API error ${res.status}, po:`, errText);
+      return "Sorry po, I'm having a tiny hiccup right now. It's all on me, po. Please try again later, po!";
+    }
 
-  // Remove the prompt echo if the model returns it
-  if (reply.startsWith(prompt)) {
-    reply = reply.slice(prompt.length);
+    const data = await res.json();
+    let reply = data?.choices?.[0]?.message?.content?.trim();
+
+    if (!reply) {
+      console.error('[ai-assistant] Empty response from model, po:', JSON.stringify(data));
+      return "Sorry po, I don't have that information. You can message Customer Support for more help, po!";
+    }
+
+    // Remove all asterisks to ensure plain text
+    reply = reply.replace(/\*/g, '');
+
+    return reply;
+  } catch (err) {
+    console.error('[ai-assistant] Request failed, po:', err);
+    return "Sorry po, something went wrong. Please try again later, po!";
   }
-
-  // Strip Gemma turn markers
-  reply = reply.replace(/<end_of_turn>/g, '').replace(/<start_of_turn>/g, '').trim();
-
-  // Fallback if empty
-  if (!reply) {
-    return "Sorry, I don't have that information.";
-  }
-
-  return reply;
 }

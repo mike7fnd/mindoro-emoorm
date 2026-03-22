@@ -1,6 +1,6 @@
 /**
- * POST /api/chat — Local AI assistant endpoint.
- * Uses the gemma-3-270m-it model running locally via @xenova/transformers.
+ * POST /api/chat — AI assistant endpoint.
+ * Uses google/gemma-3-270m-it via HuggingFace Inference API (free).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch context from your database (replace placeholder as needed)
+    // Fetch relevant context from Supabase
     const context = await getRelevantData(message);
 
-    // Run local inference
+    // Call HuggingFace Inference API
     const reply = await askAssistant(message, context);
 
     return NextResponse.json({ reply });

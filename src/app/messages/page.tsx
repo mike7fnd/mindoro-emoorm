@@ -150,13 +150,32 @@ function MessagesContent() {
 
     if (activeConversationId === 'bella-bot') {
       setIsBotTyping(true);
+
+      // Timeout: stop typing after 30s even if no response
+      const typingTimeout = setTimeout(() => {
+        setIsBotTyping(false);
+      }, 30000);
+
       try {
+        const controller = new AbortController();
+        const fetchTimeout = setTimeout(() => controller.abort(), 25000);
+
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: content }),
+          signal: controller.signal,
         });
-        const aiResponse = await res.json();
+        clearTimeout(fetchTimeout);
+
+        let replyText = "Sorry, I'm having trouble right now. Please try again later.";
+
+        if (res.ok) {
+          const aiResponse = await res.json();
+          if (aiResponse.reply) {
+            replyText = aiResponse.reply;
+          }
+        }
 
         const replyTime = new Date().toISOString();
 
@@ -164,18 +183,41 @@ function MessagesContent() {
           conversationId: activeConversationId,
           senderId: 'bella-bot',
           recipientId: user.uid,
-          content: aiResponse.reply,
+          content: replyText,
           createdAt: replyTime
         });
 
         await supabase.from("conversations").upsert({
           id: activeConversationId,
-          lastMessage: aiResponse.reply,
+          lastMessage: replyText,
           updatedAt: replyTime,
         }, { onConflict: 'id' });
       } catch (error) {
         console.error("AI Error:", error);
+
+        // Send a fallback message so the user isn't left hanging
+        const fallbackTime = new Date().toISOString();
+        const fallbackMsg = "Sorry, I'm having trouble responding right now. Please try again in a moment.";
+
+        try {
+          await supabase.from("messages").insert({
+            conversationId: activeConversationId,
+            senderId: 'bella-bot',
+            recipientId: user.uid,
+            content: fallbackMsg,
+            createdAt: fallbackTime
+          });
+
+          await supabase.from("conversations").upsert({
+            id: activeConversationId,
+            lastMessage: fallbackMsg,
+            updatedAt: fallbackTime,
+          }, { onConflict: 'id' });
+        } catch (_) {
+          // silently fail — user will just see typing stop
+        }
       } finally {
+        clearTimeout(typingTimeout);
         setIsBotTyping(false);
       }
     }
