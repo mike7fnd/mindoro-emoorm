@@ -19,6 +19,7 @@ import {
   UserCheck,
   UserX,
   Filter,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useUser,
@@ -36,6 +37,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -48,6 +59,8 @@ export default function AdminUsersPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [roleTarget, setRoleTarget] = useState<{ id: string; name: string; currentRole: string } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -78,20 +91,40 @@ export default function AdminUsersPage() {
 
   const totalUsers = allUsers?.length ?? 0;
   const sellerCount = allUsers?.filter((u: any) => u.role === "seller").length ?? 0;
-  const buyerCount = totalUsers - sellerCount;
+  const adminCount = allUsers?.filter((u: any) => u.role === "admin").length ?? 0;
+  const buyerCount = totalUsers - sellerCount - adminCount;
 
   const handleDeleteUser = (userId: string) => {
+    if (userId === user?.uid) {
+      toast({ variant: "destructive", title: "Cannot delete", description: "You cannot delete your own account." });
+      return;
+    }
     deleteDocumentNonBlocking(supabase, "users", userId);
     toast({ title: "User deleted", description: "The user has been removed." });
+    setDeleteTarget(null);
   };
 
   const handleToggleRole = (userId: string, currentRole: string) => {
+    if (userId === user?.uid) {
+      toast({ variant: "destructive", title: "Cannot change", description: "You cannot change your own role." });
+      return;
+    }
+    if (currentRole === "admin") {
+      toast({ variant: "destructive", title: "Cannot change", description: "Admin role can only be changed via the database." });
+      return;
+    }
     const newRole = currentRole === "seller" ? "buyer" : "seller";
     updateDocumentNonBlocking(supabase, "users", userId, { role: newRole });
-    toast({
-      title: "Role updated",
-      description: `User role changed to ${newRole}.`,
-    });
+    toast({ title: "Role updated", description: `User role changed to ${newRole}.` });
+    setRoleTarget(null);
+  };
+
+  const handleSendEmail = (email: string) => {
+    if (!email) {
+      toast({ variant: "destructive", title: "No email", description: "This user has no email address." });
+      return;
+    }
+    window.open(`mailto:${email}?subject=Message from E-Moorm Admin`, "_blank");
   };
 
   return (
@@ -104,17 +137,18 @@ export default function AdminUsersPage() {
               User Management
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              {totalUsers} total users · {sellerCount} sellers · {buyerCount} buyers
+              {totalUsers} total users · {sellerCount} sellers · {buyerCount} buyers · {adminCount} admins
             </p>
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: "Total Users", value: totalUsers, icon: Users, color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
             { label: "Sellers", value: sellerCount, icon: UserCheck, color: "text-green-600 bg-green-50 dark:bg-green-500/10" },
             { label: "Buyers", value: buyerCount, icon: UserX, color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
+            { label: "Admins", value: adminCount, icon: Shield, color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10" },
           ].map((stat) => {
             const Icon = stat.icon;
             return (
@@ -189,6 +223,7 @@ export default function AdminUsersPage() {
                 <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
                   {filteredUsers.map((u: any) => {
                     const isAdminUser = u.role === "admin";
+                    const isSelf = u.id === user?.uid;
                     const profilePic =
                       u.profilePictureUrl ||
                       "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
@@ -209,7 +244,10 @@ export default function AdminUsersPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">{u.name || "Unnamed"}</p>
+                            <p className="text-sm font-medium truncate">
+                              {u.name || "Unnamed"}
+                              {isSelf && <span className="text-xs text-muted-foreground ml-1">(you)</span>}
+                            </p>
                             {isAdminUser && (
                               <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-2 py-0">
                                 Admin
@@ -224,6 +262,8 @@ export default function AdminUsersPage() {
                             "rounded-full px-3 py-1 text-[10px] font-bold capitalize hidden sm:inline-flex",
                             u.role === "seller"
                               ? "bg-green-50 text-green-600 border-green-200"
+                              : u.role === "admin"
+                              ? "bg-orange-50 text-orange-600 border-orange-200"
                               : "bg-blue-50 text-blue-600 border-blue-200"
                           )}
                         >
@@ -242,26 +282,35 @@ export default function AdminUsersPage() {
                             align="end"
                             className="w-48 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/80 backdrop-blur-xl border-none"
                           >
-                            <DropdownMenuItem className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                              <Mail className="h-4 w-4" /> Send Email
-                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                              onClick={() => handleToggleRole(u.id, u.role || "buyer")}
+                              onClick={() => handleSendEmail(u.email)}
                             >
-                              {u.role === "seller" ? (
-                                <><ShieldOff className="h-4 w-4" /> Remove Seller Role</>
-                              ) : (
-                                <><Shield className="h-4 w-4" /> Make Seller</>
-                              )}
+                              <Mail className="h-4 w-4" /> Send Email
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                              onClick={() => handleDeleteUser(u.id)}
-                            >
-                              <Trash2 className="h-4 w-4" /> Delete User
-                            </DropdownMenuItem>
+                            {!isAdminUser && !isSelf && (
+                              <DropdownMenuItem
+                                className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                                onClick={() => setRoleTarget({ id: u.id, name: u.name || "this user", currentRole: u.role || "buyer" })}
+                              >
+                                {u.role === "seller" ? (
+                                  <><ShieldOff className="h-4 w-4" /> Remove Seller Role</>
+                                ) : (
+                                  <><Shield className="h-4 w-4" /> Make Seller</>
+                                )}
+                              </DropdownMenuItem>
+                            )}
+                            {!isSelf && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
+                                  onClick={() => setDeleteTarget({ id: u.id, name: u.name || "this user" })}
+                                >
+                                  <Trash2 className="h-4 w-4" /> Delete User
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -272,6 +321,51 @@ export default function AdminUsersPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Delete User
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will permanently remove their account.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-full bg-red-600 hover:bg-red-700"
+                onClick={() => deleteTarget && handleDeleteUser(deleteTarget.id)}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Role Change Confirmation Dialog */}
+        <AlertDialog open={!!roleTarget} onOpenChange={() => setRoleTarget(null)}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Change User Role</AlertDialogTitle>
+              <AlertDialogDescription>
+                Change <strong>{roleTarget?.name}</strong>&apos;s role from <strong>{roleTarget?.currentRole}</strong> to <strong>{roleTarget?.currentRole === "seller" ? "buyer" : "seller"}</strong>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-full"
+                onClick={() => roleTarget && handleToggleRole(roleTarget.id, roleTarget.currentRole)}
+              >
+                Change Role
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

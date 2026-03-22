@@ -20,6 +20,7 @@ import {
   Ban,
   CheckCircle2,
   ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import {
   useUser,
@@ -37,6 +38,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -50,6 +61,8 @@ export default function AdminSellersPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string; currentStatus: string } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -63,7 +76,6 @@ export default function AdminSellersPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading } = useCollection(storesConfig);
 
-  // Also fetch products and orders for stats
   const productsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "facilities" };
@@ -91,14 +103,14 @@ export default function AdminSellersPage() {
   });
 
   const getStoreProductCount = (storeId: string) =>
-    allProducts?.filter((p: any) => p.sellerId === storeId).length ?? 0;
+    allProducts?.filter((p: any) => p.sellerId === storeId || p.storeId === storeId).length ?? 0;
 
   const getStoreOrderCount = (storeId: string) =>
-    allOrders?.filter((o: any) => o.storeId === storeId).length ?? 0;
+    allOrders?.filter((o: any) => o.storeId === storeId || o.sellerId === storeId).length ?? 0;
 
   const getStoreRevenue = (storeId: string) =>
     allOrders
-      ?.filter((o: any) => o.storeId === storeId)
+      ?.filter((o: any) => o.storeId === storeId || o.sellerId === storeId)
       .reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
 
   const handleSuspendStore = (storeId: string, currentStatus: string) => {
@@ -108,11 +120,18 @@ export default function AdminSellersPage() {
       title: newStatus === "suspended" ? "Store suspended" : "Store reactivated",
       description: newStatus === "suspended" ? "The store has been suspended." : "The store is now active.",
     });
+    setSuspendTarget(null);
   };
 
   const handleDeleteStore = (storeId: string) => {
+    // Also deactivate all products from this store
+    const storeProducts = allProducts?.filter((p: any) => p.sellerId === storeId || p.storeId === storeId) ?? [];
+    storeProducts.forEach((p: any) => {
+      updateDocumentNonBlocking(supabase, "facilities", p.id, { status: "draft" });
+    });
     deleteDocumentNonBlocking(supabase, "stores", storeId);
-    toast({ title: "Store deleted", description: "The store has been permanently deleted." });
+    toast({ title: "Store deleted", description: `The store and its ${storeProducts.length} products have been handled.` });
+    setDeleteTarget(null);
   };
 
   return (
@@ -293,7 +312,7 @@ export default function AdminSellersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                            onClick={() => handleSuspendStore(store.id, store.status || "active")}
+                            onClick={() => setSuspendTarget({ id: store.id, name: store.name || "this store", currentStatus: store.status || "active" })}
                           >
                             {store.status === "suspended" ? (
                               <><CheckCircle2 className="h-4 w-4" /> Reactivate</>
@@ -304,7 +323,7 @@ export default function AdminSellersPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                            onClick={() => handleDeleteStore(store.id)}
+                            onClick={() => setDeleteTarget({ id: store.id, name: store.name || "this store" })}
                           >
                             <Trash2 className="h-4 w-4" /> Delete Store
                           </DropdownMenuItem>
@@ -317,6 +336,56 @@ export default function AdminSellersPage() {
             })}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                Delete Store
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will also deactivate all products from this store. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-full bg-red-600 hover:bg-red-700"
+                onClick={() => deleteTarget && handleDeleteStore(deleteTarget.id)}
+              >
+                Delete Store
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Suspend/Reactivate Confirmation Dialog */}
+        <AlertDialog open={!!suspendTarget} onOpenChange={() => setSuspendTarget(null)}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {suspendTarget?.currentStatus === "suspended" ? "Reactivate Store" : "Suspend Store"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {suspendTarget?.currentStatus === "suspended"
+                  ? <>Reactivate <strong>{suspendTarget?.name}</strong>? The store will be visible to customers again.</>
+                  : <>Suspend <strong>{suspendTarget?.name}</strong>? The store will be hidden from customers.</>
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn("rounded-full", suspendTarget?.currentStatus === "suspended" ? "" : "bg-red-600 hover:bg-red-700")}
+                onClick={() => suspendTarget && handleSuspendStore(suspendTarget.id, suspendTarget.currentStatus)}
+              >
+                {suspendTarget?.currentStatus === "suspended" ? "Reactivate" : "Suspend"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

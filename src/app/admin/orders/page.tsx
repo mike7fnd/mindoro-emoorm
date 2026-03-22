@@ -19,6 +19,8 @@ import {
   Package,
   Filter,
   Download,
+  Eye,
+  X,
 } from "lucide-react";
 import {
   useUser,
@@ -28,6 +30,13 @@ import {
   updateDocumentNonBlocking,
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,6 +55,27 @@ const statusConfig: Record<string, { icon: React.ElementType; className: string;
 
 const STATUS_OPTIONS = ["Pending", "Confirmed", "To Ship", "To Receive", "Completed", "Cancelled"];
 
+function exportOrdersCSV(orders: any[]) {
+  const headers = ["Order ID", "Product", "Status", "Quantity", "Total Price", "Date", "Customer"];
+  const rows = orders.map((o: any) => [
+    o.id,
+    o.facilityName || "Order",
+    o.status || "pending",
+    o.quantity || o.numberOfGuests || 1,
+    o.totalPrice || 0,
+    o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "",
+    o.userName || o.userId || "",
+  ]);
+  const csvContent = [headers, ...rows].map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `orders-export-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminOrdersPage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
@@ -54,6 +84,7 @@ export default function AdminOrdersPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -89,6 +120,9 @@ export default function AdminOrdersPage() {
   const handleUpdateStatus = (orderId: string, newStatus: string) => {
     updateDocumentNonBlocking(supabase, "bookings", orderId, { status: newStatus });
     toast({ title: "Order updated", description: `Status changed to ${newStatus}.` });
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    }
   };
 
   return (
@@ -104,6 +138,20 @@ export default function AdminOrdersPage() {
               {allOrders?.length ?? 0} total orders
             </p>
           </div>
+          <Button
+            variant="outline"
+            className="rounded-full h-11 px-6 gap-2 text-xs font-bold border-black/[0.06]"
+            onClick={() => {
+              if (filteredOrders.length === 0) {
+                toast({ variant: "destructive", title: "No data", description: "No orders to export." });
+                return;
+              }
+              exportOrdersCSV(filteredOrders);
+              toast({ title: "Exported", description: `${filteredOrders.length} orders exported as CSV.` });
+            }}
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
         </div>
 
         {/* Stats */}
@@ -213,7 +261,14 @@ export default function AdminOrdersPage() {
                         const StatusIcon = config?.icon || Clock;
                         return (
                           <tr key={order.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                            <td className="py-5 px-6 font-mono font-bold text-xs">{order.id?.slice(0, 10)}</td>
+                            <td className="py-5 px-6">
+                              <button
+                                className="font-mono font-bold text-xs text-primary hover:underline cursor-pointer"
+                                onClick={() => setSelectedOrder(order)}
+                              >
+                                {order.id?.slice(0, 10)}
+                              </button>
+                            </td>
                             <td className="py-5 px-4">
                               <p className="text-sm font-medium truncate max-w-[200px]">{order.facilityName || "Order"}</p>
                             </td>
@@ -233,6 +288,14 @@ export default function AdminOrdersPage() {
                             </td>
                             <td className="py-5 px-6 text-right">
                               <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-full h-8 px-3 text-[10px] font-bold border-black/10"
+                                  onClick={() => setSelectedOrder(order)}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" /> View
+                                </Button>
                                 {status !== "Completed" && status !== "completed" && status !== "Cancelled" && status !== "cancelled" && (
                                   <>
                                     <Button
@@ -275,6 +338,102 @@ export default function AdminOrdersPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Order Detail Dialog */}
+        <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+          <DialogContent className="sm:max-w-[500px] rounded-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-headline tracking-[-0.03em]">Order Details</DialogTitle>
+              <DialogDescription>
+                Order #{selectedOrder?.id?.slice(0, 10)}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="space-y-5 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Order ID</p>
+                    <p className="text-sm font-mono font-bold">{selectedOrder.id?.slice(0, 16)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Status</p>
+                    <Badge variant="outline" className={cn("rounded-full px-3 py-1 text-[10px] font-bold capitalize", statusConfig[selectedOrder.status]?.badge)}>
+                      {selectedOrder.status || "pending"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Product</p>
+                    <p className="text-sm font-medium">{selectedOrder.facilityName || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Quantity</p>
+                    <p className="text-sm">{selectedOrder.quantity || selectedOrder.numberOfGuests || 1}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Price</p>
+                    <p className="text-lg font-bold font-headline">₱{Number(selectedOrder.totalPrice || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Date</p>
+                    <p className="text-sm">{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "—"}</p>
+                  </div>
+                </div>
+                {selectedOrder.userId && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Customer ID</p>
+                    <p className="text-sm font-mono">{selectedOrder.userId}</p>
+                  </div>
+                )}
+                {selectedOrder.userName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Customer Name</p>
+                    <p className="text-sm">{selectedOrder.userName}</p>
+                  </div>
+                )}
+                {selectedOrder.fulfillmentMethod && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Fulfillment</p>
+                    <p className="text-sm capitalize">{selectedOrder.fulfillmentMethod}</p>
+                  </div>
+                )}
+                {selectedOrder.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Notes</p>
+                    <p className="text-sm bg-muted/50 rounded-xl p-3">{selectedOrder.notes}</p>
+                  </div>
+                )}
+
+                {/* Quick status actions */}
+                {selectedOrder.status !== "Completed" && selectedOrder.status !== "completed" &&
+                 selectedOrder.status !== "Cancelled" && selectedOrder.status !== "cancelled" && (
+                  <div className="flex gap-2 pt-3 border-t">
+                    <p className="text-xs text-muted-foreground font-medium mb-2 w-full">Update Status:</p>
+                  </div>
+                )}
+                {selectedOrder.status !== "Completed" && selectedOrder.status !== "completed" &&
+                 selectedOrder.status !== "Cancelled" && selectedOrder.status !== "cancelled" && (
+                  <div className="flex flex-wrap gap-2">
+                    {STATUS_OPTIONS.filter((s) => s !== selectedOrder.status).map((s) => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full h-8 px-4 text-xs font-bold"
+                        onClick={() => handleUpdateStatus(selectedOrder.id, s)}
+                      >
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

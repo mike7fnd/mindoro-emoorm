@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Users,
   TrendingUp,
+  TrendingDown,
   Plus,
   Clock,
   CheckCircle2,
@@ -67,6 +68,35 @@ const statusConfig: Record<string, { icon: React.ElementType; className: string 
   cancelled: { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10" },
 };
 
+/** Compute % change between this month and last month for an array of dated items */
+function computeTrend(items: any[], valueKey?: string) {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+  let thisVal = 0;
+  let lastVal = 0;
+
+  items.forEach((item) => {
+    const d = new Date(item.createdAt || item.bookingDate || 0);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    const v = valueKey ? Number(item[valueKey]) || 0 : 1;
+    if (m === thisMonth && y === thisYear) thisVal += v;
+    if (m === lastMonth && y === lastMonthYear) lastVal += v;
+  });
+
+  if (lastVal === 0) return thisVal > 0 ? "+100%" : "0%";
+  const pct = ((thisVal - lastVal) / lastVal) * 100;
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+}
+
+function isTrendPositive(trend: string) {
+  return trend.startsWith("+") && trend !== "+0%" && trend !== "+0.0%";
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { isAdmin, isAdminLoading, user } = useIsAdmin();
@@ -77,14 +107,12 @@ export default function AdminDashboardPage() {
     }
   }, [isAdmin, isAdminLoading, router]);
 
-  // Fetch all users
   const usersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "users" };
   }, [user, isAdmin]);
   const { data: allUsers, isLoading: usersLoading } = useCollection(usersConfig);
 
-  // Fetch all orders (bookings)
   const ordersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return {
@@ -94,14 +122,12 @@ export default function AdminDashboardPage() {
   }, [user, isAdmin]);
   const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersConfig);
 
-  // Fetch all products (facilities)
   const productsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "facilities" };
   }, [user, isAdmin]);
   const { data: allProducts, isLoading: productsLoading } = useCollection(productsConfig);
 
-  // Fetch all stores
   const storesConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "stores" };
@@ -110,24 +136,21 @@ export default function AdminDashboardPage() {
 
   // Chart data — monthly aggregation
   const monthlyData = React.useMemo(() => {
-    if (!allOrders) return [];
+    if (!allOrders || allOrders.length === 0) return [];
     const months: Record<string, number> = {};
     allOrders.forEach((o: any) => {
       const d = new Date(o.createdAt || o.bookingDate);
-      const key = d.toLocaleString("default", { month: "short" });
+      if (isNaN(d.getTime())) return;
+      const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
       months[key] = (months[key] || 0) + (Number(o.totalPrice) || 0);
     });
-    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return monthOrder
-      .filter((m) => months[m] !== undefined)
-      .map((m) => ({ name: m, revenue: months[m] }));
+    return Object.entries(months).map(([name, revenue]) => ({ name, revenue }));
   }, [allOrders]);
 
   if (isAdminLoading || !user || !isAdmin) return null;
 
   const isLoading = usersLoading || ordersLoading || productsLoading || storesLoading;
 
-  // Compute stats
   const totalRevenue =
     allOrders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
   const totalOrders = allOrders?.length ?? 0;
@@ -136,9 +159,13 @@ export default function AdminDashboardPage() {
   const totalSellers = allStores?.length ?? 0;
   const pendingOrders =
     allOrders?.filter(
-      (o: any) =>
-        o.status === "Pending" || o.status === "pending" || o.status === "To Pay"
+      (o: any) => o.status === "Pending" || o.status === "pending" || o.status === "To Pay"
     ).length ?? 0;
+
+  const revenueTrend = allOrders ? computeTrend(allOrders as any[], "totalPrice") : "0%";
+  const ordersTrend = allOrders ? computeTrend(allOrders as any[]) : "0%";
+  const usersTrend = allUsers ? computeTrend(allUsers as any[]) : "0%";
+  const sellersTrend = allStores ? computeTrend(allStores as any[]) : "0%";
 
   const stats = [
     {
@@ -146,48 +173,36 @@ export default function AdminDashboardPage() {
       value: `₱${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: "text-green-600 bg-green-50 dark:bg-green-500/10",
-      trend: "+12.5%",
-      positive: true,
+      trend: revenueTrend,
+      positive: isTrendPositive(revenueTrend),
     },
     {
       label: "Total Orders",
       value: String(totalOrders),
       icon: ShoppingCart,
       color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10",
-      trend: "+8.2%",
-      positive: true,
+      trend: ordersTrend,
+      positive: isTrendPositive(ordersTrend),
     },
     {
       label: "Total Users",
       value: String(totalUsers),
       icon: Users,
       color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10",
-      trend: "+18.2%",
-      positive: true,
+      trend: usersTrend,
+      positive: isTrendPositive(usersTrend),
     },
     {
       label: "Active Sellers",
       value: String(totalSellers),
       icon: Store,
       color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10",
-      trend: "+4.3%",
-      positive: true,
+      trend: sellersTrend,
+      positive: isTrendPositive(sellersTrend),
     },
   ];
 
-  const chartData =
-    monthlyData.length > 0
-      ? monthlyData
-      : [
-          { name: "Jan", revenue: 45000 },
-          { name: "Feb", revenue: 52000 },
-          { name: "Mar", revenue: 48000 },
-          { name: "Apr", revenue: 75000 },
-          { name: "May", revenue: 82000 },
-          { name: "Jun", revenue: 60000 },
-          { name: "Jul", revenue: 95000 },
-        ];
-
+  const chartData = monthlyData.length > 0 ? monthlyData : [];
   const recentOrders = (allOrders ?? []).slice(0, 6);
 
   return (
@@ -318,23 +333,29 @@ export default function AdminDashboardPage() {
                       View Details
                     </Link>
                   </div>
-                  <div className="h-[280px] md:h-[350px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
-                        <defs>
-                          <linearGradient id="adminColorRev" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
-                        <Tooltip contentStyle={{ borderRadius: "15px", border: "none", boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }} />
-                        <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#adminColorRev)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {chartData.length > 0 ? (
+                    <div className="h-[280px] md:h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="adminColorRev" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
+                          <Tooltip contentStyle={{ borderRadius: "15px", border: "none", boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }} />
+                          <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#adminColorRev)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] md:h-[350px] flex items-center justify-center text-muted-foreground text-sm">
+                      No revenue data yet. Orders will appear here once placed.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -404,6 +425,7 @@ export default function AdminDashboardPage() {
                     <thead>
                       <tr className="border-b text-muted-foreground font-medium tracking-tight text-xs">
                         <th className="text-left pb-5 px-2">Order ID</th>
+                        <th className="text-left pb-5 px-2">Product</th>
                         <th className="text-left pb-5 px-2">Status</th>
                         <th className="text-left pb-5 px-2">Qty</th>
                         <th className="text-right pb-5 px-2">Total</th>
@@ -417,13 +439,16 @@ export default function AdminDashboardPage() {
                             <td className="py-5 px-2 font-mono font-bold text-xs">
                               {bk.id?.slice(0, 10)}
                             </td>
+                            <td className="py-5 px-2 text-xs truncate max-w-[150px]">
+                              {bk.facilityName || "Order"}
+                            </td>
                             <td className="py-5 px-2">
                               <Badge
                                 variant="outline"
                                 className={cn(
                                   "rounded-full px-4 py-1 text-[10px] font-bold capitalize",
                                   status === "Confirmed" && "bg-blue-50 text-blue-600 border-blue-200",
-                                  status === "Pending" && "bg-orange-50 text-orange-600 border-orange-200",
+                                  (status === "Pending" || status === "pending") && "bg-orange-50 text-orange-600 border-orange-200",
                                   (status === "Completed" || status === "completed") &&
                                     "bg-green-50 text-green-600 border-green-200",
                                   (status === "Cancelled" || status === "cancelled") &&
@@ -444,7 +469,7 @@ export default function AdminDashboardPage() {
                       })}
                       {recentOrders.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="py-20 text-center text-muted-foreground italic">
+                          <td colSpan={5} className="py-20 text-center text-muted-foreground italic">
                             No recent orders found.
                           </td>
                         </tr>

@@ -10,9 +10,9 @@ export function ThemeColorMeta() {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) return;
 
-    // Green status bar only on home page, white everywhere else
+    // Green status bar on home page, white everywhere else
     const isHome = pathname === "/";
-    meta.setAttribute("content", isHome ? "#29a366" : "transparent");
+    meta.setAttribute("content", isHome ? "#29a366" : "#ffffff");
   }, [pathname]);
 
   return null;

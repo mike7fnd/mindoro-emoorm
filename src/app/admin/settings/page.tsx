@@ -27,18 +27,22 @@ import {
 } from "lucide-react";
 import {
   useUser,
+  useSupabase,
   useSupabaseAuth,
   useStableMemo,
   useDoc,
-  updateDocumentNonBlocking,
+  setDocumentNonBlocking,
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 
+const SETTINGS_DOC_ID = "platform-settings";
+
 export default function AdminSettingsPage() {
   const { user, isUserLoading } = useUser();
+  const supabase = useSupabase();
   const { auth } = useSupabaseAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -55,6 +59,7 @@ export default function AdminSettingsPage() {
   const [autoApproveSellers, setAutoApproveSellers] = useState(false);
   const [commissionRate, setCommissionRate] = useState("5");
   const [saving, setSaving] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -69,6 +74,25 @@ export default function AdminSettingsPage() {
   }, [user]);
   const { data: profile, isLoading: profileLoading } = useDoc(profileRef);
 
+  // Load saved settings from the admin user's profile (adminSettings field)
+  useEffect(() => {
+    if (profile && !settingsLoaded) {
+      const s = (profile as any).adminSettings;
+      if (s) {
+        if (s.platformName) setPlatformName(s.platformName);
+        if (s.platformDescription) setPlatformDescription(s.platformDescription);
+        if (typeof s.maintenanceMode === "boolean") setMaintenanceMode(s.maintenanceMode);
+        if (typeof s.emailNotifications === "boolean") setEmailNotifications(s.emailNotifications);
+        if (typeof s.orderNotifications === "boolean") setOrderNotifications(s.orderNotifications);
+        if (typeof s.newSellerNotifications === "boolean") setNewSellerNotifications(s.newSellerNotifications);
+        if (typeof s.autoApproveProducts === "boolean") setAutoApproveProducts(s.autoApproveProducts);
+        if (typeof s.autoApproveSellers === "boolean") setAutoApproveSellers(s.autoApproveSellers);
+        if (s.commissionRate) setCommissionRate(s.commissionRate);
+      }
+      setSettingsLoaded(true);
+    }
+  }, [profile, settingsLoaded]);
+
   if (isAdminLoading || !isAdmin) return null;
 
   const profilePic =
@@ -76,12 +100,32 @@ export default function AdminSettingsPage() {
     user?.photoURL ||
     "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const adminSettings = {
+        platformName,
+        platformDescription,
+        maintenanceMode,
+        emailNotifications,
+        orderNotifications,
+        newSellerNotifications,
+        autoApproveProducts,
+        autoApproveSellers,
+        commissionRate,
+        updatedAt: new Date().toISOString(),
+      };
+      setDocumentNonBlocking(supabase, "users", {
+        id: user.uid,
+        adminSettings,
+      });
       toast({ title: "Settings saved", description: "Your admin settings have been updated." });
-    }, 800);
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to save settings." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSignOut = async () => {

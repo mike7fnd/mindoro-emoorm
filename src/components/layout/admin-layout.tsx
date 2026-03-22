@@ -27,13 +27,14 @@ const adminNavItems = [
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/sellers", label: "Sellers", icon: Store },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/reports", label: "Reports", icon: FileText },
 ];
 
 const adminNavItemsMobile = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/messages", label: "Messages", icon: MessageCircle },
 ];
 
 export function AdminHeader() {
@@ -101,9 +102,11 @@ export function AdminHeader() {
                 <MessageCircle className="h-[18px] w-[18px]" />
               </div>
             </Link>
-            <div className="icon-btn" aria-label="Notifications">
-              <Bell className="h-[18px] w-[18px]" />
-            </div>
+            <Link href="/admin/messages">
+              <div className="icon-btn" aria-label="Notifications">
+                <Bell className="h-[18px] w-[18px]" />
+              </div>
+            </Link>
             <div
               className="h-10 w-10 rounded-full border border-white/20 shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-transform"
               onClick={() => router.push("/admin/settings")}

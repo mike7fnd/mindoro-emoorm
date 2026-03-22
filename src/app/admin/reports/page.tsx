@@ -25,10 +25,25 @@ import {
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+function exportReportCSV(title: string, stats: { label: string; value: string }[]) {
+  const headers = ["Metric", "Value"];
+  const rows = stats.map((s) => [s.label, s.value]);
+  const csvContent = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminReportsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [timeRange, setTimeRange] = useState<string>("all");
 
@@ -121,7 +136,8 @@ export default function AdminReportsPage() {
       stats: [
         { label: "Total Users", value: String(allUsers?.length ?? 0) },
         { label: "Sellers", value: String(allUsers?.filter((u: any) => u.role === "seller").length ?? 0) },
-        { label: "Buyers", value: String((allUsers?.length ?? 0) - (allUsers?.filter((u: any) => u.role === "seller").length ?? 0)) },
+        { label: "Buyers", value: String((allUsers?.length ?? 0) - (allUsers?.filter((u: any) => u.role === "seller" || u.role === "admin").length ?? 0)) },
+        { label: "Admins", value: String(allUsers?.filter((u: any) => u.role === "admin").length ?? 0) },
       ],
     },
     {
@@ -132,7 +148,7 @@ export default function AdminReportsPage() {
       stats: [
         { label: "Total Products", value: String(allProducts?.length ?? 0) },
         { label: "Active Sellers", value: String(allStores?.length ?? 0) },
-        { label: "Avg Price", value: `₱${allProducts?.length ? Math.round((allProducts as any[]).reduce((s, p) => s + (Number(p.price) || 0), 0) / allProducts.length).toLocaleString() : 0}` },
+        { label: "Avg Price", value: `₱${allProducts?.length ? Math.round((allProducts as any[]).reduce((s, p) => s + (Number(p.price || p.pricePerNight) || 0), 0) / allProducts.length).toLocaleString() : 0}` },
       ],
     },
   ];
@@ -211,6 +227,17 @@ export default function AdminReportsPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">{report.description}</p>
                         </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full px-4 h-9 text-xs font-bold gap-1.5 border-black/[0.06] shrink-0"
+                        onClick={() => {
+                          exportReportCSV(report.title, report.stats);
+                          toast({ title: "Exported", description: `${report.title} exported as CSV.` });
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5" /> Export
+                      </Button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
                       {report.stats.map((stat) => (

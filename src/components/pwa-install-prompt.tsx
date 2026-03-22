@@ -21,11 +21,6 @@ export function PWAInstallPrompt() {
     // Check if already installed as PWA
     if (window.matchMedia("(display-mode: standalone)").matches) return;
 
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
-
     // Detect iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
