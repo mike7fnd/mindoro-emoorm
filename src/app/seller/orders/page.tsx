@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,12 @@ import {
   ChevronRight,
   ShoppingCart,
   Loader2,
+  ScanLine,
+  X,
 } from "lucide-react";
 import { useSupabaseAuth, useSupabase, useStableMemo, useCollection, updateDocumentNonBlocking } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
 const statusConfig: Record<string, { icon: React.ElementType; className: string; label: string }> = {
   "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "To Pay" },
@@ -40,9 +43,71 @@ export default function SellerOrdersPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const html5QrScannerRef = useRef<any>(null);
+  const router = useRouter();
 
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
+
+  // QR Scanner logic
+  const startScanner = useCallback(async () => {
+    if (html5QrScannerRef.current) return;
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      const scanner = new Html5Qrcode("qr-reader");
+      html5QrScannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText: string) => {
+          // Stop scanner and navigate
+          scanner.stop().then(() => {
+            html5QrScannerRef.current = null;
+            setShowScanner(false);
+            // The QR contains a URL like https://domain.com/orders/ORDER_ID
+            // Extract the path and navigate
+            try {
+              const url = new URL(decodedText);
+              router.push(url.pathname);
+            } catch {
+              // If not a full URL, try as a path
+              if (decodedText.includes("/orders/")) {
+                router.push(decodedText);
+              }
+            }
+          });
+        },
+        () => {} // ignore scan errors (no QR found yet)
+      );
+    } catch (err) {
+      console.error("Scanner error:", err);
+    }
+  }, [router]);
+
+  const stopScanner = useCallback(() => {
+    if (html5QrScannerRef.current) {
+      html5QrScannerRef.current.stop().then(() => {
+        html5QrScannerRef.current = null;
+      }).catch(() => {});
+    }
+    setShowScanner(false);
+  }, []);
+
+  useEffect(() => {
+    if (showScanner) {
+      // Small delay to let DOM render the #qr-reader div
+      const t = setTimeout(() => startScanner(), 300);
+      return () => clearTimeout(t);
+    }
+    return () => {
+      if (html5QrScannerRef.current) {
+        html5QrScannerRef.current.stop().catch(() => {});
+        html5QrScannerRef.current = null;
+      }
+    };
+  }, [showScanner, startScanner]);
 
   // Fetch orders (bookings) for this store
   const ordersConfig = useStableMemo(() => {
@@ -84,10 +149,48 @@ export default function SellerOrdersPage() {
     <SellerLayout>
       <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Orders</h1>
-          <p className="text-sm text-muted-foreground font-normal">{counts["To Pay"] + counts["To Ship"]} orders need attention</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Orders</h1>
+            <p className="text-sm text-muted-foreground font-normal">{counts["To Pay"] + counts["To Ship"]} orders need attention</p>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowScanner(true)}
+            className="rounded-full h-11 w-11 border-black/[0.06] shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all"
+            title="Scan COD QR"
+          >
+            <ScanLine className="h-5 w-5" />
+          </Button>
         </div>
+
+        {/* QR Scanner Modal */}
+        {showScanner && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-[28px] p-6 w-full max-w-md relative shadow-2xl">
+              <button
+                className="absolute top-4 right-4 text-muted-foreground hover:text-black z-10 bg-white rounded-full p-1"
+                onClick={stopScanner}
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                  <ScanLine className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Scan COD QR</h2>
+                  <p className="text-xs text-muted-foreground">Point your camera at the buyer&apos;s QR code</p>
+                </div>
+              </div>
+              <div className="bg-black rounded-2xl overflow-hidden">
+                <div id="qr-reader" ref={scannerRef} style={{ width: "100%" }} />
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-3">The QR code will redirect you to the order details where you can confirm payment.</p>
+            </div>
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
@@ -226,6 +329,19 @@ export default function SellerOrdersPage() {
                                 <span className="text-xs">Reference: <span className="font-mono">{order.qrphRef || "N/A"}</span></span>
                               </div>
                             )}
+                            {order.paymentMethod === "gcash" && (
+                              <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                <span className="text-xs font-bold mb-1 text-blue-700">💳 GCash Payment Proof</span>
+                                {order.gcashProofUrl ? (
+                                  <img src={order.gcashProofUrl} alt="GCash Proof" className="w-32 h-32 object-contain border border-blue-200 rounded-lg mb-1 bg-white" />
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No proof uploaded yet</span>
+                                )}
+                                <span className="text-xs">Reference: <span className="font-mono font-bold">{order.gcashRef || "N/A"}</span></span>
+                                <span className="text-xs">Date: {order.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A"}</span>
+                                <span className="text-xs">Amount: <span className="font-bold">₱{Number(order.totalPrice || 0).toLocaleString()}</span></span>
+                              </div>
+                            )}
                             {order.trackingNumber && (
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Tracking</span>
@@ -235,7 +351,11 @@ export default function SellerOrdersPage() {
                             <div className="flex gap-2 pt-1">
                               {status === "To Pay" && (
                                 <>
-                                  {order.paymentMethod === "qrph" && order.qrphProofUrl ? (
+                                  {order.paymentMethod === "gcash" && order.gcashProofUrl ? (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 bg-blue-600 hover:bg-blue-700" onClick={() => handleUpdateStatus(order.id, "To Ship")}>✅ Confirm GCash Payment</Button>
+                                  ) : order.paymentMethod === "cod" ? (
+                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Accept COD Order</Button>
+                                  ) : order.paymentMethod === "qrph" && order.qrphProofUrl ? (
                                     <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Confirm Payment</Button>
                                   ) : (
                                     <Button size="sm" className="rounded-full flex-1 text-xs h-9" onClick={() => handleUpdateStatus(order.id, "To Ship")}>Accept Order</Button>

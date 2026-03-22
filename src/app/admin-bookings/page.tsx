@@ -4,21 +4,17 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
-import { useUser, useSupabase, useCollection, useStableMemo, updateDocumentNonBlocking } from "@/supabase";
+import { useUser, useCollection, useStableMemo } from "@/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Check, X, Calendar, User, CreditCard } from "lucide-react";
+import { Calendar, User, CreditCard, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export default function AdminBookingsPage() {
   const { user, isUserLoading } = useUser();
-  const supabase = useSupabase();
   const router = useRouter();
-  const { toast } = useToast();
   const { isAdmin: isResortAdmin, isAdminLoading } = useIsAdmin();
 
   useEffect(() => {
@@ -37,13 +33,7 @@ export default function AdminBookingsPage() {
 
   const { data: bookings } = useCollection(bookingsQuery);
 
-  const updateStatus = (id: string, status: string) => {
-    updateDocumentNonBlocking(supabase, "bookings", id, { status });
-    toast({
-      title: "Order updated",
-      description: `Status changed to ${status}.`
-    });
-  };
+
 
   if (isUserLoading || !user || !isResortAdmin) return null;
 
@@ -53,7 +43,7 @@ export default function AdminBookingsPage() {
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 pt-0 md:pt-32 pb-24">
         <div className="mb-10">
           <h1 className="text-3xl md:text-4xl font-normal font-headline tracking-[-0.05em]">All <span className="text-primary">Orders</span></h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage buyer orders and fulfillment.</p>
+          <p className="text-sm text-muted-foreground mt-1">View buyer orders and fulfillment. <span className="inline-flex items-center gap-1"><ShieldAlert className="h-3.5 w-3.5" /> Only sellers can update order status.</span></p>
         </div>
 
         <Card className="border-none shadow-sm rounded-[25px] overflow-hidden bg-white">
@@ -64,7 +54,7 @@ export default function AdminBookingsPage() {
                 <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Details</TableHead>
                 <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Order date</TableHead>
                 <TableHead className="py-8 tracking-tight text-xs font-bold text-muted-foreground">Status</TableHead>
-                <TableHead className="py-8 px-8 text-right tracking-tight text-xs font-bold text-muted-foreground">Actions</TableHead>
+                <TableHead className="py-8 px-8 text-right tracking-tight text-xs font-bold text-muted-foreground"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -94,23 +84,7 @@ export default function AdminBookingsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="py-8 px-8 text-right">
-                    <div className="flex justify-end gap-3">
-                      {bk.status === "Pending" && (
-                        <>
-                          <Button size="icon" variant="outline" className="rounded-full h-12 w-12 text-green-600 border-none bg-green-50 hover:bg-green-100 shadow-sm transition-all" onClick={() => updateStatus(bk.id, "Confirmed")}>
-                            <Check className="h-5 w-5" />
-                          </Button>
-                          <Button size="icon" variant="outline" className="rounded-full h-12 w-12 text-red-600 border-none bg-red-50 hover:bg-red-100 shadow-sm transition-all" onClick={() => updateStatus(bk.id, "Cancelled")}>
-                            <X className="h-5 w-5" />
-                          </Button>
-                        </>
-                      )}
-                      {bk.status === "Confirmed" && (
-                        <Button size="sm" variant="outline" className="rounded-full px-8 h-12 shadow-sm border-none bg-primary text-white hover:bg-primary/90 transition-all font-bold" onClick={() => updateStatus(bk.id, "Completed")}>
-                          Mark delivered
-                        </Button>
-                      )}
-                    </div>
+                    <span className="text-xs text-muted-foreground">View only</span>
                   </TableCell>
                 </TableRow>
               ))}

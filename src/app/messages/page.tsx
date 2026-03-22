@@ -354,7 +354,13 @@ function MessagesContent() {
                                     : "bg-[#f2f2f2] text-black rounded-[22px] rounded-bl-[4px]"
                                 )}
                               >
-                                {msg.content}
+                                {msg.content.split('\n').map((line: string, i: number) => {
+                                  // Render image URLs as inline images
+                                  if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)/i.test(line.trim()) || /supabase\.co\/storage/.test(line.trim())) {
+                                    return <img key={i} src={line.trim()} alt="Shared image" className="max-w-[240px] rounded-xl mt-1 mb-1 border border-white/20" />;
+                                  }
+                                  return <span key={i}>{line}{i < msg.content.split('\n').length - 1 && <br />}</span>;
+                                })}
                               </div>
                               <div className="px-2 mt-1">
                                 <span className="text-[9px] text-muted-foreground opacity-50 uppercase tracking-tighter">

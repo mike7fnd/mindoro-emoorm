@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { ShoppingCart, Trash2, Plus, Minus, Store, MoreVertical, Heart, Share2, Archive, Tag, HelpCircle } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Store, MoreVertical, Heart, Share2, Archive, Tag, HelpCircle, Check } from "lucide-react";
 import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -49,7 +49,7 @@ export default function CartPage() {
 
   const cartQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "cart_items", filters: [{ column: "userId", op: "eq", value: user.uid }] };
+    return { table: "cart_items", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user]);
 
   const { data: cartData, isLoading: cartLoading } = useCollection<CartItem>(cartQuery);
@@ -88,9 +88,59 @@ export default function CartPage() {
     return groups;
   }, [cartItems, storesData]);
 
-  const totalPrice = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + (item.product.price || item.product.pricePerNight || 0) * item.quantity, 0);
+  // --- Selection state ---
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Auto-select all items when cart loads / changes
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      setSelectedIds((prev) => {
+        // Keep existing selections that are still valid, add new items
+        const validIds = new Set(cartItems.map((i) => i.id));
+        const next = new Set<string>();
+        // If no previous selection, select all
+        if (prev.size === 0) {
+          return validIds;
+        }
+        prev.forEach((id) => { if (validIds.has(id)) next.add(id); });
+        return next;
+      });
+    }
   }, [cartItems]);
+
+  const toggleItem = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleStoreGroup = useCallback((itemIds: string[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = itemIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        itemIds.forEach((id) => next.delete(id));
+      } else {
+        itemIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const allSelected = cartItems.length > 0 && cartItems.every((i) => prev.has(i.id));
+      return allSelected ? new Set<string>() : new Set(cartItems.map((i) => i.id));
+    });
+  }, [cartItems]);
+
+  const selectedItems = useMemo(() => cartItems.filter((i) => selectedIds.has(i.id)), [cartItems, selectedIds]);
+
+  const totalPrice = useMemo(() => {
+    return selectedItems.reduce((sum, item) => sum + (item.product.price || item.product.pricePerNight || 0) * item.quantity, 0);
+  }, [selectedItems]);
 
   const updateQuantity = async (cartItemId: string, quantity: number) => {
     if (quantity < 1) {
@@ -153,11 +203,25 @@ export default function CartPage() {
       <Header />
       <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
         <div className="p-6 md:p-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white">
-              My Cart
-            </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</p>
+          <div className="flex items-center gap-3">
+            {cartItems.length > 0 && (
+              <button
+                onClick={toggleAll}
+                className={`flex items-center justify-center h-6 w-6 rounded-lg border-2 transition-all shrink-0 ${
+                  cartItems.length > 0 && cartItems.every((i) => selectedIds.has(i.id))
+                    ? "bg-primary border-primary text-white"
+                    : "border-black/20 dark:border-white/20 hover:border-primary/50"
+                }`}
+              >
+                {cartItems.length > 0 && cartItems.every((i) => selectedIds.has(i.id)) && <Check className="h-3.5 w-3.5" />}
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white">
+                My Cart
+              </h1>
+              <p className="text-muted-foreground text-sm mt-0.5">{selectedIds.size}/{cartItems.length} item{cartItems.length !== 1 ? 's' : ''} selected</p>
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -222,15 +286,42 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="max-w-3xl">
-            {Object.entries(groupedByStore).map(([storeKey, group]) => (
+            {Object.entries(groupedByStore).map(([storeKey, group]) => {
+              const groupItemIds = group.items.map((i) => i.id);
+              const allGroupSelected = groupItemIds.every((id) => selectedIds.has(id));
+              return (
               <div key={storeKey} className="mb-6">
-                <div className="flex items-center gap-2 mb-4 px-1">
+                <div className="flex items-center gap-3 mb-4 px-1">
+                  <button
+                    onClick={() => toggleStoreGroup(groupItemIds)}
+                    className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${
+                      allGroupSelected
+                        ? "bg-primary border-primary text-white"
+                        : "border-black/20 dark:border-white/20 hover:border-primary/50"
+                    }`}
+                  >
+                    {allGroupSelected && <Check className="h-3 w-3" />}
+                  </button>
                   <Store className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-bold">{group.storeName}</span>
                 </div>
                 <div className="space-y-4">
-                  {group.items.map((item) => (
-                    <div key={item.id} className="flex gap-4 p-4 rounded-[25px] bg-[#f8f8f8]">
+                  {group.items.map((item) => {
+                    const isSelected = selectedIds.has(item.id);
+                    return (
+                    <div key={item.id} className={`flex gap-4 p-4 rounded-[25px] transition-all ${
+                      isSelected ? "bg-[#f8f8f8]" : "bg-[#f8f8f8]/50 opacity-60"
+                    }`}>
+                      <button
+                        onClick={() => toggleItem(item.id)}
+                        className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 mt-2 ${
+                          isSelected
+                            ? "bg-primary border-primary text-white"
+                            : "border-black/20 dark:border-white/20 hover:border-primary/50"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3" />}
+                      </button>
                       <Link href={`/book/${item.product.id}`}>
                         <div className="h-24 w-24 rounded-[15px] overflow-hidden shrink-0">
                           <Image src={item.product.imageUrl} alt={item.product.name} width={96} height={96} className="object-cover h-full w-full" />
@@ -260,10 +351,12 @@ export default function CartPage() {
                         <p className="text-sm font-bold">₱{((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}</p>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         </div>
@@ -273,15 +366,32 @@ export default function CartPage() {
       {cartItems.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-black/5 shadow-2xl p-4 md:pb-4 pb-[calc(var(--bottom-nav-height)+16px)]">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Total ({cartItems.length} items)</p>
-              <p className="text-2xl font-bold text-primary">₱{totalPrice.toLocaleString()}</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleAll}
+                className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${
+                  cartItems.every((i) => selectedIds.has(i.id))
+                    ? "bg-primary border-primary text-white"
+                    : "border-black/20 hover:border-primary/50"
+                }`}
+              >
+                {cartItems.every((i) => selectedIds.has(i.id)) && <Check className="h-3 w-3" />}
+              </button>
+              <div>
+                <p className="text-xs text-muted-foreground">Total ({selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''})</p>
+                <p className="text-2xl font-bold text-primary">₱{totalPrice.toLocaleString()}</p>
+              </div>
             </div>
             <Button
-              onClick={() => router.push("/checkout")}
-              className="rounded-full px-10 py-6 bg-black text-white font-bold text-sm h-14 hover:bg-primary transition-all"
+              onClick={() => {
+                if (selectedItems.length === 0) return;
+                localStorage.setItem("checkout_selected_ids", JSON.stringify(Array.from(selectedIds)));
+                router.push("/checkout");
+              }}
+              disabled={selectedItems.length === 0}
+              className="rounded-full px-10 py-6 bg-black text-white font-bold text-sm h-14 hover:bg-primary transition-all disabled:opacity-40"
             >
-              Checkout
+              Checkout ({selectedItems.length})
             </Button>
           </div>
         </div>

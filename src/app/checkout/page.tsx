@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package } from "lucide-react";
+import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package, Upload, Clock, QrCode, Download } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { cn } from "@/lib/utils";
-import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking } from "@/supabase";
-import { sendOrderAutoMessage } from "@/lib/auto-message";
+import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
+import { sendOrderAutoMessage, sendGcashProofMessage } from "@/lib/auto-message";
 import type { FilterOp } from "@/supabase/use-collection";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -61,6 +62,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("cod");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [codOrderIds, setCodOrderIds] = useState<string[]>([]);
   const [fulfillmentMethod, setFulfillmentMethod] = useState<string>("delivery");
   // Address book
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number>(0);
@@ -79,6 +81,7 @@ export default function CheckoutPage() {
   const [qrProofUrl, setQRProofUrl] = useState<string>("");
   const [qrRef, setQRRef] = useState("");
   const [qrUploading, setQRUploading] = useState(false);
+  const [gcashStep, setGcashStep] = useState<"scan" | "proof">("scan");
   // Timer effect
   React.useEffect(() => {
     if (!showQRModal || qrTimeout <= 0) return;
@@ -130,14 +133,31 @@ export default function CheckoutPage() {
     }
   }, [userProfile]);
 
-  // Group cart items by storeId
+  // Get selected item IDs from localStorage (set by cart page)
+  const [checkoutSelectedIds, setCheckoutSelectedIds] = useState<string[] | null>(null);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("checkout_selected_ids");
+      if (raw) {
+        setCheckoutSelectedIds(JSON.parse(raw));
+      }
+    } catch {}
+  }, []);
+
+  // Group cart items by storeId — filtered to selected items only
   const cartItems = useMemo(() => {
     if (!cartData || !productsData) return [];
-    return cartData.map(c => {
+    const all = cartData.map(c => {
       const product = productsData.find(p => p.id === c.productId);
       return product ? { ...c, product } : null;
     }).filter(Boolean) as (CartItem & { product: Product })[];
-  }, [cartData, productsData]);
+    // If we have a selection, filter to only those items
+    if (checkoutSelectedIds && checkoutSelectedIds.length > 0) {
+      const idSet = new Set(checkoutSelectedIds);
+      return all.filter(item => idSet.has(item.id));
+    }
+    return all;
+  }, [cartData, productsData, checkoutSelectedIds]);
 
   // Group items by storeId
   const itemsByStore = useMemo(() => {
@@ -169,6 +189,34 @@ export default function CheckoutPage() {
     return store?.name || "Shop";
   };
 
+  // Determine fulfillment options available across all stores in cart
+  const fulfillmentAvailability = useMemo(() => {
+    if (!storesData || storesData.length === 0) return { delivery: true, pickup: true };
+    // All stores must offer delivery for delivery to be available
+    // All stores must offer pickup for pickup to be available
+    let allOfferDelivery = true;
+    let allOfferPickup = true;
+    for (const group of itemsByStore) {
+      const store = storesData.find((s: any) => s.id === group.storeId);
+      if (store) {
+        if (store.offersDelivery === false) allOfferDelivery = false;
+        if (store.offersPickup === false) allOfferPickup = false;
+      }
+    }
+    // Fallback: if somehow both are false, allow both (safety net)
+    if (!allOfferDelivery && !allOfferPickup) return { delivery: true, pickup: true };
+    return { delivery: allOfferDelivery, pickup: allOfferPickup };
+  }, [storesData, itemsByStore]);
+
+  // Auto-select a valid fulfillment method when availability changes
+  React.useEffect(() => {
+    if (!fulfillmentAvailability.delivery && fulfillmentMethod === "delivery") {
+      setFulfillmentMethod("pickup");
+    } else if (!fulfillmentAvailability.pickup && fulfillmentMethod === "pickup") {
+      setFulfillmentMethod("delivery");
+    }
+  }, [fulfillmentAvailability, fulfillmentMethod]);
+
   const totalPrice = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + (item.product.price || item.product.pricePerNight || 0) * item.quantity, 0);
   }, [cartItems]);
@@ -185,8 +233,21 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (!user || isProcessing) return;
+
+    // If GCash selected, show QR modal instead of placing order directly
+    if (paymentMethod === "gcash") {
+      setShowQRModal(true);
+      setGcashStep("scan");
+      setQRTimeout(600);
+      setQRProof(null);
+      setQRProofUrl("");
+      setQRRef("");
+      return;
+    }
+
     setIsProcessing(true);
     try {
+      const createdIds: string[] = [];
       // Create order for each cart item
       for (const item of cartItems) {
         const orderData = {
@@ -206,6 +267,7 @@ export default function CheckoutPage() {
           createdAt: new Date().toISOString(),
         };
         const bookingId = await addDocumentNonBlocking(supabase, "bookings", orderData);
+        if (bookingId?.id) createdIds.push(bookingId.id);
         // Auto-message seller after order placed
         if (item.product.storeId && storesData) {
           const store = storesData.find((s: any) => s.id === item.product.storeId);
@@ -223,6 +285,10 @@ export default function CheckoutPage() {
       for (const item of cartItems) {
         await supabase.from("cart_items").delete().eq("id", item.id);
       }
+      localStorage.removeItem("checkout_selected_ids");
+      if (paymentMethod === "cod" && createdIds.length > 0) {
+        setCodOrderIds(createdIds);
+      }
       setOrderSuccess(true);
       confetti({
         particleCount: 100,
@@ -236,11 +302,12 @@ export default function CheckoutPage() {
     }
   };
   
-  // Handle QR PH order submit (after proof upload)
-  const handleQRSubmit = async () => {
-    if (!user || !qrProofUrl) return;
+  // Handle GCash order submit (after proof upload)
+  const handleGcashSubmit = async () => {
+    if (!user || !qrProofUrl || !qrRef) return;
     setIsProcessing(true);
     try {
+      const orderIds: string[] = [];
       for (const item of cartItems) {
         const orderData = {
           userId: user.uid,
@@ -248,7 +315,7 @@ export default function CheckoutPage() {
           storeId: item.product.storeId || null,
           quantity: item.quantity,
           totalPrice: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
-          paymentMethod: "qrph",
+          paymentMethod: "gcash",
           status: "To Pay",
           fulfillmentMethod,
           shippingAddress: formattedAddress,
@@ -257,19 +324,24 @@ export default function CheckoutPage() {
           endDate: new Date().toISOString(),
           numberOfGuests: item.quantity,
           createdAt: new Date().toISOString(),
-          qrphProofUrl: qrProofUrl,
-          qrphRef: qrRef,
+          gcashProofUrl: qrProofUrl,
+          gcashRef: qrRef,
         };
         const bookingId = await addDocumentNonBlocking(supabase, "bookings", orderData);
-        // Auto-message seller after order placed
+        if (bookingId?.id) orderIds.push(bookingId.id);
+        // Send proof + details to seller via message
         if (item.product.storeId && storesData) {
           const store = storesData.find((s: any) => s.id === item.product.storeId);
           if (store && store.sellerId) {
-            sendOrderAutoMessage({
+            sendGcashProofMessage({
               buyerId: user.uid,
               sellerId: store.sellerId,
               storeName: store.name,
-              orderId: bookingId?.id || ""
+              orderId: bookingId?.id || "",
+              gcashRef: qrRef,
+              gcashProofUrl: qrProofUrl,
+              amount: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
+              date: new Date().toLocaleString(),
             });
           }
         }
@@ -278,6 +350,7 @@ export default function CheckoutPage() {
         await supabase.from("cart_items").delete().eq("id", item.id);
       }
       setShowQRModal(false);
+      localStorage.removeItem("checkout_selected_ids");
       setOrderSuccess(true);
       confetti({
         particleCount: 100,
@@ -285,7 +358,7 @@ export default function CheckoutPage() {
         origin: { y: 0.6 },
       });
     } catch (error) {
-      console.error("QR Order error:", error);
+      console.error("GCash Order error:", error);
     } finally {
       setIsProcessing(false);
     }
@@ -297,9 +370,11 @@ export default function CheckoutPage() {
     if (!file || !user) return;
     setQRUploading(true);
     try {
-      const { data, error } = await supabase.storage.from("seller-assets").upload(`qrproof/${user.uid}_${Date.now()}`, file, { upsert: true });
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `gcash-proofs/${user.uid}_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage.from("products").upload(filePath, file, { upsert: true });
       if (error) throw error;
-      const { data: urlData } = supabase.storage.from("seller-assets").getPublicUrl(data.path);
+      const { data: urlData } = supabase.storage.from("products").getPublicUrl(data.path);
       setQRProofUrl(urlData.publicUrl);
       setQRProof(file);
     } catch (err) {
@@ -364,7 +439,74 @@ export default function CheckoutPage() {
   );
   if (!user) { router.push("/login"); return null; }
 
+  // Download QR as image
+  const handleDownloadQR = useCallback((orderId: string) => {
+    const canvas = document.getElementById(`cod-qr-${orderId}`) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `order-${orderId.slice(0, 8)}-qr.png`;
+    a.click();
+  }, []);
+
   if (orderSuccess) {
+    // COD success with QR codes
+    if (codOrderIds.length > 0) {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      return (
+        <div className="flex min-h-screen flex-col bg-white">
+          <Header />
+          <main className="flex-grow container mx-auto px-4 pt-0 md:pt-32 pb-24 max-w-[600px]">
+            <div className="text-center py-12">
+              <div className="h-20 w-20 rounded-full bg-green-100 mx-auto mb-6 flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              </div>
+              <h2 className="text-3xl font-headline font-normal tracking-[-0.03em] mb-2">Order Placed!</h2>
+              <p className="text-muted-foreground mb-2">Cash on Delivery selected. Show this QR code to the seller when paying.</p>
+              <p className="text-xs text-muted-foreground mb-8">The seller can scan this QR to view your order and confirm your payment.</p>
+
+              <div className="space-y-6">
+                {codOrderIds.map((orderId, idx) => (
+                  <div key={orderId} className="bg-[#f8f8f8] rounded-[28px] p-6 border border-black/[0.04]">
+                    {codOrderIds.length > 1 && (
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Order {idx + 1} of {codOrderIds.length}</p>
+                    )}
+                    <p className="text-xs font-mono text-muted-foreground mb-4">ID: {orderId.slice(0, 12)}...</p>
+                    <div className="bg-white rounded-2xl p-5 inline-block border-2 border-primary/10 mb-4">
+                      <QRCodeCanvas
+                        id={`cod-qr-${orderId}`}
+                        value={`${baseUrl}/orders/${orderId}`}
+                        size={200}
+                        level="H"
+                        includeMargin
+                      />
+                    </div>
+                    <div className="flex gap-3 justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDownloadQR(orderId)}
+                        className="rounded-full px-5 h-10 text-sm gap-2"
+                      >
+                        <Download className="h-4 w-4" /> Save QR
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-3 justify-center mt-8">
+                <Button onClick={() => router.push("/my-bookings")} className="rounded-full px-8 py-5 bg-primary text-white font-bold h-12">View Orders</Button>
+                <Button onClick={() => router.push("/")} variant="outline" className="rounded-full px-8 py-5 h-12">Continue Shopping</Button>
+              </div>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+
+    // Default success (non-COD)
     return (
       <div className="flex min-h-screen flex-col bg-white">
         <Header />
@@ -386,32 +528,136 @@ export default function CheckoutPage() {
     );
   }
   
-  // QR PH Modal
+  // GCash / QR Payment Modal
   const qrStore = storesData && itemsByStore.length === 1 ? storesData.find((s: any) => s.id === itemsByStore[0].storeId) : null;
   const qrphUrl = qrStore?.qrphUrl;
   
   const QRModal = showQRModal && (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md relative">
-        <button className="absolute top-2 right-2 text-muted-foreground" onClick={() => setShowQRModal(false)}>&times;</button>
-        <h2 className="text-xl font-bold mb-2">Pay via QR PH</h2>
-        <p className="text-sm mb-4">Scan the seller's QR code below and upload your payment proof. You have <span className="font-bold">{Math.floor(qrTimeout/60)}:{(qrTimeout%60).toString().padStart(2,'0')}</span> minutes.</p>
-        {qrphUrl ? (
-          <img src={qrphUrl} alt="Seller QR PH" className="w-48 h-48 object-contain mx-auto mb-4 border rounded-xl" />
-        ) : (
-          <div className="w-48 h-48 flex items-center justify-center bg-gray-100 rounded-xl mx-auto mb-4 text-xs text-muted-foreground">No QR code uploaded by seller</div>
-        )}
-        <div className="mb-3">
-          <label className="block text-xs mb-1 font-medium">Reference Number</label>
-          <input type="text" className="w-full border rounded px-3 py-2 mb-2" value={qrRef} onChange={e => setQRRef(e.target.value)} placeholder="Enter reference number" />
-          <label className="block text-xs mb-1 font-medium">Upload Payment Proof</label>
-          <input type="file" accept="image/*" onChange={handleQRProofUpload} disabled={qrUploading} />
-          {qrProofUrl && <img src={qrProofUrl} alt="Proof" className="w-32 h-32 object-contain mt-2 border rounded" />}
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-[28px] p-6 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
+        <button className="absolute top-4 right-4 text-muted-foreground hover:text-black text-2xl leading-none" onClick={() => setShowQRModal(false)}>&times;</button>
+        
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
+            <QrCode className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Pay via GCash</h2>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>Time remaining: <span className="font-bold text-black">{Math.floor(qrTimeout/60)}:{(qrTimeout%60).toString().padStart(2,'0')}</span></span>
+            </div>
+          </div>
         </div>
-        <Button onClick={handleQRSubmit} disabled={!qrProofUrl || !qrRef || qrTimeout <= 0 || qrUploading || isProcessing} className="w-full rounded-full h-12 mt-2">
-          {isProcessing ? "Submitting..." : qrTimeout <= 0 ? "Timeout" : "Submit Payment"}
-        </Button>
-        {qrTimeout <= 0 && <div className="text-xs text-red-500 mt-2">Time expired. Please try again.</div>}
+
+        {/* Amount */}
+        <div className="bg-[#f8f8f8] rounded-2xl p-4 mb-4 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Amount to Pay</p>
+          <p className="text-3xl font-bold text-primary font-headline">₱{grandTotal.toLocaleString()}</p>
+        </div>
+
+        {gcashStep === "scan" ? (
+          <>
+            {/* QR Code display */}
+            <div className="text-center mb-4">
+              <p className="text-sm font-medium mb-3">Scan this QR code with your GCash app</p>
+              {qrphUrl ? (
+                <div className="bg-white border-2 border-blue-100 rounded-2xl p-4 inline-block">
+                  <img src={qrphUrl} alt="GCash QR Code" className="w-52 h-52 object-contain mx-auto" />
+                </div>
+              ) : (
+                <div className="w-52 h-52 flex items-center justify-center bg-gray-100 rounded-2xl mx-auto text-sm text-muted-foreground border-2 border-dashed border-gray-200">
+                  <div className="text-center">
+                    <QrCode className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p>No QR code uploaded<br/>by seller</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3 mb-4">
+              <p className="text-xs text-blue-700"><strong>Steps:</strong> 1. Open GCash app → 2. Scan QR code → 3. Pay ₱{grandTotal.toLocaleString()} → 4. Take a screenshot → 5. Click button below</p>
+            </div>
+            <Button
+              onClick={() => setGcashStep("proof")}
+              className="w-full rounded-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              <Upload className="h-4 w-4 mr-2" /> I&apos;ve Paid — Send Proof
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* Proof upload step */}
+            <p className="text-sm font-medium mb-3">Upload your GCash payment proof</p>
+            
+            <div className="space-y-4">
+              {/* Proof image upload */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Payment Screenshot</label>
+                {qrProofUrl ? (
+                  <div className="relative">
+                    <img src={qrProofUrl} alt="Payment Proof" className="w-full max-h-48 object-contain border-2 border-green-200 rounded-2xl bg-green-50 p-2" />
+                    <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-blue-200 rounded-2xl cursor-pointer hover:bg-blue-50/50 transition-colors">
+                    <Upload className="h-8 w-8 text-blue-400 mb-2" />
+                    <span className="text-sm text-muted-foreground">{qrUploading ? "Uploading..." : "Tap to upload screenshot"}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleQRProofUpload} disabled={qrUploading} />
+                  </label>
+                )}
+                {qrProofUrl && (
+                  <label className="text-xs text-blue-600 cursor-pointer mt-1 inline-block hover:underline">
+                    Change image
+                    <input type="file" accept="image/*" className="hidden" onChange={handleQRProofUpload} disabled={qrUploading} />
+                  </label>
+                )}
+              </div>
+
+              {/* Reference number */}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">GCash Reference Number</label>
+                <input
+                  type="text"
+                  className="w-full border-2 border-black/10 rounded-xl px-4 py-3 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-mono tracking-wider"
+                  value={qrRef}
+                  onChange={e => setQRRef(e.target.value)}
+                  placeholder="e.g. 1234 5678 9012"
+                />
+              </div>
+
+              {/* Info box */}
+              <div className="bg-orange-50 rounded-xl p-3">
+                <p className="text-xs text-orange-700"><strong>Note:</strong> Your payment proof and reference number will be sent to the seller for verification. The seller will confirm your payment once verified.</p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setGcashStep("scan")}
+                  className="flex-1 rounded-full h-12"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleGcashSubmit}
+                  disabled={!qrProofUrl || !qrRef || qrTimeout <= 0 || qrUploading || isProcessing}
+                  className="flex-1 rounded-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
+                >
+                  {isProcessing ? "Submitting..." : "Send Proof & Place Order"}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {qrTimeout <= 0 && (
+          <div className="mt-3 text-center">
+            <p className="text-xs text-red-500 font-medium">⏰ Time expired. Please close and try again.</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -469,9 +715,9 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-headline font-normal tracking-[-0.03em] mb-2">Delivery or Pickup</h2>
               <div className="space-y-3">
                 {[
-                  { value: "delivery", label: "Delivery", desc: "Order will be delivered to your address" },
-                  { value: "pickup", label: "Pickup", desc: "You will pick up the order at the shop" },
-                ].map((method) => (
+                  { value: "delivery", label: "Delivery", desc: "Order will be delivered to your address", available: fulfillmentAvailability.delivery },
+                  { value: "pickup", label: "Pickup", desc: "You will pick up the order at the shop", available: fulfillmentAvailability.pickup },
+                ].filter(m => m.available).map((method) => (
                   <button
                     key={method.value}
                     onClick={() => setFulfillmentMethod(method.value)}
@@ -494,6 +740,12 @@ export default function CheckoutPage() {
                     </div>
                   </button>
                 ))}
+                {!fulfillmentAvailability.delivery && (
+                  <p className="text-xs text-orange-600 bg-orange-50 rounded-xl p-3">This seller only offers pickup — delivery is not available.</p>
+                )}
+                {!fulfillmentAvailability.pickup && (
+                  <p className="text-xs text-blue-600 bg-blue-50 rounded-xl p-3">This seller only offers delivery — pickup is not available.</p>
+                )}
               </div>
             </div>
             <div>
@@ -548,7 +800,7 @@ export default function CheckoutPage() {
                 <CreditCard className="h-4 w-4 text-primary" />
                 <span className="text-sm font-bold">Payment</span>
               </div>
-              <p className="text-sm mb-4">{paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod === "qrph" ? "QR PH" : "GCash"}</p>
+              <p className="text-sm mb-4">{paymentMethod === "cod" ? "Cash on Delivery" : paymentMethod === "gcash" ? "GCash" : "QR PH"}</p>
               <div className="space-y-5 mb-4">
                 {itemsByStore.map(storeGroup => (
                   <div key={storeGroup.storeId} className="mb-2">
@@ -619,6 +871,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
+      {QRModal}
       <Footer />
     </div>
   );

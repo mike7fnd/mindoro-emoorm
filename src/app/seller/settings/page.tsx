@@ -17,6 +17,8 @@ import {
   Camera,
   Globe,
   Loader2,
+  Truck,
+  MapPin,
 } from "lucide-react";
 import {
   Select,
@@ -55,6 +57,8 @@ export default function SellerSettingsPage() {
     street: "",
     barangay: "",
     qrphUrl: "",
+    offersDelivery: true,
+    offersPickup: true,
   });
 
   // Populate form when store data loads
@@ -70,6 +74,8 @@ export default function SellerSettingsPage() {
         street: s.street || "",
         barangay: s.barangay || "",
         qrphUrl: s.qrphUrl || "",
+        offersDelivery: s.offersDelivery !== false,
+        offersPickup: s.offersPickup !== false,
       });
     }
   }, [store]);
@@ -119,6 +125,8 @@ export default function SellerSettingsPage() {
       street: form.street,
       barangay: form.barangay,
       qrphUrl: form.qrphUrl,
+      offersDelivery: form.offersDelivery,
+      offersPickup: form.offersPickup,
       updatedAt: new Date().toISOString(),
     });
 
@@ -279,6 +287,65 @@ export default function SellerSettingsPage() {
                 </Select>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Fulfillment Options */}
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+          <CardContent className="p-6 md:p-8 space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-3 rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+                <Truck className="h-5 w-5" />
+              </div>
+              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Fulfillment Options</h2>
+            </div>
+            <Separator className="opacity-50" />
+            <p className="text-xs text-muted-foreground">Choose how customers can receive their orders. At least one option must be enabled.</p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10">
+                  <Truck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Delivery</p>
+                  <p className="text-xs text-muted-foreground">Orders will be delivered to the customer&apos;s address</p>
+                </div>
+              </div>
+              <Switch
+                checked={form.offersDelivery}
+                onCheckedChange={(checked) => {
+                  if (!checked && !form.offersPickup) return;
+                  setForm({ ...form, offersDelivery: checked });
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Pickup</p>
+                  <p className="text-xs text-muted-foreground">Customers will pick up orders at your shop</p>
+                </div>
+              </div>
+              <Switch
+                checked={form.offersPickup}
+                onCheckedChange={(checked) => {
+                  if (!checked && !form.offersDelivery) return;
+                  setForm({ ...form, offersPickup: checked });
+                }}
+              />
+            </div>
+
+            {!form.offersDelivery && form.offersPickup && (
+              <p className="text-xs text-orange-600 bg-orange-50 rounded-xl p-3">Customers will only see &quot;Pickup&quot; as a fulfillment option at checkout.</p>
+            )}
+            {form.offersDelivery && !form.offersPickup && (
+              <p className="text-xs text-blue-600 bg-blue-50 rounded-xl p-3">Customers will only see &quot;Delivery&quot; as a fulfillment option at checkout.</p>
+            )}
           </CardContent>
         </Card>
 

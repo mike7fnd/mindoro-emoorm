@@ -21,13 +21,12 @@ import {
   Download,
   Eye,
   X,
+  ShieldAlert,
 } from "lucide-react";
 import {
   useUser,
-  useSupabase,
   useStableMemo,
   useCollection,
-  updateDocumentNonBlocking,
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -78,7 +77,6 @@ function exportOrdersCSV(orders: any[]) {
 
 export default function AdminOrdersPage() {
   const { user, isUserLoading } = useUser();
-  const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
   const { isAdmin, isAdminLoading } = useIsAdmin();
@@ -117,13 +115,7 @@ export default function AdminOrdersPage() {
   const pendingCount = allOrders?.filter((o: any) => o.status === "Pending" || o.status === "pending" || o.status === "To Pay").length ?? 0;
   const completedCount = allOrders?.filter((o: any) => o.status === "Completed" || o.status === "completed").length ?? 0;
 
-  const handleUpdateStatus = (orderId: string, newStatus: string) => {
-    updateDocumentNonBlocking(supabase, "bookings", orderId, { status: newStatus });
-    toast({ title: "Order updated", description: `Status changed to ${newStatus}.` });
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
-    }
-  };
+
 
   return (
     <AdminLayout>
@@ -251,7 +243,7 @@ export default function AdminOrdersPage() {
                         <th className="text-left py-5 px-4">Qty</th>
                         <th className="text-left py-5 px-4">Date</th>
                         <th className="text-right py-5 px-4">Total</th>
-                        <th className="text-right py-5 px-6">Actions</th>
+                        <th className="text-right py-5 px-6"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -287,46 +279,14 @@ export default function AdminOrdersPage() {
                               ₱{Number(order.totalPrice || 0).toLocaleString()}
                             </td>
                             <td className="py-5 px-6 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="rounded-full h-8 px-3 text-[10px] font-bold border-black/10"
-                                  onClick={() => setSelectedOrder(order)}
-                                >
-                                  <Eye className="h-3 w-3 mr-1" /> View
-                                </Button>
-                                {status !== "Completed" && status !== "completed" && status !== "Cancelled" && status !== "cancelled" && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="rounded-full h-8 px-3 text-[10px] font-bold border-green-200 text-green-600 hover:bg-green-50"
-                                      onClick={() => handleUpdateStatus(order.id, "Confirmed")}
-                                    >
-                                      <CheckCircle2 className="h-3 w-3 mr-1" /> Confirm
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="rounded-full h-8 px-3 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50"
-                                      onClick={() => handleUpdateStatus(order.id, "Cancelled")}
-                                    >
-                                      <XCircle className="h-3 w-3 mr-1" /> Cancel
-                                    </Button>
-                                  </>
-                                )}
-                                {(status === "Confirmed" || status === "To Ship") && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="rounded-full h-8 px-3 text-[10px] font-bold border-purple-200 text-purple-600 hover:bg-purple-50"
-                                    onClick={() => handleUpdateStatus(order.id, "Completed")}
-                                  >
-                                    <Truck className="h-3 w-3 mr-1" /> Complete
-                                  </Button>
-                                )}
-                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full h-8 px-3 text-[10px] font-bold border-black/10"
+                                onClick={() => setSelectedOrder(order)}
+                              >
+                                <Eye className="h-3 w-3 mr-1" /> View
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -407,29 +367,11 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
 
-                {/* Quick status actions */}
-                {selectedOrder.status !== "Completed" && selectedOrder.status !== "completed" &&
-                 selectedOrder.status !== "Cancelled" && selectedOrder.status !== "cancelled" && (
-                  <div className="flex gap-2 pt-3 border-t">
-                    <p className="text-xs text-muted-foreground font-medium mb-2 w-full">Update Status:</p>
-                  </div>
-                )}
-                {selectedOrder.status !== "Completed" && selectedOrder.status !== "completed" &&
-                 selectedOrder.status !== "Cancelled" && selectedOrder.status !== "cancelled" && (
-                  <div className="flex flex-wrap gap-2">
-                    {STATUS_OPTIONS.filter((s) => s !== selectedOrder.status).map((s) => (
-                      <Button
-                        key={s}
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full h-8 px-4 text-xs font-bold"
-                        onClick={() => handleUpdateStatus(selectedOrder.id, s)}
-                      >
-                        {s}
-                      </Button>
-                    ))}
-                  </div>
-                )}
+                {/* Admin view-only notice */}
+                <div className="flex items-center gap-2 pt-3 border-t text-muted-foreground">
+                  <ShieldAlert className="h-4 w-4" />
+                  <p className="text-xs font-medium">Admin view only — only sellers can update order status.</p>
+                </div>
               </div>
             )}
           </DialogContent>

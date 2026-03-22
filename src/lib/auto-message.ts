@@ -52,3 +52,76 @@ export async function sendOrderAutoMessage({ buyerId, sellerId, storeName, order
     createdAt: new Date().toISOString(),
   });
 }
+
+interface SendGcashProofMessageParams {
+  buyerId: string;
+  sellerId: string;
+  storeName: string;
+  orderId: string;
+  gcashRef: string;
+  gcashProofUrl: string;
+  amount: number;
+  date: string;
+}
+
+export async function sendGcashProofMessage({
+  buyerId,
+  sellerId,
+  storeName,
+  orderId,
+  gcashRef,
+  gcashProofUrl,
+  amount,
+  date,
+}: SendGcashProofMessageParams) {
+  if (!buyerId || !sellerId || !storeName || !orderId) return;
+  const supabase = getSupabase();
+
+  // Find or create conversation between buyer and seller
+  let { data: conversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('userId', buyerId)
+    .eq('id', sellerId)
+    .single();
+
+  if (!conversation) {
+    const { data: newConv } = await supabase
+      .from('conversations')
+      .insert({ id: sellerId, userId: buyerId, name: storeName })
+      .select()
+      .single();
+    conversation = newConv;
+  }
+
+  // Build the GCash proof message with all details
+  const proofMessage = [
+    `💳 GCash Payment Proof`,
+    ``,
+    `Order ID: ${orderId}`,
+    `Amount: ₱${amount.toLocaleString()}`,
+    `Reference No: ${gcashRef}`,
+    `Date: ${date}`,
+    `Store: ${storeName}`,
+    ``,
+    `📸 Proof of Payment:`,
+    gcashProofUrl,
+    ``,
+    `Please confirm my payment. Thank you!`,
+  ].join('\n');
+
+  await supabase.from('messages').insert({
+    conversationId: sellerId,
+    senderId: buyerId,
+    recipientId: sellerId,
+    content: proofMessage,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Update conversation timestamp
+  await supabase
+    .from('conversations')
+    .update({ lastMessage: '💳 GCash Payment Proof sent', updatedAt: new Date().toISOString() })
+    .eq('id', sellerId)
+    .eq('userId', buyerId);
+}
