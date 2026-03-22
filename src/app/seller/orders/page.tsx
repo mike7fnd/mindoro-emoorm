@@ -83,7 +83,7 @@ export default function SellerOrdersPage() {
             }
           });
         },
-        () => {} // ignore scan errors (no QR found yet)
+        () => { } // ignore scan errors (no QR found yet)
       );
     } catch (err) {
       console.error("Scanner error:", err);
@@ -94,7 +94,7 @@ export default function SellerOrdersPage() {
     if (html5QrScannerRef.current) {
       html5QrScannerRef.current.stop().then(() => {
         html5QrScannerRef.current = null;
-      }).catch(() => {});
+      }).catch(() => { });
     }
     setShowScanner(false);
   }, []);
@@ -107,7 +107,7 @@ export default function SellerOrdersPage() {
     }
     return () => {
       if (html5QrScannerRef.current) {
-        html5QrScannerRef.current.stop().catch(() => {});
+        html5QrScannerRef.current.stop().catch(() => { });
         html5QrScannerRef.current = null;
       }
     };
@@ -237,9 +237,8 @@ export default function SellerOrdersPage() {
           ].map((s) => (
             <Card
               key={s.label}
-              className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] cursor-pointer transition-all hover:scale-[1.02] ${
-                tab === s.label ? "border-primary ring-2 ring-primary/20" : "border-black/[0.02]"
-              }`}
+              className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] cursor-pointer transition-all hover:scale-[1.02] ${tab === s.label ? "border-primary ring-2 ring-primary/20" : "border-black/[0.02]"
+                }`}
               onClick={() => setTab(tab === s.label ? "all" : s.label)}
             >
               <CardContent className="p-5 md:p-6 text-center">
@@ -280,13 +279,12 @@ export default function SellerOrdersPage() {
             <button
               key={t.value}
               onClick={() => setTab(t.value)}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                tab === t.value
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${tab === t.value
                   ? "bg-black text-white dark:bg-white dark:text-black"
                   : t.value === "Cancelled"
-                  ? "bg-[#f8f8f8] text-red-500 hover:bg-red-50 dark:bg-white/5"
-                  : "bg-[#f8f8f8] text-muted-foreground hover:bg-muted dark:bg-white/5"
-              }`}
+                    ? "bg-[#f8f8f8] text-red-500 hover:bg-red-50 dark:bg-white/5"
+                    : "bg-[#f8f8f8] text-muted-foreground hover:bg-muted dark:bg-white/5"
+                }`}
             >
               {t.label} {t.count > 0 && <span className="ml-1 opacity-70">({t.count})</span>}
             </button>

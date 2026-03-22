@@ -141,7 +141,7 @@ export default function CheckoutPage() {
       if (raw) {
         setCheckoutSelectedIds(JSON.parse(raw));
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // Group cart items by storeId — filtered to selected items only
@@ -301,7 +301,7 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
-  
+
   // Handle GCash order submit (after proof upload)
   const handleGcashSubmit = async () => {
     if (!user || !qrProofUrl || !qrRef) return;
@@ -363,7 +363,7 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
-  
+
   // Handle QR proof upload
   const handleQRProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -527,16 +527,16 @@ export default function CheckoutPage() {
       </div>
     );
   }
-  
+
   // GCash / QR Payment Modal
   const qrStore = storesData && itemsByStore.length === 1 ? storesData.find((s: any) => s.id === itemsByStore[0].storeId) : null;
   const qrphUrl = qrStore?.qrphUrl;
-  
+
   const QRModal = showQRModal && (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-[28px] p-6 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
         <button className="absolute top-4 right-4 text-muted-foreground hover:text-black text-2xl leading-none" onClick={() => setShowQRModal(false)}>&times;</button>
-        
+
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
@@ -546,7 +546,7 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Pay via GCash</h2>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              <span>Time remaining: <span className="font-bold text-black">{Math.floor(qrTimeout/60)}:{(qrTimeout%60).toString().padStart(2,'0')}</span></span>
+              <span>Time remaining: <span className="font-bold text-black">{Math.floor(qrTimeout / 60)}:{(qrTimeout % 60).toString().padStart(2, '0')}</span></span>
             </div>
           </div>
         </div>
@@ -570,7 +570,7 @@ export default function CheckoutPage() {
                 <div className="w-52 h-52 flex items-center justify-center bg-gray-100 rounded-2xl mx-auto text-sm text-muted-foreground border-2 border-dashed border-gray-200">
                   <div className="text-center">
                     <QrCode className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p>No QR code uploaded<br/>by seller</p>
+                    <p>No QR code uploaded<br />by seller</p>
                   </div>
                 </div>
               )}
@@ -589,7 +589,7 @@ export default function CheckoutPage() {
           <>
             {/* Proof upload step */}
             <p className="text-sm font-medium mb-3">Upload your GCash payment proof</p>
-            
+
             <div className="space-y-4">
               {/* Proof image upload */}
               <div>

@@ -100,7 +100,7 @@ function MessagesContent() {
     if (!list.find(c => c.id === 'bella-bot')) {
       list.unshift({
         id: 'bella-bot',
-        name: "E-Moorm Bot",
+        name: "Moormy Bot",
         lastMessage: "Hi! I'm your shopping assistant. How can I help?",
         updatedAt: new Date().toISOString(),
       });
@@ -145,7 +145,7 @@ function MessagesContent() {
       userId: user.uid,
       lastMessage: content,
       updatedAt: now,
-      name: activeConversationId === 'bella-bot' ? "E-Moorm Bot" : "Customer Support"
+      name: activeConversationId === 'bella-bot' ? "Moormy Bot" : "Customer Support"
     }, { onConflict: 'id' });
 
     if (activeConversationId === 'bella-bot') {

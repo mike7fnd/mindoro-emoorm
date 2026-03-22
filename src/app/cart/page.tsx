@@ -207,11 +207,10 @@ export default function CartPage() {
             {cartItems.length > 0 && (
               <button
                 onClick={toggleAll}
-                className={`flex items-center justify-center h-6 w-6 rounded-lg border-2 transition-all shrink-0 ${
-                  cartItems.length > 0 && cartItems.every((i) => selectedIds.has(i.id))
+                className={`flex items-center justify-center h-6 w-6 rounded-lg border-2 transition-all shrink-0 ${cartItems.length > 0 && cartItems.every((i) => selectedIds.has(i.id))
                     ? "bg-primary border-primary text-white"
                     : "border-black/20 dark:border-white/20 hover:border-primary/50"
-                }`}
+                  }`}
               >
                 {cartItems.length > 0 && cartItems.every((i) => selectedIds.has(i.id)) && <Check className="h-3.5 w-3.5" />}
               </button>
@@ -263,102 +262,99 @@ export default function CartPage() {
         </div>
 
         <div className="px-6 md:px-8">
-        {cartLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
-                <Skeleton className="h-24 w-24 rounded-[20px] shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4 rounded-full" />
-                  <Skeleton className="h-3 w-1/2 rounded-full" />
-                  <Skeleton className="h-5 w-20 rounded-full" />
+          {cartLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
+                  <Skeleton className="h-24 w-24 rounded-[20px] shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4 rounded-full" />
+                    <Skeleton className="h-3 w-1/2 rounded-full" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : cartItems.length === 0 ? (
-          <div className="text-center py-20">
-            <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <p className="text-muted-foreground mb-4">Your cart is empty.</p>
-            <Link href="/">
-              <Button className="rounded-full px-8 py-5 bg-primary text-white font-bold h-12">Browse Products</Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="max-w-3xl">
-            {Object.entries(groupedByStore).map(([storeKey, group]) => {
-              const groupItemIds = group.items.map((i) => i.id);
-              const allGroupSelected = groupItemIds.every((id) => selectedIds.has(id));
-              return (
-              <div key={storeKey} className="mb-6">
-                <div className="flex items-center gap-3 mb-4 px-1">
-                  <button
-                    onClick={() => toggleStoreGroup(groupItemIds)}
-                    className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${
-                      allGroupSelected
-                        ? "bg-primary border-primary text-white"
-                        : "border-black/20 dark:border-white/20 hover:border-primary/50"
-                    }`}
-                  >
-                    {allGroupSelected && <Check className="h-3 w-3" />}
-                  </button>
-                  <Store className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-bold">{group.storeName}</span>
-                </div>
-                <div className="space-y-4">
-                  {group.items.map((item) => {
-                    const isSelected = selectedIds.has(item.id);
-                    return (
-                    <div key={item.id} className={`flex gap-4 p-4 rounded-[25px] transition-all ${
-                      isSelected ? "bg-[#f8f8f8]" : "bg-[#f8f8f8]/50 opacity-60"
-                    }`}>
+              ))}
+            </div>
+          ) : cartItems.length === 0 ? (
+            <div className="text-center py-20">
+              <ShoppingCart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground mb-4">Your cart is empty.</p>
+              <Link href="/">
+                <Button className="rounded-full px-8 py-5 bg-primary text-white font-bold h-12">Browse Products</Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="max-w-3xl">
+              {Object.entries(groupedByStore).map(([storeKey, group]) => {
+                const groupItemIds = group.items.map((i) => i.id);
+                const allGroupSelected = groupItemIds.every((id) => selectedIds.has(id));
+                return (
+                  <div key={storeKey} className="mb-6">
+                    <div className="flex items-center gap-3 mb-4 px-1">
                       <button
-                        onClick={() => toggleItem(item.id)}
-                        className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 mt-2 ${
-                          isSelected
+                        onClick={() => toggleStoreGroup(groupItemIds)}
+                        className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${allGroupSelected
                             ? "bg-primary border-primary text-white"
                             : "border-black/20 dark:border-white/20 hover:border-primary/50"
-                        }`}
+                          }`}
                       >
-                        {isSelected && <Check className="h-3 w-3" />}
+                        {allGroupSelected && <Check className="h-3 w-3" />}
                       </button>
-                      <Link href={`/book/${item.product.id}`}>
-                        <div className="h-24 w-24 rounded-[15px] overflow-hidden shrink-0">
-                          <Image src={item.product.imageUrl} alt={item.product.name} width={96} height={96} className="object-cover h-full w-full" />
-                        </div>
-                      </Link>
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/book/${item.product.id}`}>
-                          <h3 className="text-base font-headline font-normal tracking-[-0.03em] line-clamp-1 hover:text-primary transition-colors">{item.product.name}</h3>
-                        </Link>
-                        <p className="text-primary font-bold text-base mt-1">₱{(item.product.price || item.product.pricePerNight || 0).toLocaleString()}</p>
-                        <div className="flex items-center gap-3 mt-3">
-                          <div className="flex items-center gap-0 bg-white rounded-full shadow-sm">
-                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-2 hover:text-primary transition-colors">
-                              <Minus className="h-4 w-4" />
-                            </button>
-                            <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-2 hover:text-primary transition-colors">
-                              <Plus className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <button onClick={() => removeItem(item.id)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold">₱{((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}</p>
-                      </div>
+                      <Store className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-bold">{group.storeName}</span>
                     </div>
-                    );
-                  })}
-                </div>
-              </div>
-              );
-            })}
-          </div>
-        )}
+                    <div className="space-y-4">
+                      {group.items.map((item) => {
+                        const isSelected = selectedIds.has(item.id);
+                        return (
+                          <div key={item.id} className={`flex gap-4 p-4 rounded-[25px] transition-all ${isSelected ? "bg-[#f8f8f8]" : "bg-[#f8f8f8]/50 opacity-60"
+                            }`}>
+                            <button
+                              onClick={() => toggleItem(item.id)}
+                              className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 mt-2 ${isSelected
+                                  ? "bg-primary border-primary text-white"
+                                  : "border-black/20 dark:border-white/20 hover:border-primary/50"
+                                }`}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </button>
+                            <Link href={`/book/${item.product.id}`}>
+                              <div className="h-24 w-24 rounded-[15px] overflow-hidden shrink-0">
+                                <Image src={item.product.imageUrl} alt={item.product.name} width={96} height={96} className="object-cover h-full w-full" />
+                              </div>
+                            </Link>
+                            <div className="flex-1 min-w-0">
+                              <Link href={`/book/${item.product.id}`}>
+                                <h3 className="text-base font-headline font-normal tracking-[-0.03em] line-clamp-1 hover:text-primary transition-colors">{item.product.name}</h3>
+                              </Link>
+                              <p className="text-primary font-bold text-base mt-1">₱{(item.product.price || item.product.pricePerNight || 0).toLocaleString()}</p>
+                              <div className="flex items-center gap-3 mt-3">
+                                <div className="flex items-center gap-0 bg-white rounded-full shadow-sm">
+                                  <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-2 hover:text-primary transition-colors">
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
+                                  <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-2 hover:text-primary transition-colors">
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                <button onClick={() => removeItem(item.id)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors">
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-bold">₱{((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
@@ -369,11 +365,10 @@ export default function CartPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleAll}
-                className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${
-                  cartItems.every((i) => selectedIds.has(i.id))
+                className={`flex items-center justify-center h-5 w-5 rounded-md border-2 transition-all shrink-0 ${cartItems.every((i) => selectedIds.has(i.id))
                     ? "bg-primary border-primary text-white"
                     : "border-black/20 hover:border-primary/50"
-                }`}
+                  }`}
               >
                 {cartItems.every((i) => selectedIds.has(i.id)) && <Check className="h-3 w-3" />}
               </button>

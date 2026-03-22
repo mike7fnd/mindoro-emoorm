@@ -1,6 +1,7 @@
 /**
  * POST /api/chat — AI assistant endpoint.
- * Uses google/gemma-3-270m-it via HuggingFace Inference API (free).
+ * Uses Qwen2.5-72B-Instruct via HuggingFace Inference API (free).
+ * Works both locally and in deployment — just needs HF_TOKEN env var.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

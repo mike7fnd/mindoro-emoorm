@@ -11,7 +11,11 @@
   "orientation": "portrait",
   "dir": "ltr",
   "lang": "en",
-  "categories": ["shopping", "lifestyle", "food"],
+  "categories": [
+    "shopping",
+    "lifestyle",
+    "food"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {

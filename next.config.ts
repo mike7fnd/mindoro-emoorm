@@ -1,4 +1,4 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
@@ -66,7 +66,6 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
-  serverExternalPackages: ['@huggingface/transformers', 'onnxruntime-node'],
   typescript: {
     ignoreBuildErrors: true,
   },

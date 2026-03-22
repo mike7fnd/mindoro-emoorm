@@ -245,14 +245,14 @@ export default function OrderDetailsPage({
                   {order.status === "To Pay"
                     ? "Waiting for payment confirmation"
                     : order.status === "To Ship"
-                    ? "Payment confirmed, preparing to ship"
-                    : order.status === "To Receive"
-                    ? "On the way to buyer"
-                    : order.status === "Completed"
-                    ? "Order completed"
-                    : order.status === "Cancelled"
-                    ? "Order was cancelled"
-                    : "Processing"}
+                      ? "Payment confirmed, preparing to ship"
+                      : order.status === "To Receive"
+                        ? "On the way to buyer"
+                        : order.status === "Completed"
+                          ? "Order completed"
+                          : order.status === "Cancelled"
+                            ? "Order was cancelled"
+                            : "Processing"}
                 </p>
               </div>
             </div>
@@ -425,8 +425,8 @@ export default function OrderDetailsPage({
                           {order.paymentMethod === "cod"
                             ? "Cash on Delivery"
                             : order.paymentMethod === "gcash"
-                            ? "GCash Payment"
-                            : "Payment"}
+                              ? "GCash Payment"
+                              : "Payment"}
                         </strong>{" "}
                         — {order.paymentMethod === "cod" ? "Accept this COD order to proceed." : "Confirm once the buyer has paid you."}
                       </span>
@@ -474,10 +474,10 @@ export default function OrderDetailsPage({
 
               {(order.status === "Completed" ||
                 order.status === "Cancelled") && (
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  No actions available for {order.status.toLowerCase()} orders.
-                </p>
-              )}
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No actions available for {order.status.toLowerCase()} orders.
+                  </p>
+                )}
             </div>
           )}
 
