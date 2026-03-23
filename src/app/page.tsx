@@ -70,7 +70,20 @@ export default function HomePage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [showFilter, setShowFilter] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const stickyRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    const sentinel = stickyRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsSticky(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const consent = localStorage.getItem("cookieConsent");
@@ -339,73 +352,85 @@ export default function HomePage() {
           </h1>
         </div>
 
-        {/* Browse Tabs - Centered Slider Style with Mobile Support and Aligned Indicator */}
-        <div className="relative w-full overflow-x-auto scrollbar-hide mb-6">
-          <div className="flex gap-2 min-w-[340px] md:min-w-0 px-1 relative justify-center md:justify-center">
-            {([
-              { key: "products" as BrowseTab, label: "Products", icon: Tag },
-              { key: "stores" as BrowseTab, label: "Stores", icon: Store },
-              { key: "deals" as BrowseTab, label: "Deals", icon: TrendingDown },
-            ]).map(({ key, label, icon: Icon }, idx) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-6 py-3 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
-                  activeTab === key
-                    ? "text-primary"
-                    : "text-black/70 hover:text-primary"
-                )}
-              >
-                <Icon className="h-6 w-6" />
-                {label}
-                {activeTab === key && (
-                  <div className="w-6 h-[3px] rounded-full bg-primary mt-0.5 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
-                )}
-              </button>
-            ))}
+        {/* Sentinel for sticky detection */}
+        <div ref={stickyRef} className="h-0" />
 
+        {/* Sticky Search + Tabs container */}
+        <div className={cn(
+          "sticky top-0 z-30 transition-all duration-200",
+          isSticky && "bg-white/95 backdrop-blur-md shadow-sm -mx-4 px-4 md:-mx-6 md:px-6 pt-1 pb-0"
+        )}>
+          {/* Search Bar */}
+          <section className={cn("mb-4", isSticky && "mb-2")}>
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="relative flex-1 group w-full">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  placeholder={activeTab === "stores" ? "Search stores..." : "Search products..."}
+                  className="w-full bg-white rounded-full py-5 pl-14 pr-6 text-sm md:text-base outline-none shadow-sm border-none font-medium transition-all focus:ring-2 focus:ring-primary/20"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {/* Mobile filter pill */}
+                {isMobile && (
+                  <button
+                    ref={filterPillRef}
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-5 py-2 rounded-full bg-[#f4f4f4] hover:bg-primary/10 transition-all text-primary font-medium z-20"
+                    onClick={openFilter}
+                    aria-label="Open filters"
+                  >
+                    <Filter className="h-5 w-5" />
+                    Filter
+                  </button>
+                )}
+              </div>
+              {/* Desktop filter icon */}
+              {!isMobile && (
+                <button
+                  type="button"
+                  className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-white shadow-sm border border-black/10 hover:bg-primary/10 transition-all"
+                  onClick={openFilter}
+                  aria-label="Open filters"
+                >
+                  <Filter className="h-6 w-6 text-primary" />
+                </button>
+              )}
+            </div>
+          </section>
+
+          {/* Browse Tabs */}
+          <div className="relative w-full overflow-x-auto scrollbar-hide mb-2">
+            <div className="flex gap-2 min-w-[340px] md:min-w-0 px-1 relative justify-center md:justify-center">
+              {([
+                { key: "products" as BrowseTab, label: "Products", icon: Tag },
+                { key: "stores" as BrowseTab, label: "Stores", icon: Store },
+                { key: "deals" as BrowseTab, label: "Deals", icon: TrendingDown },
+              ]).map(({ key, label, icon: Icon }, idx) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-6 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
+                    isSticky ? "py-0.5" : "py-3",
+                    activeTab === key
+                      ? "text-primary"
+                      : "text-black/70 hover:text-primary"
+                  )}
+                >
+                  <Icon className={cn("transition-all duration-200", isSticky ? "h-0 w-0 opacity-0" : "h-6 w-6 opacity-100")} />
+                  {label}
+                  {activeTab === key && (
+                    <div className="w-6 h-[3px] rounded-full bg-primary mt-0.5 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <section className="mb-10">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-1 group w-full">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <input
-                type="text"
-                placeholder={activeTab === "stores" ? "Search stores..." : "Search products..."}
-                className="w-full bg-white rounded-full py-5 pl-14 pr-6 text-sm md:text-base outline-none shadow-sm border-none font-medium transition-all focus:ring-2 focus:ring-primary/20"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {/* Mobile filter pill */}
-              {isMobile && (
-                <button
-                  ref={filterPillRef}
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 px-5 py-2 rounded-full bg-[#f4f4f4] hover:bg-primary/10 transition-all text-primary font-medium z-20"
-                  onClick={openFilter}
-                  aria-label="Open filters"
-                >
-                  <Filter className="h-5 w-5" />
-                  Filter
-                </button>
-              )}
-            </div>
-            {/* Desktop filter icon */}
-            {!isMobile && (
-              <button
-                type="button"
-                className="flex items-center justify-center h-[52px] w-[52px] rounded-full bg-white shadow-sm border border-black/10 hover:bg-primary/10 transition-all"
-                onClick={openFilter}
-                aria-label="Open filters"
-              >
-                <Filter className="h-6 w-6 text-primary" />
-              </button>
-            )}
-          </div>
-          {/* Filter — Bottom Sheet on mobile, centered dialog on desktop */}
           {isMobile ? (
             <Sheet open={showFilter} onOpenChange={setShowFilter}>
               <SheetContent side="bottom" className="rounded-t-[32px] px-6 pb-8 pt-2 border-none bg-white max-h-[85dvh] overflow-y-auto">
@@ -546,34 +571,26 @@ export default function HomePage() {
                   </button>
                 </div>
                 <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
-                  <div className="flex gap-4 min-w-max pb-2">
+                  <div className="flex gap-6 min-w-max pb-2">
                     {popularStores.map(store => (
-                      <Link key={store.id} href={`/stores/${store.id}`} className="w-[220px] md:w-[260px] shrink-0">
-                        <div className="rounded-[20px] overflow-hidden border border-black/[0.04] bg-[#fafafa] hover:shadow-lg transition-all">
-                          <div className="relative h-20 bg-muted">
-                            {store.coverUrl ? (
-                              <Image src={store.coverUrl} alt={store.name} fill className="object-cover" />
-                            ) : (
-                              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
-                            )}
-                          </div>
-                          <div className="p-3 -mt-5 relative">
-                            <div className="h-10 w-10 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden mb-2">
-                              {store.imageUrl ? (
-                                <Image src={store.imageUrl} alt={store.name} width={40} height={40} className="object-cover h-full w-full" />
-                              ) : (
-                                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
-                                  <Store className="h-4 w-4 text-primary" />
-                                </div>
-                              )}
+                      <Link key={store.id} href={`/stores/${store.id}`} className="flex flex-col items-center w-[120px] shrink-0 group">
+                        <div className="h-[120px] w-[120px] rounded-full border-2 border-black/[0.06] bg-[#f5f5f5] shadow-sm overflow-hidden group-hover:shadow-md group-hover:border-primary/20 transition-all relative">
+                          {store.imageUrl ? (
+                            <Image src={store.imageUrl} alt={store.name} fill sizes="120px" className="object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                              <span className="text-2xl font-bold text-primary/70">{store.name?.charAt(0)?.toUpperCase() || "S"}</span>
                             </div>
-                            <h4 className="text-sm font-medium line-clamp-1">{store.name}</h4>
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                              <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-primary text-primary" />{store.rating || 5.0}</span>
-                              <span>·</span>
-                              <span>{store.city || "Mindoro"}</span>
-                            </div>
-                          </div>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-medium line-clamp-1 mt-2 text-center w-full">{store.name}</h4>
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          <Star className="h-3 w-3 fill-primary text-primary" />
+                          <span className="text-[10px] font-semibold">{store.rating || 5.0}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5 mt-0.5 text-muted-foreground">
+                          <MapPin className="h-2.5 w-2.5" />
+                          <span className="text-[10px] line-clamp-1">{store.city || "Mindoro"}</span>
                         </div>
                       </Link>
                     ))}

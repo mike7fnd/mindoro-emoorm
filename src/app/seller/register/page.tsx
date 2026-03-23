@@ -522,7 +522,7 @@ export default function ShopRegistrationPage() {
                   </div>
                 </div>
               </section>
-              
+
               {/* Submit */}
               <div className="pt-2">
                 {!allIdsClear && (form.governmentIdFront || form.governmentIdBack || form.selfieImage) && (

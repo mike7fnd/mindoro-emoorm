@@ -24,7 +24,7 @@
     --input: 0 0% 90%;
     --ring: 152 60% 40%;
     --radius: 25px;
-    
+
     /* New Custom Variables */
     --base-font: "Inter", sans-serif;
     --logo-font: "Playfair Display", serif;
@@ -77,43 +77,132 @@
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-headline font-normal;
   }
 }
 
 @layer utilities {
+
   /* Responsive Typography Tokens - Desktop Default */
-  .text-display-xl { font-size: 64px; line-height: 1.1; }
-  .text-display-l { font-size: 56px; line-height: 1.1; }
-  .text-display-m { font-size: 48px; line-height: 1.1; }
-  .text-title-xl { font-size: 40px; line-height: 1.2; }
-  .text-title-l { font-size: 32px; line-height: 1.2; }
-  .text-title-m { font-size: 28px; line-height: 1.2; }
-  .text-subtitle-l { font-size: 24px; line-height: 1.3; }
-  .text-subtitle-m { font-size: 20px; line-height: 1.3; }
-  .text-body-l { font-size: 18px; line-height: 1.5; }
-  .text-body-m { font-size: 16px; line-height: 1.5; }
-  .text-body-s { font-size: 14px; line-height: 1.5; }
-  .text-caption { font-size: 12px; line-height: 1.5; }
+  .text-display-xl {
+    font-size: 64px;
+    line-height: 1.1;
+  }
+
+  .text-display-l {
+    font-size: 56px;
+    line-height: 1.1;
+  }
+
+  .text-display-m {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+
+  .text-title-xl {
+    font-size: 40px;
+    line-height: 1.2;
+  }
+
+  .text-title-l {
+    font-size: 32px;
+    line-height: 1.2;
+  }
+
+  .text-title-m {
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .text-subtitle-l {
+    font-size: 24px;
+    line-height: 1.3;
+  }
+
+  .text-subtitle-m {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  .text-body-l {
+    font-size: 18px;
+    line-height: 1.5;
+  }
+
+  .text-body-m {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .text-body-s {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .text-caption {
+    font-size: 12px;
+    line-height: 1.5;
+  }
 
   @media (max-width: 767px) {
-    .text-display-xl { font-size: 40px; }
-    .text-display-l { font-size: 36px; }
-    .text-display-m { font-size: 32px; }
-    .text-title-xl { font-size: 28px; }
-    .text-title-l { font-size: 24px; }
-    .text-title-m { font-size: 22px; }
-    .text-subtitle-l { font-size: 20px; }
-    .text-subtitle-m { font-size: 18px; }
-    .text-body-l { font-size: 16px; }
-    .text-body-m { font-size: 14px; }
-    .text-body-s { font-size: 13px; }
-    .text-caption { font-size: 12px; }
+    .text-display-xl {
+      font-size: 40px;
+    }
+
+    .text-display-l {
+      font-size: 36px;
+    }
+
+    .text-display-m {
+      font-size: 32px;
+    }
+
+    .text-title-xl {
+      font-size: 28px;
+    }
+
+    .text-title-l {
+      font-size: 24px;
+    }
+
+    .text-title-m {
+      font-size: 22px;
+    }
+
+    .text-subtitle-l {
+      font-size: 20px;
+    }
+
+    .text-subtitle-m {
+      font-size: 18px;
+    }
+
+    .text-body-l {
+      font-size: 16px;
+    }
+
+    .text-body-m {
+      font-size: 14px;
+    }
+
+    .text-body-s {
+      font-size: 13px;
+    }
+
+    .text-caption {
+      font-size: 12px;
+    }
   }
 }
 
 @layer components {
+
   /* DESKTOP & TABLET NAVIGATION (Pill Shape) */
   .site-nav {
     position: fixed;
@@ -257,7 +346,7 @@
 
   .icon-btn:hover {
     background: var(--ui-element-hover);
-    border-color: rgba(0,0,0,0.1);
+    border-color: rgba(0, 0, 0, 0.1);
   }
 
   /* MOBILE SPECIFIC BREAKPOINT (Below 768px) */
@@ -296,10 +385,12 @@
 
   /* Desktop and Tablet padding */
   @media (min-width: 768px) {
-    .mobile-header, .mobile-bottom-nav {
+
+    .mobile-header,
+    .mobile-bottom-nav {
       display: none !important;
     }
-    
+
     .page-content {
       padding-top: 0;
       padding-bottom: 40px;
@@ -478,11 +569,15 @@
 
   /* Hide scrollbar for horizontal carousels */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE/Edge */
-    scrollbar-width: none;     /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;             /* Chrome/Safari/Opera */
+    display: none;
+    /* Chrome/Safari/Opera */
   }
 }
 
@@ -492,6 +587,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -502,6 +598,7 @@
   from {
     transform: scaleX(0);
   }
+
   to {
     transform: scaleX(1);
   }
