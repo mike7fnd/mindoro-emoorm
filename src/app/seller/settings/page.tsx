@@ -19,7 +19,11 @@ import {
   Loader2,
   Truck,
   MapPin,
+  Map,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), { ssr: false });
 import {
   Select,
   SelectContent,
@@ -59,6 +63,8 @@ export default function SellerSettingsPage() {
     qrphUrl: "",
     offersDelivery: true,
     offersPickup: true,
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   // Populate form when store data loads
@@ -76,6 +82,8 @@ export default function SellerSettingsPage() {
         qrphUrl: s.qrphUrl || "",
         offersDelivery: s.offersDelivery !== false,
         offersPickup: s.offersPickup !== false,
+        latitude: s.latitude || null,
+        longitude: s.longitude || null,
       });
     }
   }, [store]);
@@ -127,6 +135,8 @@ export default function SellerSettingsPage() {
       qrphUrl: form.qrphUrl,
       offersDelivery: form.offersDelivery,
       offersPickup: form.offersPickup,
+      latitude: form.latitude,
+      longitude: form.longitude,
       updatedAt: new Date().toISOString(),
     });
 
@@ -385,6 +395,26 @@ export default function SellerSettingsPage() {
                   onChange={(e) => setForm({ ...form, street: e.target.value })}
                 />
               </div>
+            </div>
+
+            <Separator className="opacity-50" />
+
+            {/* Map Pin Location */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10">
+                  <Map className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Pin Your Store Location</p>
+                  <p className="text-xs text-muted-foreground">Tap on the map to set your exact location. This will appear on the Map tab for customers.</p>
+                </div>
+              </div>
+              <LocationPickerMap
+                latitude={form.latitude}
+                longitude={form.longitude}
+                onLocationChange={(lat, lng) => setForm({ ...form, latitude: lat, longitude: lng })}
+              />
             </div>
           </CardContent>
         </Card>

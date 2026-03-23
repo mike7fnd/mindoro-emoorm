@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, use, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
 import {
   Heart,
@@ -154,6 +155,43 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   }, [id]);
 
   const { data: facilityBookings } = useCollection<Booking>(bookingsQuery);
+
+  // Fetch all products for "You might also like" section
+  const allProductsQuery = useStableMemo(() => {
+    return { table: "facilities", columns: "* , sold" };
+  }, []);
+  const { data: allProducts } = useCollection<Facility & { sold?: number; totalSales?: number }>(allProductsQuery);
+
+  const relatedProducts = useMemo(() => {
+    if (!allProducts || !facility) return [];
+    const category = facility.type || "";
+    const storeId = facility.storeId || "";
+    const sellerId = facility.sellerId || "";
+
+    // Score each product by relevance
+    const scored = allProducts
+      .filter(p => p.id !== facility.id)
+      .map(p => {
+        let score = 0;
+        if (category && (p.type || "") === category) score += 3;
+        if (storeId && p.storeId === storeId) score += 2;
+        if (sellerId && p.sellerId === sellerId) score += 1;
+        return { ...p, score };
+      })
+      .filter(p => p.score > 0 || allProducts.length <= 20) // fallback: show any if few products
+      .sort((a, b) => b.score - a.score);
+
+    // If not enough related, pad with random other products
+    if (scored.length < 6) {
+      const ids = new Set(scored.map(p => p.id));
+      const others = allProducts
+        .filter(p => p.id !== facility.id && !ids.has(p.id))
+        .sort(() => Math.random() - 0.5);
+      scored.push(...others.map(p => ({ ...p, score: 0 })));
+    }
+
+    return scored.slice(0, 10);
+  }, [allProducts, facility]);
 
   const reservedDates = useMemo(() => {
     if (!facilityBookings) return [];
@@ -688,6 +726,51 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* ── You Might Also Like ──────────────────────────────────── */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-12 mb-4">
+            <div className="flex items-center justify-between mb-6 px-1">
+              <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">You might also like</h2>
+              <span className="text-xs text-muted-foreground font-medium">{relatedProducts.length} items</span>
+            </div>
+            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+              <div className="flex gap-4 min-w-max pb-2">
+                {relatedProducts.map(product => (
+                  <Link key={product.id} href={`/book/${product.id}`} className="w-[170px] md:w-[210px] shrink-0 flex flex-col gap-1.5 group">
+                    <div className="relative aspect-square overflow-hidden rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] bg-[#f8f8f8]">
+                      <Image
+                        src={product.imageUrl || "/placeholder.svg"}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {product.isAuction && (
+                        <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                          Auction
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-1">
+                      <h3 className="text-sm font-normal font-headline tracking-[-0.03em] line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Star className="h-3 w-3 fill-primary text-primary" />
+                        <span className="text-[11px] font-bold">5.0</span>
+                        <span className="text-[11px] text-muted-foreground">· {product.type || "Product"}</span>
+                      </div>
+                      <p className="text-primary font-bold text-sm mt-0.5">
+                        {product.isAuction
+                          ? `₱${(product.currentBid || product.startingBid || 0).toLocaleString()}`
+                          : `₱${(product.price || product.pricePerNight || 0).toLocaleString()}`
+                        }
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer />

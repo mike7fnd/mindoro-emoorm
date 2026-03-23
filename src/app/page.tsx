@@ -4,7 +4,10 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { Heart, Star, Search, Store, Tag, TrendingDown, Sparkles, MapPin, Clock, ChevronRight, Flame, Leaf, Fish, Drumstick, Cookie, Wheat, Wine, Droplets, ShoppingBag } from "lucide-react";
+import { Heart, Star, Search, Store, Tag, Map, Sparkles, MapPin, Clock, ChevronRight, Flame, Leaf, Fish, Drumstick, Cookie, Wheat, Wine, Droplets, ShoppingBag } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const MindoroStoreMap = dynamic(() => import("@/components/mindoro-store-map"), { ssr: false });
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc } from "@/supabase";
@@ -51,9 +54,11 @@ interface StoreItem {
   totalSales: number;
   followerCount: number;
   ownerId: string;
+  latitude?: number;
+  longitude?: number;
 }
 
-type BrowseTab = "products" | "stores" | "deals";
+type BrowseTab = "products" | "stores" | "map";
 
 const municipalities = [
   "All",
@@ -215,11 +220,6 @@ export default function HomePage() {
       return matchesSearch && matchesCategory && matchesMunicipality && matchesMinPrice && matchesMaxPrice && matchesAuction;
     });
   }, [productsData, searchTerm, categoryFilter, municipality, minPrice, maxPrice, auctionOnly]);
-
-  const dealProducts = useMemo(() => {
-    if (!productsData) return [];
-    return productsData.filter(f => f.isAuction || (f.price && f.pricePerNight && f.price < f.pricePerNight));
-  }, [productsData]);
 
   const filteredStores = useMemo(() => {
     if (!storesData) return [];
@@ -478,7 +478,7 @@ export default function HomePage() {
               {([
                 { key: "products" as BrowseTab, label: "Products", icon: Tag },
                 { key: "stores" as BrowseTab, label: "Stores", icon: Store },
-                { key: "deals" as BrowseTab, label: "Deals", icon: TrendingDown },
+                { key: "map" as BrowseTab, label: "Map", icon: Map },
               ]).map(({ key, label, icon: Icon }, idx) => (
                 <button
                   key={key}
@@ -877,56 +877,25 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Deals Tab */}
-        {activeTab === "deals" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12 animate-[fadeSlideIn_0.3s_ease-out]">
-            {isProductsLoading ? (
-              <>{Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex flex-col gap-2">
-                  <Skeleton className="aspect-square w-full rounded-[32px]" />
-                  <Skeleton className="h-4 w-3/4 rounded-full" />
-                  <Skeleton className="h-3 w-1/2 rounded-full" />
-                </div>
-              ))}</>
-            ) : dealProducts.length === 0 ? (
-              <div className="col-span-full text-center py-20 text-muted-foreground italic">No deals available right now. Check back soon!</div>
-            ) : dealProducts.map((product) => (
-              <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
-                <Link href={`/book/${product.id}`}>
-                  <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
-                    <Image
-                      src={product.imageUrl || "/placeholder.svg"}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      data-ai-hint="local product deal"
-                    />
-                    <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-red-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
-                      {product.isAuction ? "Auction" : "Sale"}
-                    </div>
-                    <button
-                      onClick={(e) => toggleLike(e, product.id)}
-                      className={cn(
-                        "absolute top-2 right-2 z-10 p-3 bg-white/20 backdrop-blur-xl rounded-full hover:bg-white/40 transition-all",
-                        isItemLiked(product.id) && "bg-white/40"
-                      )}
-                    >
-                      <Heart className={cn("h-5 w-5 transition-all", isItemLiked(product.id) ? "fill-white text-white scale-110" : "text-white")} />
-                    </button>
-                  </div>
-                </Link>
-                <div className="px-1">
-                  <h3 className="text-lg font-normal font-headline tracking-[-0.05em] line-clamp-1">{product.name}</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                      <span className="text-xs font-bold">{product.rating || 5.0}</span>
-                    </div>
-                    <p className="text-primary font-bold text-base">₱{(product.price || product.currentBid || product.startingBid || 0).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Map Tab */}
+        {activeTab === "map" && (
+          <div className="animate-[fadeSlideIn_0.3s_ease-out]">
+            <div className="mb-6">
+              <h2 className="text-xl font-headline font-normal tracking-[-0.04em] mb-1">Discover Stores in Mindoro</h2>
+              <p className="text-sm text-muted-foreground">Explore local shops pinned on the map. Tap a marker to see shop details.</p>
+            </div>
+            <MindoroStoreMap
+              stores={(storesData || []).map(s => ({
+                id: s.id,
+                name: s.name,
+                imageUrl: s.imageUrl,
+                category: s.category,
+                city: s.city,
+                latitude: s.latitude || 0,
+                longitude: s.longitude || 0,
+              }))}
+              isLoading={isStoresLoading}
+            />
           </div>
         )}
       </main>
