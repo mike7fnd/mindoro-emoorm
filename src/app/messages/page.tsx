@@ -337,7 +337,7 @@ function MessagesContent() {
                         "h-14 w-14 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0 overflow-hidden relative",
                         convo.id === 'bella-bot' ? "bg-black" : "bg-primary"
                       )}>
-                        {convo.id === 'bella-bot' ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
+                        {convo.id === 'bella-bot' ? <Image src="/icons/moormy-bot-v2.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <div className="flex justify-between items-baseline mb-0.5">
