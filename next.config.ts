@@ -66,6 +66,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  serverExternalPackages: ['sharp'],
   typescript: {
     ignoreBuildErrors: true,
   },

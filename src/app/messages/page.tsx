@@ -14,7 +14,10 @@ import {
   Sparkles,
   Settings,
   Archive,
-  Search
+  Search,
+  Languages,
+  Trash2,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -75,6 +78,8 @@ function MessagesContent() {
   const [messageInput, setMessageInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [botLanguage, setBotLanguage] = useState<'english' | 'tagalog'>('english');
+  const [chatCleared, setChatCleared] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,7 +122,17 @@ function MessagesContent() {
     };
   }, [user, activeConversationId]);
 
-  const { data: messages } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages } = useCollection<Message>(messagesQuery);
+
+  // When chatCleared is true, show empty until new messages arrive from DB
+  const messages = chatCleared ? [] : rawMessages;
+
+  // Reset chatCleared when new messages arrive after clearing
+  useEffect(() => {
+    if (chatCleared && rawMessages && rawMessages.length > 0) {
+      setChatCleared(false);
+    }
+  }, [chatCleared, rawMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,6 +144,7 @@ function MessagesContent() {
 
     const content = messageInput.trim();
     setMessageInput("");
+    setChatCleared(false);
 
     const now = new Date().toISOString();
 
@@ -163,7 +179,7 @@ function MessagesContent() {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: content }),
+          body: JSON.stringify({ message: content, language: botLanguage }),
           signal: controller.signal,
         });
         clearTimeout(fetchTimeout);
@@ -367,6 +383,52 @@ function MessagesContent() {
                         </p>
                       </div>
                     </div>
+                    {activeConversationId === 'bella-bot' && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none">
+                            <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/5 bg-white backdrop-blur-xl z-[1100]" sideOffset={8}>
+                          <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Bot Options</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-black/5" />
+                          <DropdownMenuItem
+                            onClick={() => setBotLanguage(prev => prev === 'english' ? 'tagalog' : 'english')}
+                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                          >
+                            <Languages className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              {botLanguage === 'english' ? 'Switch to Tagalog' : 'Switch to English'}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (!user) return;
+                              setChatCleared(true);
+                              try {
+                                const { error } = await supabase.from('messages').delete().eq('conversationId', 'bella-bot');
+                                if (error) console.error('[clear-chat] delete error:', error);
+                                await supabase.from('conversations').update({ lastMessage: 'Chat cleared' }).eq('id', 'bella-bot');
+                              } catch (err) {
+                                console.error('[clear-chat] failed:', err);
+                              }
+                            }}
+                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="text-sm font-medium">Clear Chat</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => alert('Moormy Bot — AI shopping assistant for E-Moorm marketplace.\nPowered by Qwen2.5-72B-Instruct.\nAsk me about products, stores, orders, and more!')}
+                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
+                          >
+                            <Info className="h-4 w-4" />
+                            <span className="text-sm font-medium">About Moormy Bot</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
 
                   <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-white flex flex-col gap-4">

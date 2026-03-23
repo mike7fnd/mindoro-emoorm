@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-// For address autocomplete, you may use a PH address API or Google Places API (placeholder for now)
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Store, Phone, MapPin, FileText, Upload, Tag, CheckCircle2, PartyPopper } from "lucide-react";
+import { ArrowLeft, Store, Phone, MapPin, FileText, Upload, Tag, CheckCircle2, PartyPopper, AlertTriangle, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
+import { uploadImage } from "@/lib/upload-image";
 
 export default function ShopRegistrationPage() {
   const [form, setForm] = useState({
@@ -41,6 +41,46 @@ export default function ShopRegistrationPage() {
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
+  // ID clarity checking state
+  const [idClarityStatus, setIdClarityStatus] = useState<Record<string, 'checking' | 'clear' | 'blurry' | null>>({
+    governmentIdFront: null,
+    governmentIdBack: null,
+    selfieImage: null,
+  });
+  // Store the actual File objects for Supabase upload
+  const [idFiles, setIdFiles] = useState<Record<string, File | null>>({
+    governmentIdFront: null,
+    governmentIdBack: null,
+    selfieImage: null,
+  });
+
+  const idFieldsRequiringClarity = ['governmentIdFront', 'governmentIdBack', 'selfieImage'];
+  const allIdsClear = idFieldsRequiringClarity.every(
+    (field) => idClarityStatus[field] === 'clear'
+  );
+
+  /** Check if an uploaded image is clear enough using the blur-detection API */
+  async function checkImageClarity(file: File, fieldName: string) {
+    setIdClarityStatus((prev) => ({ ...prev, [fieldName]: 'checking' }));
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/check-image-clarity', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.isClear) {
+        setIdClarityStatus((prev) => ({ ...prev, [fieldName]: 'clear' }));
+      } else {
+        setIdClarityStatus((prev) => ({ ...prev, [fieldName]: 'blurry' }));
+        // Reset the preview so user must re-upload
+        setForm((prev) => ({ ...prev, [fieldName]: '' }));
+        setIdFiles((prev) => ({ ...prev, [fieldName]: null }));
+      }
+    } catch {
+      // On error, allow submission (don't block)
+      setIdClarityStatus((prev) => ({ ...prev, [fieldName]: 'clear' }));
+    }
+  }
+
   // If user already has a store, redirect to dashboard
   const storeRef = useStableMemo(() => {
     if (!user) return null;
@@ -61,11 +101,18 @@ export default function ShopRegistrationPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, files } = e.target;
     if (files && files[0]) {
+      const file = files[0];
       const reader = new FileReader();
       reader.onload = (ev) => {
         setForm((prev) => ({ ...prev, [name]: ev.target?.result as string }));
       };
-      reader.readAsDataURL(files[0]);
+      reader.readAsDataURL(file);
+
+      // For ID / selfie fields, run clarity check and store the File
+      if (idFieldsRequiringClarity.includes(name)) {
+        setIdFiles((prev) => ({ ...prev, [name]: file }));
+        checkImageClarity(file, name);
+      }
     }
   }
 
@@ -101,42 +148,66 @@ export default function ShopRegistrationPage() {
     });
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    if (!allIdsClear) return; // Block if any ID is blurry / still checking
     setSubmitting(true);
 
-    // Save store data to Supabase (stores table)
-    const storeData = {
-      id: user.uid,
-      "ownerId": user.uid,
-      name: form.storeName,
-      description: form.description,
-      "imageUrl": form.logo || '',
-      category: form.category,
-      city: form.address,
-      street: form.address,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      // Upload ID images to Supabase Storage
+      const prefix = `seller-ids/${user.uid}`;
+      const [frontUrl, backUrl, selfieUrl] = await Promise.all([
+        idFiles.governmentIdFront
+          ? uploadImage(supabase, 'stores', idFiles.governmentIdFront, `${prefix}/id-front`)
+          : Promise.resolve(''),
+        idFiles.governmentIdBack
+          ? uploadImage(supabase, 'stores', idFiles.governmentIdBack, `${prefix}/id-back`)
+          : Promise.resolve(''),
+        idFiles.selfieImage
+          ? uploadImage(supabase, 'stores', idFiles.selfieImage, `${prefix}/selfie`)
+          : Promise.resolve(''),
+      ]);
 
-    setDocumentNonBlocking(supabase, "stores", storeData);
+      // Save store data to Supabase (stores table)
+      const storeData = {
+        id: user.uid,
+        "ownerId": user.uid,
+        name: form.storeName,
+        description: form.description,
+        "imageUrl": form.logo || '',
+        category: form.category,
+        city: form.address,
+        street: form.address,
+        status: 'active',
+        governmentIdType: form.governmentIdType,
+        governmentIdFront: frontUrl,
+        governmentIdBack: backUrl,
+        selfieImage: selfieUrl,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    // Update user profile: mark as seller
-    updateDocumentNonBlocking(supabase, "users", user.uid, {
-      isSeller: true,
-      role: 'seller',
-    });
+      setDocumentNonBlocking(supabase, "stores", storeData);
 
-    setTimeout(() => {
-      setSubmitting(false);
-      setRegistered(true);
-      fireConfetti();
+      // Update user profile: mark as seller
+      updateDocumentNonBlocking(supabase, "users", user.uid, {
+        isSeller: true,
+        role: 'seller',
+      });
+
       setTimeout(() => {
-        router.push("/seller/dashboard");
-      }, 3000);
-    }, 1200);
+        setSubmitting(false);
+        setRegistered(true);
+        fireConfetti();
+        setTimeout(() => {
+          router.push("/seller/dashboard");
+        }, 3000);
+      }, 1200);
+    } catch (err) {
+      console.error('Registration error:', err);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -368,6 +439,21 @@ export default function ShopRegistrationPage() {
                     {form.governmentIdFront && (
                       <img src={form.governmentIdFront} alt="ID Front Preview" className="h-10 rounded-md ml-2" />
                     )}
+                    {idClarityStatus.governmentIdFront === 'checking' && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2 shrink-0">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking...
+                      </span>
+                    )}
+                    {idClarityStatus.governmentIdFront === 'clear' && (
+                      <span className="flex items-center gap-1 text-xs text-green-600 ml-2 shrink-0">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Clear
+                      </span>
+                    )}
+                    {idClarityStatus.governmentIdFront === 'blurry' && (
+                      <span className="flex items-center gap-1 text-xs text-red-500 ml-2 shrink-0">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Blurry — re-upload
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 px-6 py-5">
                     <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Upload ID (Back)</span>
@@ -381,6 +467,21 @@ export default function ShopRegistrationPage() {
                     />
                     {form.governmentIdBack && (
                       <img src={form.governmentIdBack} alt="ID Back Preview" className="h-10 rounded-md ml-2" />
+                    )}
+                    {idClarityStatus.governmentIdBack === 'checking' && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2 shrink-0">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking...
+                      </span>
+                    )}
+                    {idClarityStatus.governmentIdBack === 'clear' && (
+                      <span className="flex items-center gap-1 text-xs text-green-600 ml-2 shrink-0">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Clear
+                      </span>
+                    )}
+                    {idClarityStatus.governmentIdBack === 'blurry' && (
+                      <span className="flex items-center gap-1 text-xs text-red-500 ml-2 shrink-0">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Blurry — re-upload
+                      </span>
                     )}
                   </div>
                 </div>
@@ -403,16 +504,37 @@ export default function ShopRegistrationPage() {
                     {form.selfieImage && (
                       <img src={form.selfieImage} alt="Selfie Preview" className="h-10 rounded-md ml-2" />
                     )}
+                    {idClarityStatus.selfieImage === 'checking' && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2 shrink-0">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking...
+                      </span>
+                    )}
+                    {idClarityStatus.selfieImage === 'clear' && (
+                      <span className="flex items-center gap-1 text-xs text-green-600 ml-2 shrink-0">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Clear
+                      </span>
+                    )}
+                    {idClarityStatus.selfieImage === 'blurry' && (
+                      <span className="flex items-center gap-1 text-xs text-red-500 ml-2 shrink-0">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Blurry — re-upload
+                      </span>
+                    )}
                   </div>
                 </div>
               </section>
               
               {/* Submit */}
               <div className="pt-2">
+                {!allIdsClear && (form.governmentIdFront || form.governmentIdBack || form.selfieImage) && (
+                  <p className="text-xs text-red-500 text-center mb-3 flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Please upload clear, non-blurry images for all ID fields before submitting.
+                  </p>
+                )}
                 <Button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full h-14 rounded-full bg-black hover:bg-primary text-white text-base shadow-xl active:scale-[0.98] transition-all"
+                  disabled={submitting || !allIdsClear}
+                  className="w-full h-14 rounded-full bg-black hover:bg-primary text-white text-base shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
                 >
                   {submitting ? "Setting up your shop..." : "Start Selling"}
                 </Button>

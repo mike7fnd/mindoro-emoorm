@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { Heart, Star, Search, Store, Tag, TrendingDown } from "lucide-react";
+import { Heart, Star, Search, Store, Tag, TrendingDown, Sparkles, MapPin, Clock, ChevronRight, Flame, Leaf, Fish, Drumstick, Cookie, Wheat, Wine, Droplets, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc } from "@/supabase";
@@ -153,6 +153,43 @@ export default function HomePage() {
     });
   }, [storesData, searchTerm, municipality]);
 
+  // ── Sections for home feed ───────────────────────────────────────────
+  const suggestedProducts = useMemo(() => {
+    if (!productsData) return [];
+    return [...productsData]
+      .filter(p => (p.rating ?? 0) >= 4 || (p.sold ?? 0) > 0)
+      .sort((a, b) => (b.sold ?? 0) - (a.sold ?? 0))
+      .slice(0, 8);
+  }, [productsData]);
+
+  const newArrivals = useMemo(() => {
+    if (!productsData) return [];
+    return [...productsData].reverse().slice(0, 8);
+  }, [productsData]);
+
+  const popularStores = useMemo(() => {
+    if (!storesData) return [];
+    return [...storesData]
+      .sort((a, b) => (b.totalSales ?? 0) - (a.totalSales ?? 0))
+      .slice(0, 6);
+  }, [storesData]);
+
+  const categoryIcons: Record<string, React.ReactNode> = {
+    "Vegetables": <Leaf className="h-5 w-5" />,
+    "Fruits": <Flame className="h-5 w-5" />,
+    "Seafood": <Fish className="h-5 w-5" />,
+    "Meat": <Drumstick className="h-5 w-5" />,
+    "Snacks": <Cookie className="h-5 w-5" />,
+    "Rice & Grains": <Wheat className="h-5 w-5" />,
+    "Beverages": <Wine className="h-5 w-5" />,
+    "Condiments": <Droplets className="h-5 w-5" />,
+    "Handicrafts": <ShoppingBag className="h-5 w-5" />,
+    "Wellness": <Sparkles className="h-5 w-5" />,
+    "Delicacies": <Cookie className="h-5 w-5" />,
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+
   const toggleLike = async (e: React.MouseEvent, productId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -172,21 +209,7 @@ export default function HomePage() {
 
   const isItemLiked = (id: string) => wishlistProductIds.includes(id) || likedIds.includes(id);
 
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 120 });
-  const indicatorRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const idx = ["products", "stores", "deals"].indexOf(activeTab);
-    const btn = tabRefs.current[idx];
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      const parentRect = btn.parentElement?.getBoundingClientRect();
-      if (parentRect) {
-        setIndicatorStyle({ left: rect.left - parentRect.left, width: rect.width });
-      }
-    }
-  }, [activeTab]);
 
   const openFilter = () => {
     setShowFilter(true);
@@ -326,7 +349,6 @@ export default function HomePage() {
             ]).map(({ key, label, icon: Icon }, idx) => (
               <button
                 key={key}
-                ref={el => tabRefs.current[idx] = el}
                 onClick={() => setActiveTab(key)}
                 className={cn(
                   "flex flex-col items-center gap-1 px-6 py-3 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
@@ -337,17 +359,12 @@ export default function HomePage() {
               >
                 <Icon className="h-6 w-6" />
                 {label}
+                {activeTab === key && (
+                  <div className="w-6 h-[3px] rounded-full bg-primary mt-0.5 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
+                )}
               </button>
             ))}
-            {/* Slider Indicator */}
-            <div
-              ref={indicatorRef}
-              className="absolute bottom-0 h-1 rounded-full bg-primary transition-all duration-300 z-0"
-              style={{
-                left: indicatorStyle.left,
-                width: indicatorStyle.width,
-              }}
-            />
+
           </div>
         </div>
 
@@ -425,84 +442,292 @@ export default function HomePage() {
 
         {/* Products Tab */}
         {activeTab === "products" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
-            {isProductsLoading ? (
-              <>{Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex flex-col gap-2">
-                  <Skeleton className="aspect-square w-full rounded-[32px]" />
-                  <Skeleton className="h-4 w-3/4 rounded-full" />
-                  <Skeleton className="h-3 w-1/2 rounded-full" />
-                </div>
-              ))}</>
-            ) : filteredProducts.length === 0 ? (
-              <div className="col-span-full text-center py-20 text-muted-foreground italic">No products found.</div>
-            ) : filteredProducts.map((product) => (
-              <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
-                <Link href={`/book/${product.id}`}>
-                  <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
-                    <Image
-                      src={product.imageUrl || "/placeholder.svg"}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      data-ai-hint="local product food"
-                    />
-                    {product.isAuction && (
-                      <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
-                        Auction
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => toggleLike(e, product.id)}
-                      className={cn(
-                        "absolute top-2 right-2 z-10 p-3 bg-white/20 backdrop-blur-xl rounded-full hover:bg-white/40 transition-all",
-                        isItemLiked(product.id) && "bg-white/40"
-                      )}
-                    >
-                      <Heart
-                        className={cn(
-                          "h-5 w-5 transition-all",
-                          isItemLiked(product.id) ? "fill-white text-white scale-110" : "text-white"
-                        )}
-                      />
-                    </button>
-                  </div>
-                </Link>
-                <div className="px-1">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <Link href={`/book/${product.id}`}>
-                      <h3 className="text-lg md:text-xl font-normal font-headline tracking-[-0.05em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
-                    </Link>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                      <span className="text-xs font-bold">{product.rating || 5.0}</span>
-                      <span className="mx-1 text-muted-foreground">·</span>
-                      <span className="text-xs text-muted-foreground font-medium">{(product.sold ?? product.totalSales ?? 0)} Sold</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                      <span>{product.city || product.municipality || "Unknown Location"}</span>
-                    </div>
-                    <p className="text-primary font-bold text-base">
-                      {product.isAuction
-                        ? `₱${(product.currentBid || product.startingBid || 0).toLocaleString()}`
-                        : `₱${(product.price || product.pricePerNight || 0).toLocaleString()}`
-                      }
-                    </p>
-                  </div>
-                  {product.isAuction && product.bidCount !== undefined && (
-                    <p className="text-xs text-muted-foreground mt-1">{product.bidCount} bid{product.bidCount !== 1 ? 's' : ''}</p>
+          <div className="space-y-10 animate-[fadeSlideIn_0.3s_ease-out]">
+
+            {/* ── Category Filter Chips ─────────────────────────────────── */}
+            <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+              <div className="flex gap-2 pb-1 min-w-max">
+                <button
+                  onClick={() => { setSelectedCategory(""); setCategoryFilter(""); }}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border whitespace-nowrap",
+                    !selectedCategory
+                      ? "bg-primary text-white border-primary shadow-sm"
+                      : "bg-white text-black/70 border-black/10 hover:border-primary/30 hover:text-primary"
                   )}
-                </div>
+                >
+                  <Tag className="h-4 w-4" />
+                  All
+                </button>
+                {categories.filter(c => c !== "All").map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      const next = selectedCategory === cat ? "" : cat;
+                      setSelectedCategory(next);
+                      setCategoryFilter(next);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all border whitespace-nowrap",
+                      selectedCategory === cat
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-white text-black/70 border-black/10 hover:border-primary/30 hover:text-primary"
+                    )}
+                  >
+                    {categoryIcons[cat] || <Tag className="h-4 w-4" />}
+                    {cat}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* ── Suggested For You ─────────────────────────────────────── */}
+            {!selectedCategory && !searchTerm && suggestedProducts.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">Suggested for You</h2>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedCategory(""); setCategoryFilter(""); }}
+                    className="text-xs text-primary font-medium flex items-center gap-1 hover:underline"
+                  >
+                    See all <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex gap-4 min-w-max pb-2">
+                    {suggestedProducts.map(product => (
+                      <div key={product.id} className="w-[170px] md:w-[210px] shrink-0 flex flex-col gap-1.5">
+                        <Link href={`/book/${product.id}`}>
+                          <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
+                            <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
+                            <button
+                              onClick={(e) => toggleLike(e, product.id)}
+                              className={cn(
+                                "absolute top-2 right-2 z-10 p-3 bg-white/20 backdrop-blur-xl rounded-full hover:bg-white/40 transition-all",
+                                isItemLiked(product.id) && "bg-white/40"
+                              )}
+                            >
+                              <Heart className={cn("h-5 w-5 transition-all", isItemLiked(product.id) ? "fill-white text-white scale-110" : "text-white")} />
+                            </button>
+                          </div>
+                        </Link>
+                        <div className="px-1">
+                          <Link href={`/book/${product.id}`}>
+                            <h3 className="text-sm font-normal font-headline tracking-[-0.03em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
+                          </Link>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Star className="h-3 w-3 fill-primary text-primary" />
+                            <span className="text-[11px] font-bold">{product.rating || 5.0}</span>
+                            <span className="text-[11px] text-muted-foreground">· {(product.sold ?? product.totalSales ?? 0)} Sold</span>
+                          </div>
+                          <p className="text-primary font-bold text-sm mt-0.5">₱{(product.price || product.pricePerNight || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ── Stores Near You ───────────────────────────────────────── */}
+            {!selectedCategory && !searchTerm && popularStores.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">Stores Near You</h2>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("stores")}
+                    className="text-xs text-primary font-medium flex items-center gap-1 hover:underline"
+                  >
+                    See all <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex gap-4 min-w-max pb-2">
+                    {popularStores.map(store => (
+                      <Link key={store.id} href={`/stores/${store.id}`} className="w-[220px] md:w-[260px] shrink-0">
+                        <div className="rounded-[20px] overflow-hidden border border-black/[0.04] bg-[#fafafa] hover:shadow-lg transition-all">
+                          <div className="relative h-20 bg-muted">
+                            {store.coverUrl ? (
+                              <Image src={store.coverUrl} alt={store.name} fill className="object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
+                            )}
+                          </div>
+                          <div className="p-3 -mt-5 relative">
+                            <div className="h-10 w-10 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden mb-2">
+                              {store.imageUrl ? (
+                                <Image src={store.imageUrl} alt={store.name} width={40} height={40} className="object-cover h-full w-full" />
+                              ) : (
+                                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
+                                  <Store className="h-4 w-4 text-primary" />
+                                </div>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-medium line-clamp-1">{store.name}</h4>
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                              <span className="flex items-center gap-0.5"><Star className="h-3 w-3 fill-primary text-primary" />{store.rating || 5.0}</span>
+                              <span>·</span>
+                              <span>{store.city || "Mindoro"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ── New Arrivals ──────────────────────────────────────────── */}
+            {!selectedCategory && !searchTerm && newArrivals.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">New Arrivals</h2>
+                  </div>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex gap-4 min-w-max pb-2">
+                    {newArrivals.map(product => (
+                      <div key={product.id} className="w-[170px] md:w-[210px] shrink-0 flex flex-col gap-1.5">
+                        <Link href={`/book/${product.id}`}>
+                          <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
+                            <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
+                            <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                              New
+                            </div>
+                            <button
+                              onClick={(e) => toggleLike(e, product.id)}
+                              className={cn(
+                                "absolute top-2 right-2 z-10 p-3 bg-white/20 backdrop-blur-xl rounded-full hover:bg-white/40 transition-all",
+                                isItemLiked(product.id) && "bg-white/40"
+                              )}
+                            >
+                              <Heart className={cn("h-5 w-5 transition-all", isItemLiked(product.id) ? "fill-white text-white scale-110" : "text-white")} />
+                            </button>
+                          </div>
+                        </Link>
+                        <div className="px-1">
+                          <Link href={`/book/${product.id}`}>
+                            <h3 className="text-sm font-normal font-headline tracking-[-0.03em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
+                          </Link>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Star className="h-3 w-3 fill-primary text-primary" />
+                            <span className="text-[11px] font-bold">{product.rating || 5.0}</span>
+                            <span className="text-[11px] text-muted-foreground">· {(product.sold ?? product.totalSales ?? 0)} Sold</span>
+                          </div>
+                          <p className="text-primary font-bold text-sm mt-0.5">₱{(product.price || product.pricePerNight || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ── All Products / Filtered Results ──────────────────────── */}
+            <section>
+              {(selectedCategory || searchTerm) && (
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">
+                    {selectedCategory || "Search Results"}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">{filteredProducts.length} items</span>
+                </div>
+              )}
+              {!selectedCategory && !searchTerm && (
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-headline font-normal tracking-[-0.04em]">All Products</h2>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{filteredProducts.length} items</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
+                {isProductsLoading ? (
+                  <>{Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="flex flex-col gap-2">
+                      <Skeleton className="aspect-square w-full rounded-[32px]" />
+                      <Skeleton className="h-4 w-3/4 rounded-full" />
+                      <Skeleton className="h-3 w-1/2 rounded-full" />
+                    </div>
+                  ))}</>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="col-span-full text-center py-20 text-muted-foreground italic">No products found.</div>
+                ) : filteredProducts.map((product) => (
+                  <div key={product.id} className="flex flex-col gap-1.5 md:gap-2">
+                    <Link href={`/book/${product.id}`}>
+                      <div className="relative aspect-square overflow-hidden rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]">
+                        <Image
+                          src={product.imageUrl || "/placeholder.svg"}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          data-ai-hint="local product food"
+                        />
+                        {product.isAuction && (
+                          <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                            Auction
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => toggleLike(e, product.id)}
+                          className={cn(
+                            "absolute top-2 right-2 z-10 p-3 bg-white/20 backdrop-blur-xl rounded-full hover:bg-white/40 transition-all",
+                            isItemLiked(product.id) && "bg-white/40"
+                          )}
+                        >
+                          <Heart
+                            className={cn(
+                              "h-5 w-5 transition-all",
+                              isItemLiked(product.id) ? "fill-white text-white scale-110" : "text-white"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </Link>
+                    <div className="px-1">
+                      <div className="flex justify-between items-center mb-0.5">
+                        <Link href={`/book/${product.id}`}>
+                          <h3 className="text-lg md:text-xl font-normal font-headline tracking-[-0.05em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
+                        </Link>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                          <span className="text-xs font-bold">{product.rating || 5.0}</span>
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          <span className="text-xs text-muted-foreground font-medium">{(product.sold ?? product.totalSales ?? 0)} Sold</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                          <span>{product.city || product.municipality || "Unknown Location"}</span>
+                        </div>
+                        <p className="text-primary font-bold text-base">
+                          {product.isAuction
+                            ? `₱${(product.currentBid || product.startingBid || 0).toLocaleString()}`
+                            : `₱${(product.price || product.pricePerNight || 0).toLocaleString()}`
+                          }
+                        </p>
+                      </div>
+                      {product.isAuction && product.bidCount !== undefined && (
+                        <p className="text-xs text-muted-foreground mt-1">{product.bidCount} bid{product.bidCount !== 1 ? 's' : ''}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
           </div>
         )}
 
         {/* Stores Tab */}
         {activeTab === "stores" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-[fadeSlideIn_0.3s_ease-out]">
             {isStoresLoading ? (
               <>{Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-[32px] overflow-hidden border border-black/[0.02] bg-[#f8f8f8]">
@@ -559,7 +784,7 @@ export default function HomePage() {
 
         {/* Deals Tab */}
         {activeTab === "deals" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-10 md:gap-y-12 animate-[fadeSlideIn_0.3s_ease-out]">
             {isProductsLoading ? (
               <>{Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex flex-col gap-2">
