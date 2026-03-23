@@ -7,6 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askAssistant, getRelevantData } from '@/ai/local-assistant';
 
+// Vercel: use Node.js runtime (not Edge) and allow up to 60s
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     let message = '';

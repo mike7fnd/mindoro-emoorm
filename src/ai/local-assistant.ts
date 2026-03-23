@@ -5,10 +5,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabaseConfig } from '@/supabase/config';
 
-// Primary and fallback models — fallback is smaller and always available
+// Models ordered fastest-first for reliable deployment on Vercel
 const MODELS = [
-  'Qwen/Qwen2.5-72B-Instruct',
   'mistralai/Mistral-7B-Instruct-v0.3',
+  'Qwen/Qwen2.5-72B-Instruct',
 ];
 const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
@@ -82,6 +82,7 @@ export async function askAssistant(
   language: string = 'english'
 ): Promise<string> {
   const token = process.env.HF_TOKEN;
+  console.log('[ai-assistant] HF_TOKEN present:', !!token, '| length:', token?.length ?? 0);
   if (!token) {
     console.error('[ai-assistant] HF_TOKEN env var is not set');
     return language === 'tagalog'
@@ -105,6 +106,10 @@ ${context}`;
   // Try each model until one works
   for (const model of MODELS) {
     try {
+      console.log(`[ai-assistant] Trying model: ${model}`);
+      const controller = new AbortController();
+      const fetchTimer = setTimeout(() => controller.abort(), 50000); // 50s timeout per model
+
       const res = await fetch(HF_API_URL, {
         method: 'POST',
         headers: {
@@ -119,14 +124,17 @@ ${context}`;
           ],
           max_tokens: 512,
           temperature: 0.3
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(fetchTimer);
 
       if (!res.ok) {
         const errText = await res.text();
-        console.error(`[ai-assistant] ${model} returned ${res.status}:`, errText);
+        console.error(`[ai-assistant] ${model} returned ${res.status}:`, errText.slice(0, 500));
         continue; // try next model
       }
+      console.log(`[ai-assistant] ${model} returned OK`);
 
       const data = await res.json();
       let reply = data?.choices?.[0]?.message?.content?.trim();
