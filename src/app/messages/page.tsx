@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import Image from "next/image";
 import {
   MessagesSquare,
   Send,
@@ -336,7 +337,7 @@ function MessagesContent() {
                         "h-14 w-14 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0 overflow-hidden relative",
                         convo.id === 'bella-bot' ? "bg-black" : "bg-primary"
                       )}>
-                        {convo.id === 'bella-bot' ? <Sparkles className="h-6 w-6" /> : (convo.name?.[0] || 'B')}
+                        {convo.id === 'bella-bot' ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <div className="flex justify-between items-baseline mb-0.5">
@@ -372,9 +373,9 @@ function MessagesContent() {
                       )}
                       <div className={cn(
                         "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm",
-                        activeConversationId === 'bella-bot' ? "bg-black" : "bg-primary"
+                        activeConversationId === 'bella-bot' ? "bg-black overflow-hidden" : "bg-primary"
                       )}>
-                        {activeConversationId === 'bella-bot' ? <Sparkles className="h-4 w-4" /> : (activeConversation?.name?.[0] || 'B')}
+                        {activeConversationId === 'bella-bot' ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={40} height={40} className="object-cover h-full w-full" /> : (activeConversation?.name?.[0] || 'B')}
                       </div>
                       <div>
                         <h3 className="text-[15px] font-bold tracking-tight leading-tight">{activeConversation?.name}</h3>
