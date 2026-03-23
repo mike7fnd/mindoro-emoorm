@@ -84,10 +84,10 @@ export async function askAssistant(
   const token = process.env.HF_TOKEN;
   console.log('[ai-assistant] HF_TOKEN present:', !!token, '| length:', token?.length ?? 0);
   if (!token) {
-    console.error('[ai-assistant] HF_TOKEN env var is not set');
+    console.error('[ai-assistant] HF_TOKEN env var is not set. Available env keys with HF:', Object.keys(process.env).filter(k => k.includes('HF')));
     return language === 'tagalog'
-      ? "Pasensya na po, may problema ako ngayon. Subukan ulit mamaya po!"
-      : "Sorry po, I'm having a little trouble right now. Please try again later!";
+      ? "Pasensya na po, hindi ko ma-access ang AI config. Subukan ulit mamaya po!"
+      : "Sorry, the AI service is not configured yet. Please contact the admin.";
   }
 
   const langInstruction = language === 'tagalog'
@@ -154,7 +154,8 @@ ${context}`;
   }
 
   // All models failed
+  console.error('[ai-assistant] All models failed. Token length:', token?.length);
   return language === 'tagalog'
-    ? "Pasensya na po, may problema ako ngayon. Subukan ulit mamaya po!"
+    ? "Pasensya na po, may problema ako ngayon sa AI models. Subukan ulit mamaya po!"
     : "Sorry po, I'm having a little trouble right now. Please try again later!";
 }

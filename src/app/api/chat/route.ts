@@ -11,6 +11,18 @@ import { askAssistant, getRelevantData } from '@/ai/local-assistant';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+// GET /api/chat — quick diagnostic to check if HF_TOKEN is available
+export async function GET() {
+  const token = process.env.HF_TOKEN;
+  return NextResponse.json({
+    ok: !!token,
+    tokenLength: token?.length ?? 0,
+    tokenPrefix: token ? token.slice(0, 6) + '...' : 'MISSING',
+    env: process.env.NODE_ENV,
+    allEnvKeys: Object.keys(process.env).filter(k => k.includes('HF') || k.includes('HUGGING')).join(', ') || 'none found',
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     let message = '';
