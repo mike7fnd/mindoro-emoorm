@@ -72,18 +72,86 @@ export default function HomePage() {
   const [showFilter, setShowFilter] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
+  const stickyContainerRef = useRef<HTMLDivElement>(null);
+  const tabIconsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const tabPillRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const sentinel = stickyRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsSticky(!entry.isIntersecting),
-      { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    const handleScroll = () => {
+      const sentinel = stickyRef.current;
+      if (!sentinel) return;
+      const rect = sentinel.getBoundingClientRect();
+      setIsSticky(rect.top <= 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // GSAP animations for sticky transition
+  useEffect(() => {
+    if (!stickyContainerRef.current || !tabPillRef.current) return;
+
+    if (isSticky) {
+      // Animate container bg + shadow in
+      gsap.to(stickyContainerRef.current, {
+        backgroundColor: 'rgba(255,255,255,1)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      // Animate tab pill bg
+      gsap.to(tabPillRef.current, {
+        backgroundColor: '#f0f0f0',
+        borderRadius: '9999px',
+        padding: '4px',
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      // Shrink icons
+      tabIconsRef.current.forEach(el => {
+        if (el) {
+          gsap.to(el, {
+            height: 0,
+            width: 0,
+            opacity: 0,
+            marginBottom: 0,
+            duration: 0.25,
+            ease: 'power2.inOut'
+          });
+        }
+      });
+    } else {
+      // Animate container bg out
+      gsap.to(stickyContainerRef.current, {
+        backgroundColor: 'rgba(255,255,255,0)',
+        boxShadow: '0 0px 0px rgba(0,0,0,0)',
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      // Reset tab pill
+      gsap.to(tabPillRef.current, {
+        backgroundColor: 'transparent',
+        padding: '0px',
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      // Expand icons
+      tabIconsRef.current.forEach(el => {
+        if (el) {
+          gsap.to(el, {
+            height: 24,
+            width: 24,
+            opacity: 1,
+            marginBottom: 2,
+            duration: 0.25,
+            ease: 'power2.inOut'
+          });
+        }
+      });
+    }
+  }, [isSticky]);
 
   useEffect(() => {
     const consent = localStorage.getItem("cookieConsent");
@@ -356,12 +424,13 @@ export default function HomePage() {
         <div ref={stickyRef} className="h-0" />
 
         {/* Sticky Search + Tabs container */}
-        <div className={cn(
-          "sticky top-0 z-30 transition-all duration-200",
-          isSticky && "bg-white/95 backdrop-blur-md shadow-sm -mx-4 px-4 md:-mx-6 md:px-6 pt-1 pb-0"
-        )}>
+        <div
+          ref={stickyContainerRef}
+          className="sticky top-0 z-30 -mx-4 px-4 md:-mx-6 md:px-6 pt-2 pb-2"
+          style={{ backgroundColor: 'rgba(255,255,255,0)' }}
+        >
           {/* Search Bar */}
-          <section className={cn("mb-4", isSticky && "mb-2")}>
+          <section className="mb-3">
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-1 group w-full">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -401,8 +470,11 @@ export default function HomePage() {
           </section>
 
           {/* Browse Tabs */}
-          <div className="relative w-full overflow-x-auto scrollbar-hide mb-2">
-            <div className="flex gap-2 min-w-[340px] md:min-w-0 px-1 relative justify-center md:justify-center">
+          <div className="flex justify-center">
+            <div
+              ref={tabPillRef}
+              className="inline-flex items-center justify-center gap-1 rounded-full"
+            >
               {([
                 { key: "products" as BrowseTab, label: "Products", icon: Tag },
                 { key: "stores" as BrowseTab, label: "Stores", icon: Store },
@@ -412,17 +484,23 @@ export default function HomePage() {
                   key={key}
                   onClick={() => setActiveTab(key)}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 px-6 rounded-full text-sm font-medium transition-all whitespace-nowrap relative z-10",
-                    isSticky ? "py-0.5" : "py-3",
+                    "flex flex-col items-center px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap relative z-10 transition-colors",
+                    isSticky && activeTab === key && "bg-white shadow-sm",
                     activeTab === key
                       ? "text-primary"
-                      : "text-black/70 hover:text-primary"
+                      : "text-black/50 hover:text-primary"
                   )}
                 >
-                  <Icon className={cn("transition-all duration-200", isSticky ? "h-0 w-0 opacity-0" : "h-6 w-6 opacity-100")} />
+                  <div
+                    ref={el => { tabIconsRef.current[idx] = el; }}
+                    className="flex items-center justify-center overflow-hidden"
+                    style={{ height: 24, width: 24, marginBottom: 2 }}
+                  >
+                    <Icon className="h-6 w-6" />
+                  </div>
                   {label}
-                  {activeTab === key && (
-                    <div className="w-6 h-[3px] rounded-full bg-primary mt-0.5 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
+                  {!isSticky && activeTab === key && (
+                    <div className="w-6 h-[3px] rounded-full bg-primary mt-1 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
                   )}
                 </button>
               ))}
