@@ -128,7 +128,7 @@ export default function SignUpPage() {
       }));
 
       if (result.needsConfirmation) {
-        setShowEmailConfirm(true);
+        router.push("/confirm-email");
         return;
       }
 

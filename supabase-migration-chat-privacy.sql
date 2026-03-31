@@ -111,11 +111,12 @@ CREATE OR REPLACE POLICY "Admins can update any conversation"
 -- ============================================================
 -- 4. CLEANUP: Migrate old shared 'bella-bot' data
 --    Old messages used conversationId = 'bella-bot' for ALL users.
---    This is no longer valid. Delete them so users start fresh.
+--    Now each user has their own bot convo: 'bella-bot-{userId}'.
+--    Delete the old shared rows so users start fresh.
 -- ============================================================
 
--- Delete old shared bot messages
+-- Delete old shared bot messages (exact match only — not per-user ones)
 DELETE FROM messages WHERE "conversationId"::text = 'bella-bot';
 
--- Delete old shared bot conversation row
+-- Delete old shared bot conversation row (exact match only)
 DELETE FROM conversations WHERE id::text = 'bella-bot';

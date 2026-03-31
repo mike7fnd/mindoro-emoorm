@@ -22,6 +22,7 @@ import {
   Pencil,
   Copy,
   Share2,
+  Gavel,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -138,11 +139,8 @@ export default function SellerProductsPage() {
             <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">My Products</h1>
             <p className="text-sm text-muted-foreground font-normal">{allProducts.length} total products</p>
           </div>
-          <Link href="/seller/products/add">
-            <Button size="icon" className="bg-black hover:bg-primary transition-colors rounded-full h-10 w-10 shadow-sm md:hidden">
-              <Plus className="h-5 w-5" />
-            </Button>
-            <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2 hidden md:inline-flex">
+          <Link href="/seller/products/add" className="hidden md:block">
+            <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2">
               <Plus className="h-4 w-4" /> Add Product
             </Button>
           </Link>
@@ -265,6 +263,11 @@ export default function SellerProductsPage() {
                       <Badge className={`absolute top-3 left-3 rounded-full text-[10px] border-0 capitalize ${statusStyle[status] || statusStyle.Available}`}>
                         {status}
                       </Badge>
+                      {product.isAuction && (
+                        <Badge className="absolute bottom-3 left-3 rounded-full text-[10px] border-0 bg-primary/90 text-white flex items-center gap-1">
+                          <Gavel className="h-3 w-3" /> Auction
+                        </Badge>
+                      )}
                     </div>
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between gap-2">
@@ -276,8 +279,17 @@ export default function SellerProductsPage() {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="text-xs text-muted-foreground">{product.totalSales || 0} sold</span>
-                          <p className="font-headline text-lg">₱{Number(product.price || 0).toLocaleString()}</p>
+                          {product.isAuction ? (
+                            <>
+                              <span className="text-xs text-muted-foreground">{product.bidCount || 0} bids</span>
+                              <p className="font-headline text-lg text-primary">₱{Number(product.currentBid || product.startingBid || 0).toLocaleString()}</p>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs text-muted-foreground">{product.totalSales || 0} sold</span>
+                              <p className="font-headline text-lg">₱{Number(product.price || 0).toLocaleString()}</p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -295,6 +307,13 @@ export default function SellerProductsPage() {
           </>
         )}
       </div>
+
+      {/* Floating Add Button */}
+      <Link href="/seller/products/add" className="fixed bottom-[7.5rem] right-5 z-[1001] md:hidden">
+        <Button size="icon" className="h-14 w-14 rounded-full bg-black hover:bg-primary transition-all shadow-[0_8px_30px_rgba(0,0,0,0.25)] active:scale-90">
+          <Plus className="h-6 w-6" />
+        </Button>
+      </Link>
     </SellerLayout>
   );
 }

@@ -27,7 +27,11 @@ import {
   Sun,
   Tv,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Gavel,
+  Timer,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -70,6 +74,14 @@ interface Facility {
   storeId?: string;
   sellerId?: string;
   sellerName?: string;
+}
+
+interface Bid {
+  id: string;
+  productId: string;
+  bidderId: string;
+  amount: number;
+  createdAt: string;
 }
 
 interface Booking {
@@ -133,7 +145,9 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const [quantity, setQuantity] = useState(1);
   const [bidAmount, setBidAmount] = useState("");
   const [bidPlaced, setBidPlaced] = useState(false);
+  const [bidSubmitting, setBidSubmitting] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [auctionTimeLeft, setAuctionTimeLeft] = useState("");
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const isAnimating = useRef(false);
@@ -155,6 +169,72 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   }, [id]);
 
   const { data: facilityBookings } = useCollection<Booking>(bookingsQuery);
+
+  // Fetch bids for this product (auction mode)
+  const bidsQuery = useStableMemo(() => {
+    if (!id) return null;
+    return {
+      table: "bids",
+      filters: [{ column: "productId", op: "eq" as const, value: id }],
+      order: { column: "amount", ascending: false },
+      limit: 20,
+    };
+  }, [id]);
+  const { data: bids } = useCollection<Bid>(bidsQuery);
+
+  // Fetch bidder names for display
+  const bidderIds = useMemo(() => {
+    if (!bids) return [];
+    return [...new Set(bids.map(b => b.bidderId))];
+  }, [bids]);
+
+  const biddersQuery = useStableMemo(() => {
+    if (bidderIds.length === 0) return null;
+    return {
+      table: "users",
+      filters: [{ column: "id", op: "in" as const, value: bidderIds }],
+    };
+  }, [bidderIds]);
+  const { data: bidderUsers } = useCollection<{ id: string; firstName?: string; lastName?: string }>(biddersQuery);
+
+  const bidderNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    bidderUsers?.forEach(u => {
+      const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Anonymous';
+      // Mask for privacy: show first 2 chars + ***
+      map[u.id] = name.length > 2 ? name.slice(0, 2) + '***' : name;
+    });
+    return map;
+  }, [bidderUsers]);
+
+  // Auction countdown timer
+  useEffect(() => {
+    if (!facility?.isAuction || !facility.auctionEndDate) {
+      setAuctionTimeLeft("");
+      return;
+    }
+    const endDate = new Date(facility.auctionEndDate).getTime();
+    const update = () => {
+      const now = Date.now();
+      const diff = endDate - now;
+      if (diff <= 0) {
+        setAuctionTimeLeft("Auction ended");
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((diff / (1000 * 60)) % 60);
+      const secs = Math.floor((diff / 1000) % 60);
+      if (days > 0) {
+        setAuctionTimeLeft(`${days}d ${hours}h ${mins}m`);
+      } else {
+        setAuctionTimeLeft(`${hours}h ${mins}m ${secs}s`);
+      }
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [facility?.isAuction, facility?.auctionEndDate]);
 
   // Fetch all products for "You might also like" section
   const allProductsQuery = useStableMemo(() => {
@@ -567,9 +647,23 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                 /* Auction Mode */
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-headline font-normal tracking-tight">Place a Bid</h3>
+                    <div className="flex items-center gap-2">
+                      <Gavel className="h-5 w-5 text-primary" />
+                      <h3 className="text-2xl font-headline font-normal tracking-tight">Place a Bid</h3>
+                    </div>
                     <p className="text-sm text-muted-foreground">This item is available via auction. Place your best bid below.</p>
                   </div>
+
+                  {/* Countdown Timer */}
+                  {auctionTimeLeft && (
+                    <div className={cn(
+                      "flex items-center justify-center gap-3 p-4 rounded-[20px] text-sm font-bold",
+                      auctionTimeLeft === "Auction ended" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"
+                    )}>
+                      <Timer className="h-4 w-4" />
+                      {auctionTimeLeft === "Auction ended" ? "This auction has ended" : `Ends in ${auctionTimeLeft}`}
+                    </div>
+                  )}
 
                   <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
                     <div className="flex justify-between items-center">
@@ -582,18 +676,41 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                         <p className="text-lg font-bold">{facility.bidCount || 0}</p>
                       </div>
                     </div>
-                    {facility.auctionEndDate && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>Ends {new Date(facility.auctionEndDate).toLocaleDateString()}</span>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Starting: ₱{(facility.startingBid || 0).toLocaleString()}</span>
+                      </div>
+                      {facility.auctionEndDate && (
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3 w-3" />
+                          <span>Ends {new Date(facility.auctionEndDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    {facility.currentBidderId === user?.uid && (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl text-green-700 text-xs font-bold">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        You are the highest bidder!
                       </div>
                     )}
                   </div>
 
-                  {bidPlaced ? (
+                  {auctionTimeLeft === "Auction ended" ? (
+                    <div className="flex items-center gap-3 p-6 bg-red-50 rounded-[24px] text-red-600">
+                      <AlertCircle className="h-5 w-5" />
+                      <div>
+                        <p className="text-sm font-bold">Auction has ended</p>
+                        <p className="text-xs opacity-80">No more bids can be placed on this item.</p>
+                      </div>
+                    </div>
+                  ) : bidPlaced ? (
                     <div className="flex items-center gap-3 p-6 bg-green-50 rounded-[24px] text-green-700">
                       <CheckCircle2 className="h-5 w-5" />
-                      <p className="text-sm font-medium">Your bid has been placed!</p>
+                      <div>
+                        <p className="text-sm font-bold">Your bid has been placed!</p>
+                        <p className="text-xs opacity-80">You’ll be notified if you’re outbid.</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -606,20 +723,102 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                           placeholder={`Min ₱${((facility.currentBid || facility.startingBid || 0) + 1).toLocaleString()}`}
                           className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all text-lg font-bold"
                         />
+                        {bidAmount && parseFloat(bidAmount) <= (facility.currentBid || facility.startingBid || 0) && (
+                          <p className="text-xs text-red-500 ml-2 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> Bid must be higher than the current bid
+                          </p>
+                        )}
                       </div>
                       <button
+                        disabled={bidSubmitting}
                         onClick={async () => {
                           if (!user) { router.push("/login"); return; }
                           const amt = parseFloat(bidAmount);
                           if (!amt || amt <= (facility.currentBid || facility.startingBid || 0)) return;
-                          await supabase.from("bids").insert({ productId: facility.id, bidderId: user.uid, amount: amt });
-                          await supabase.from("facilities").update({ currentBid: amt, currentBidderId: user.uid, bidCount: (facility.bidCount || 0) + 1 }).eq("id", facility.id);
-                          setBidPlaced(true);
+                          setBidSubmitting(true);
+                          try {
+                            // Insert bid record
+                            await supabase.from("bids").insert({
+                              productId: facility.id,
+                              bidderId: user.uid,
+                              amount: amt,
+                            });
+                            // Update product with new highest bid
+                            await supabase.from("facilities").update({
+                              currentBid: amt,
+                              currentBidderId: user.uid,
+                              bidCount: (facility.bidCount || 0) + 1,
+                            }).eq("id", facility.id);
+                            // Notify the seller about the new bid
+                            if (facility.sellerId) {
+                              await supabase.from("notifications").insert({
+                                userId: facility.sellerId,
+                                title: "New bid on your item!",
+                                content: `Someone placed a ₱${amt.toLocaleString()} bid on "${facility.name}".`,
+                                type: "bid",
+                                timestamp: new Date().toISOString(),
+                                isRead: false,
+                              });
+                            }
+                            setBidPlaced(true);
+                            setBidAmount("");
+                            confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#e03d8f', '#ff8fb1'] });
+                            // Reset after 5s so user can bid again
+                            setTimeout(() => setBidPlaced(false), 5000);
+                          } catch (err) {
+                            console.error("Bid error:", err);
+                          } finally {
+                            setBidSubmitting(false);
+                          }
                         }}
-                        className="w-full py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
+                        className="w-full py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm disabled:opacity-50"
                       >
-                        Place Bid
+                        {bidSubmitting ? "Placing Bid..." : "Place Bid"}
                       </button>
+                    </div>
+                  )}
+
+                  {/* Bid History */}
+                  {bids && bids.length > 0 && (
+                    <div className="space-y-4 pt-4 border-t border-black/[0.05]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="text-sm font-bold">Bid History</h4>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{bids.length} bid{bids.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {bids.map((bid, idx) => (
+                          <div key={bid.id} className={cn(
+                            "flex items-center justify-between p-4 rounded-[16px] text-sm",
+                            idx === 0 ? "bg-primary/5 border border-primary/10" : "bg-[#f8f8f8]"
+                          )}>
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold",
+                                idx === 0 ? "bg-primary text-white" : "bg-black/10 text-black/50"
+                              )}>
+                                {idx + 1}
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm">
+                                  {bid.bidderId === user?.uid ? "You" : (bidderNameMap[bid.bidderId] || "Bidder")}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(bid.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={cn("font-bold", idx === 0 ? "text-primary" : "text-black/80")}>
+                                ₱{bid.amount.toLocaleString()}
+                              </p>
+                              {idx === 0 && <span className="text-[9px] text-primary font-bold uppercase">Highest</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -69,6 +69,11 @@ function formatMessageTime(timestamp: string | null) {
   }
 }
 
+/** Check whether a conversation ID belongs to the Moormy Bot */
+function isBotConvo(id: string | null | undefined): boolean {
+  return !!id && (id === 'bella-bot' || id.startsWith('bella-bot-'));
+}
+
 function MessagesContent() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
@@ -101,18 +106,21 @@ function MessagesContent() {
 
   const { data: userConversations } = useCollection<Conversation>(conversationsQuery);
 
+  // Per-user bot conversation ID so each user has their own private bot convo
+  const botConvoId = user ? `bella-bot-${user.uid}` : 'bella-bot';
+
   const conversations = useMemo(() => {
     const list = userConversations ? [...userConversations] : [];
-    if (!list.find(c => c.id === 'bella-bot')) {
+    if (!list.find(c => isBotConvo(c.id))) {
       list.unshift({
-        id: 'bella-bot',
+        id: botConvoId,
         name: "Moormy Bot",
         lastMessage: "Hi! I'm your shopping assistant. How can I help?",
         updatedAt: new Date().toISOString(),
       });
     }
     return list;
-  }, [userConversations]);
+  }, [userConversations, botConvoId]);
 
   const messagesQuery = useStableMemo(() => {
     if (!user || !activeConversationId) return null;
@@ -152,7 +160,7 @@ function MessagesContent() {
     await supabase.from("messages").insert({
       conversationId: activeConversationId,
       senderId: user.uid,
-      recipientId: activeConversationId === 'bella-bot' ? 'bella-bot' : 'admin',
+      recipientId: isBotConvo(activeConversationId) ? 'bella-bot' : 'admin',
       content,
       createdAt: now
     });
@@ -162,10 +170,10 @@ function MessagesContent() {
       userId: user.uid,
       lastMessage: content,
       updatedAt: now,
-      name: activeConversationId === 'bella-bot' ? "Moormy Bot" : "Customer Support"
+      name: isBotConvo(activeConversationId) ? "Moormy Bot" : "Customer Support"
     }, { onConflict: 'id' });
 
-    if (activeConversationId === 'bella-bot') {
+    if (isBotConvo(activeConversationId)) {
       setIsBotTyping(true);
 
       // Timeout: stop typing after 30s even if no response
@@ -335,15 +343,15 @@ function MessagesContent() {
                     >
                       <div className={cn(
                         "h-14 w-14 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0 overflow-hidden relative",
-                        convo.id === 'bella-bot' ? "bg-black" : "bg-primary"
+                        isBotConvo(convo.id) ? "bg-black" : "bg-primary"
                       )}>
-                        {convo.id === 'bella-bot' ? <Image src="/icons/moormy-bot-v2.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
+                        {isBotConvo(convo.id) ? <Image src="/icons/moormy-bot-v2.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <div className="flex justify-between items-baseline mb-0.5">
                           <h4 className="font-medium truncate text-[15px] flex items-center gap-1.5">
                             {convo.name}
-                            {convo.id === 'bella-bot' && <span className="bg-primary/10 text-primary text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest">AI</span>}
+                            {isBotConvo(convo.id) && <span className="bg-primary/10 text-primary text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest">AI</span>}
                           </h4>
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                             {formatMessageTime(convo.updatedAt || null)}
@@ -373,18 +381,18 @@ function MessagesContent() {
                       )}
                       <div className={cn(
                         "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm",
-                        activeConversationId === 'bella-bot' ? "bg-black overflow-hidden" : "bg-primary"
+                        isBotConvo(activeConversationId) ? "bg-black overflow-hidden" : "bg-primary"
                       )}>
-                        {activeConversationId === 'bella-bot' ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={40} height={40} className="object-cover h-full w-full" /> : (activeConversation?.name?.[0] || 'B')}
+                        {isBotConvo(activeConversationId) ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={40} height={40} className="object-cover h-full w-full" /> : (activeConversation?.name?.[0] || 'B')}
                       </div>
                       <div>
                         <h3 className="text-[15px] font-bold tracking-tight leading-tight">{activeConversation?.name}</h3>
                         <p className="text-[11px] text-green-500 font-medium">
-                          {activeConversationId === 'bella-bot' ? "Shopping Assistant Active" : "Support online"}
+                          {isBotConvo(activeConversationId) ? "Shopping Assistant Active" : "Support online"}
                         </p>
                       </div>
                     </div>
-                    {activeConversationId === 'bella-bot' && (
+                    {isBotConvo(activeConversationId) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none">
@@ -408,9 +416,9 @@ function MessagesContent() {
                               if (!user) return;
                               setChatCleared(true);
                               try {
-                                const { error } = await supabase.from('messages').delete().eq('conversationId', 'bella-bot');
+                                const { error } = await supabase.from('messages').delete().eq('conversationId', activeConversationId!);
                                 if (error) console.error('[clear-chat] delete error:', error);
-                                await supabase.from('conversations').update({ lastMessage: 'Chat cleared' }).eq('id', 'bella-bot');
+                                await supabase.from('conversations').update({ lastMessage: 'Chat cleared' }).eq('id', activeConversationId!);
                               } catch (err) {
                                 console.error('[clear-chat] failed:', err);
                               }
@@ -435,7 +443,7 @@ function MessagesContent() {
                   <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-white flex flex-col gap-4">
                     {messages?.length === 0 && !isBotTyping ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
-                        {activeConversationId === 'bella-bot' ? <Sparkles className="h-12 w-12 mb-4 text-black" /> : <MessagesSquare className="h-12 w-12 mb-4 text-primary" />}
+                        {isBotConvo(activeConversationId) ? <Sparkles className="h-12 w-12 mb-4 text-black" /> : <MessagesSquare className="h-12 w-12 mb-4 text-primary" />}
                         <p className="text-sm font-headline italic">How can we help you today?</p>
                       </div>
                     ) : (

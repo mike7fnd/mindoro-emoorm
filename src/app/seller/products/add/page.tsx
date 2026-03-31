@@ -26,6 +26,8 @@ import {
   Upload,
   X,
   Save,
+  Gavel,
+  CalendarClock,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -82,6 +84,9 @@ function AddProductPageInner() {
     category: "",
     description: "",
     imageUrl: "",
+    isAuction: false,
+    startingBid: "",
+    auctionEndDate: "",
   });
   const [formLoaded, setFormLoaded] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -99,6 +104,9 @@ function AddProductPageInner() {
         category: p.category || p.type || "",
         description: p.description || "",
         imageUrl: p.imageUrl || "",
+        isAuction: p.isAuction || false,
+        startingBid: p.startingBid?.toString() || "",
+        auctionEndDate: p.auctionEndDate ? p.auctionEndDate.slice(0, 16) : "",
       });
       setFormLoaded(true);
     }
@@ -127,10 +135,10 @@ function AddProductPageInner() {
     if (!user || !form.name || !form.price) return;
     setAdding(true);
 
-    const productData = {
+    const productData: Record<string, any> = {
       name: form.name,
-      price: Number(form.price) || 0,
-      stock: Number(form.stock) || 0,
+      price: form.isAuction ? 0 : Number(form.price) || 0,
+      stock: form.isAuction ? 1 : Number(form.stock) || 0,
       category: form.category || "General",
       description: form.description,
       imageUrl: form.imageUrl || "",
@@ -142,6 +150,12 @@ function AddProductPageInner() {
       type: form.category || "General",
       sold: isEditing && existingProduct && typeof existingProduct.sold === 'number' ? existingProduct.sold : 0,
       updatedAt: new Date().toISOString(),
+      isAuction: form.isAuction,
+      startingBid: form.isAuction ? Number(form.startingBid) || 0 : 0,
+      currentBid: isEditing && existingProduct ? (existingProduct as any).currentBid || 0 : 0,
+      currentBidderId: isEditing && existingProduct ? (existingProduct as any).currentBidderId || null : null,
+      bidCount: isEditing && existingProduct ? (existingProduct as any).bidCount || 0 : 0,
+      auctionEndDate: form.isAuction && form.auctionEndDate ? new Date(form.auctionEndDate).toISOString() : null,
     };
 
     if (isEditing && editId) {
@@ -156,7 +170,7 @@ function AddProductPageInner() {
     router.push("/seller/products");
   };
 
-  const isValid = form.name.trim() !== "" && form.price.trim() !== "";
+  const isValid = form.name.trim() !== "" && (form.isAuction ? form.startingBid.trim() !== "" : form.price.trim() !== "");
 
   return (
     <SellerLayout>
@@ -319,6 +333,67 @@ function AddProductPageInner() {
               />
             </div>
 
+          </CardContent>
+        </Card>
+
+        {/* Auction / Bidding Toggle */}
+        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+          <CardContent className="p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Gavel className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">List as Auction Item</p>
+                  <p className="text-xs text-muted-foreground">Buyers will place bids instead of buying directly</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, isAuction: !prev.isAuction }))}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form.isAuction ? 'bg-primary' : 'bg-black/10'
+                  }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${form.isAuction ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                />
+              </button>
+            </div>
+
+            {form.isAuction && (
+              <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                    <DollarSign className="h-3.5 w-3.5" /> Starting Bid (₱){" "}
+                    <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    className="rounded-xl h-12"
+                    placeholder="0.00"
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={form.startingBid}
+                    onChange={(e) => updateField("startingBid", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                    <CalendarClock className="h-3.5 w-3.5" /> Auction End Date & Time
+                  </Label>
+                  <Input
+                    className="rounded-xl h-12"
+                    type="datetime-local"
+                    value={form.auctionEndDate}
+                    min={new Date().toISOString().slice(0, 16)}
+                    onChange={(e) => updateField("auctionEndDate", e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground ml-1">Leave empty for no end date (manual close).</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
