@@ -57,7 +57,7 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
   const { data: store, isLoading: storeLoading } = useDoc<StoreData>(storeRef);
 
   const productsQuery = useStableMemo(() => {
-    return { table: "facilities", filters: [{ column: "storeId", op: "eq", value: id }] };
+    return { table: "facilities", filters: [{ column: "storeId", op: "eq" as const, value: id }] };
   }, [id]);
 
   const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
@@ -65,18 +65,33 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
   // Check if current user follows this store
   const followQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "store_followers", filters: [{ column: "storeId", op: "eq", value: id }, { column: "userId", op: "eq", value: user.uid }] };
+    return { table: "store_followers", filters: [{ column: "storeId", op: "eq" as const, value: id }, { column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user, id]);
 
   const { data: followData } = useCollection<{ id: string }>(followQuery);
   const isFollowing = (followData?.length || 0) > 0;
 
+  // Fetch ALL followers for this store to get real-time count
+  const allFollowersQuery = useStableMemo(() => {
+    return { table: "store_followers", filters: [{ column: "storeId", op: "eq" as const, value: id }] };
+  }, [id]);
+  const { data: allFollowers } = useCollection<{ id: string }>(allFollowersQuery);
+  const liveFollowerCount = allFollowers?.length ?? (store?.followerCount || 0);
+
   const handleFollow = async () => {
     if (!user) { router.push("/login"); return; }
     if (isFollowing && followData?.[0]) {
       await supabase.from("store_followers").delete().eq("id", followData[0].id);
+      // Decrement follower count on store
+      await supabase.from("stores").update({
+        followerCount: Math.max(0, (store?.followerCount || 1) - 1)
+      }).eq("id", id);
     } else {
       await supabase.from("store_followers").insert({ storeId: id, userId: user.uid });
+      // Increment follower count on store
+      await supabase.from("stores").update({
+        followerCount: (store?.followerCount || 0) + 1
+      }).eq("id", id);
     }
   };
 
@@ -164,7 +179,7 @@ export default function StoreDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span>{store.followerCount || 0} followers</span>
+                    <span>{liveFollowerCount} followers</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Package className="h-4 w-4" />

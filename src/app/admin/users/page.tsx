@@ -27,7 +27,6 @@ import {
   useStableMemo,
   useCollection,
   updateDocumentNonBlocking,
-  deleteDocumentNonBlocking,
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -60,6 +59,7 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [roleTarget, setRoleTarget] = useState<{ id: string; name: string; currentRole: string } | null>(null);
 
   useEffect(() => {
@@ -94,14 +94,34 @@ export default function AdminUsersPage() {
   const adminCount = allUsers?.filter((u: any) => u.role === "admin").length ?? 0;
   const buyerCount = totalUsers - sellerCount - adminCount;
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     if (userId === user?.uid) {
       toast({ variant: "destructive", title: "Cannot delete", description: "You cannot delete your own account." });
       return;
     }
-    deleteDocumentNonBlocking(supabase, "users", userId);
-    toast({ title: "User deleted", description: "The user has been removed." });
-    setDeleteTarget(null);
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast({ variant: "destructive", title: "Delete failed", description: result.error || "Something went wrong." });
+      } else {
+        toast({ title: "User deleted", description: "The user and all related data have been permanently removed." });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Delete failed", description: "Network error. Please try again." });
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
   };
 
   const handleToggleRole = (userId: string, currentRole: string) => {
@@ -323,7 +343,7 @@ export default function AdminUsersPage() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialog open={!!deleteTarget} onOpenChange={() => !isDeleting && setDeleteTarget(null)}>
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -331,16 +351,17 @@ export default function AdminUsersPage() {
                 Delete User
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will permanently remove their account.
+                Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will permanently remove their account and all related data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full" disabled={isDeleting}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-red-600 hover:bg-red-700"
+                disabled={isDeleting}
                 onClick={() => deleteTarget && handleDeleteUser(deleteTarget.id)}
               >
-                Delete
+                {isDeleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

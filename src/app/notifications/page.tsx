@@ -10,7 +10,8 @@ import {
   useCollection, 
   useStableMemo 
 } from "@/supabase";
-import { Bell, Calendar, Info, Sparkles, MoreVertical, Search, CheckCircle2, Settings } from "lucide-react";
+import { Bell, Calendar, Info, Sparkles, MoreVertical, Search, CheckCircle2, Settings, Gavel, PartyPopper } from "lucide-react";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -26,9 +27,10 @@ interface Notification {
   id: string;
   title: string;
   content: string;
-  type: 'order' | 'system' | 'promo';
+  type: 'order' | 'system' | 'promo' | 'bid' | 'welcome';
   timestamp: string;
   isRead: boolean;
+  userId: string;
 }
 
 export default function NotificationsPage() {
@@ -39,12 +41,20 @@ export default function NotificationsPage() {
     if (!user) return null;
     return { 
       table: "notifications", 
-      filters: [{ column: "user_id", op: "eq" as const, value: user.uid }],
+      filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
       order: { column: "timestamp", ascending: false }
     };
   }, [user]);
 
   const { data: notifications } = useCollection<Notification>(notificationsQuery);
+
+  const handleMarkAllRead = async () => {
+    if (!user || !notifications?.length) return;
+    const unread = notifications.filter(n => !n.isRead);
+    for (const n of unread) {
+      await supabase.from("notifications").update({ isRead: true }).eq("id", n.id);
+    }
+  };
 
   if (isUserLoading) return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -94,7 +104,7 @@ export default function NotificationsPage() {
                 <Search className="h-4 w-4" />
                 <span className="text-sm font-medium">Search alerts</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
+              <DropdownMenuItem onClick={handleMarkAllRead} className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm font-medium">Mark all read</span>
               </DropdownMenuItem>
@@ -120,10 +130,14 @@ export default function NotificationsPage() {
                   "h-12 w-12 rounded-full flex items-center justify-center shrink-0",
                   notif.type === 'order' ? "bg-blue-50 text-blue-500" :
                   notif.type === 'promo' ? "bg-primary/10 text-primary" :
+                  notif.type === 'bid' ? "bg-amber-50 text-amber-500" :
+                  notif.type === 'welcome' ? "bg-green-50 text-green-500" :
                   "bg-muted text-muted-foreground"
                 )}>
                   {notif.type === 'order' ? <Calendar className="h-6 w-6" /> :
                    notif.type === 'promo' ? <Sparkles className="h-6 w-6" /> :
+                   notif.type === 'bid' ? <Gavel className="h-6 w-6" /> :
+                   notif.type === 'welcome' ? <PartyPopper className="h-6 w-6" /> :
                    <Info className="h-6 w-6" />}
                 </div>
                 <div className="flex-1">
@@ -149,6 +163,12 @@ export default function NotificationsPage() {
           )}
         </div>
       </main>
+      <FirstTimeIntro
+        storageKey="notifications"
+        title="Notifications"
+        description="Stay updated on your orders, messages, and store activity. Important updates will appear here so you never miss a thing."
+        icon={<Bell className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

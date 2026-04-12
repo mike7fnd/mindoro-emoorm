@@ -114,11 +114,8 @@ export default function SellerDashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/seller/products/add">
-              <Button size="icon" className="bg-black hover:bg-primary transition-colors rounded-full h-10 w-10 shadow-sm md:hidden">
-                <Plus className="h-5 w-5" />
-              </Button>
-              <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2 hidden md:inline-flex">
+            <Link href="/seller/products/add" className="hidden md:block">
+              <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2">
                 <Plus className="h-4 w-4" /> Add Product
               </Button>
             </Link>
@@ -306,6 +303,13 @@ export default function SellerDashboardPage() {
           </>
         )}
       </div>
+
+      {/* Floating Add Button */}
+      <Link href="/seller/products/add" className="fixed bottom-[7.5rem] right-5 z-[1001] md:hidden">
+        <Button size="icon" className="h-14 w-14 rounded-full bg-black hover:bg-primary transition-all shadow-[0_8px_30px_rgba(0,0,0,0.25)] active:scale-90">
+          <Plus className="h-6 w-6" />
+        </Button>
+      </Link>
     </SellerLayout>
   );
 }

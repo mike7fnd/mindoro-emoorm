@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 const MindoroStoreMap = dynamic(() => import("@/components/mindoro-store-map"), { ssr: false });
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc } from "@/supabase";
 import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -471,40 +472,22 @@ export default function HomePage() {
 
           {/* Browse Tabs */}
           <div className="flex justify-center">
-            <div
-              ref={tabPillRef}
-              className="inline-flex items-center justify-center gap-1 rounded-full"
-            >
+            <TabsList className="w-full bg-[#f4f4f4] p-1.5 h-14 rounded-full">
               {([
                 { key: "products" as BrowseTab, label: "Products", icon: Tag },
                 { key: "stores" as BrowseTab, label: "Stores", icon: Store },
                 { key: "map" as BrowseTab, label: "Map", icon: Map },
-              ]).map(({ key, label, icon: Icon }, idx) => (
-                <button
+              ]).map(({ key, label, icon: Icon }) => (
+                <TabsTrigger
                   key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={cn(
-                    "flex flex-col items-center px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap relative z-10 transition-colors",
-                    isSticky && activeTab === key && "bg-white shadow-sm",
-                    activeTab === key
-                      ? "text-primary"
-                      : "text-black/50 hover:text-primary"
-                  )}
+                  value={key}
+                  className="flex-1 rounded-full h-11 text-sm font-bold gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
                 >
-                  <div
-                    ref={el => { tabIconsRef.current[idx] = el; }}
-                    className="flex items-center justify-center overflow-hidden"
-                    style={{ height: 24, width: 24, marginBottom: 2 }}
-                  >
-                    <Icon className="h-6 w-6" />
-                  </div>
+                  <Icon className="h-4 w-4" />
                   {label}
-                  {!isSticky && activeTab === key && (
-                    <div className="w-6 h-[3px] rounded-full bg-primary mt-1 animate-[scaleX_0.25s_ease-out]" style={{ transformOrigin: 'center' }} />
-                  )}
-                </button>
+                </TabsTrigger>
               ))}
-            </div>
+            </TabsList>
           </div>
         </div>
 

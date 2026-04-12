@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef, useCallback } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MapPin, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Store, Package, Upload, Clock, QrCode, Download } from "lucide-react";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import { QRCodeCanvas } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
@@ -89,6 +90,27 @@ export default function CheckoutPage() {
     return () => clearInterval(timer);
   }, [showQRModal, qrTimeout]);
   const [showAddAddress, setShowAddAddress] = useState(false);
+
+  // PSGC API: Oriental Mindoro cities & barangays
+  const ORIENTAL_MINDORO_CODE = "175200000";
+  const [addrCities, setAddrCities] = useState<any[]>([]);
+  const [addrBarangays, setAddrBarangays] = useState<any[]>([]);
+  const [addrCityCode, setAddrCityCode] = useState("");
+
+  React.useEffect(() => {
+    fetch(`https://psgc.gitlab.io/api/provinces/${ORIENTAL_MINDORO_CODE}/municipalities.json`)
+      .then(res => res.json())
+      .then(data => setAddrCities(data.sort((a: any, b: any) => a.name.localeCompare(b.name))))
+      .catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (!addrCityCode) { setAddrBarangays([]); return; }
+    fetch(`https://psgc.gitlab.io/api/municipalities/${addrCityCode}/barangays.json`)
+      .then(res => res.json())
+      .then(data => setAddrBarangays(data.sort((a: any, b: any) => a.name.localeCompare(b.name))))
+      .catch(() => {});
+  }, [addrCityCode]);
 
   const cartQuery = useStableMemo(() => {
     if (!user) return null;
@@ -278,9 +300,27 @@ export default function CheckoutPage() {
               storeName: store.name,
               orderId: bookingId?.id || ""
             });
+            // Notify seller about the new order
+            supabase.from("notifications").insert({
+              userId: store.sellerId,
+              title: "New order received!",
+              content: `Order for "${item.product.name}" (x${item.quantity}) — ₱${((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}`,
+              type: "order",
+              timestamp: new Date().toISOString(),
+              isRead: false,
+            });
           }
         }
       }
+      // Notify buyer about order confirmation
+      supabase.from("notifications").insert({
+        userId: user.uid,
+        title: "Order placed successfully!",
+        content: `Your order of ${cartItems.length} item(s) has been placed. Total: ₱${cartItems.reduce((sum, i) => sum + (i.product.price || i.product.pricePerNight || 0) * i.quantity, 0).toLocaleString()}`,
+        type: "order",
+        timestamp: new Date().toISOString(),
+        isRead: false,
+      });
       // Clear cart
       for (const item of cartItems) {
         await supabase.from("cart_items").delete().eq("id", item.id);
@@ -343,9 +383,27 @@ export default function CheckoutPage() {
               amount: (item.product.price || item.product.pricePerNight || 0) * item.quantity,
               date: new Date().toLocaleString(),
             });
+            // Notify seller about the GCash order
+            supabase.from("notifications").insert({
+              userId: store.sellerId,
+              title: "New GCash order received!",
+              content: `Order for "${item.product.name}" (x${item.quantity}) — ₱${((item.product.price || item.product.pricePerNight || 0) * item.quantity).toLocaleString()}. GCash Ref: ${qrRef}`,
+              type: "order",
+              timestamp: new Date().toISOString(),
+              isRead: false,
+            });
           }
         }
       }
+      // Notify buyer about GCash order confirmation
+      supabase.from("notifications").insert({
+        userId: user.uid,
+        title: "GCash order placed!",
+        content: `Your order of ${cartItems.length} item(s) has been placed via GCash. Ref: ${qrRef}`,
+        type: "order",
+        timestamp: new Date().toISOString(),
+        isRead: false,
+      });
       for (const item of cartItems) {
         await supabase.from("cart_items").delete().eq("id", item.id);
       }
@@ -386,9 +444,9 @@ export default function CheckoutPage() {
 
   // Save new address to address book
   const handleSaveNewAddress = async () => {
-    if (!userProfile) return;
+    if (!user) return;
     const updatedAddresses = [...(addressBook || []), newAddress];
-    await supabase.from("users").update({ addresses: updatedAddresses }).eq("id", userProfile.id);
+    await supabase.from("users").update({ addresses: updatedAddresses }).eq("id", user.uid);
     setAddressBook(updatedAddresses);
     setShowAddAddress(false);
     setNewAddress({
@@ -400,8 +458,21 @@ export default function CheckoutPage() {
       barangay: "",
       street: "",
     });
+    setAddrCityCode("");
+    setAddrBarangays([]);
     setSelectedAddressIdx(updatedAddresses.length - 1);
   };
+
+  // Download QR as image
+  const handleDownloadQR = useCallback((orderId: string) => {
+    const canvas = document.getElementById(`cod-qr-${orderId}`) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `order-${orderId.slice(0, 8)}-qr.png`;
+    a.click();
+  }, []);
 
   if (isUserLoading) return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -438,17 +509,6 @@ export default function CheckoutPage() {
     </div>
   );
   if (!user) { router.push("/login"); return null; }
-
-  // Download QR as image
-  const handleDownloadQR = useCallback((orderId: string) => {
-    const canvas = document.getElementById(`cod-qr-${orderId}`) as HTMLCanvasElement | null;
-    if (!canvas) return;
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `order-${orderId.slice(0, 8)}-qr.png`;
-    a.click();
-  }, []);
 
   if (orderSuccess) {
     // COD success with QR codes
@@ -695,17 +755,56 @@ export default function CheckoutPage() {
               )}
               <Button variant="outline" className="rounded-full mb-2" onClick={() => { setShowAddAddress(true); setSelectedAddressIdx(-1); }}>+ Add New Address</Button>
               {showAddAddress && (
-                <div className="p-4 rounded-xl border border-primary bg-primary/5 space-y-2 mt-2">
-                  <input type="text" placeholder="Label (e.g. Home, Office)" value={newAddress.label} onChange={e => setNewAddress({ ...newAddress, label: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="Full Name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="Mobile" value={newAddress.mobile} onChange={e => setNewAddress({ ...newAddress, mobile: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="Province" value={newAddress.province} onChange={e => setNewAddress({ ...newAddress, province: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="City" value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="Barangay" value={newAddress.barangay} onChange={e => setNewAddress({ ...newAddress, barangay: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
-                  <input type="text" placeholder="Street / House No." value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} className="w-full rounded px-3 py-2 mb-1" />
+                <div className="p-4 rounded-xl border border-primary bg-primary/5 space-y-3 mt-2">
+                  <div className="flex gap-2">
+                    {["Home", "Office", "Other"].map((lbl) => (
+                      <button
+                        key={lbl}
+                        type="button"
+                        onClick={() => setNewAddress({ ...newAddress, label: lbl })}
+                        className={cn(
+                          "flex-1 py-2.5 rounded-full text-sm font-bold transition-all",
+                          newAddress.label === lbl
+                            ? "bg-primary text-white shadow-sm"
+                            : "bg-white border border-black/10 text-black/70 hover:border-primary/30"
+                        )}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="text" placeholder="Full Name" value={newAddress.fullName} onChange={e => setNewAddress({ ...newAddress, fullName: e.target.value })} className="w-full bg-white border border-black/10 rounded-full px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
+                  <div className="flex items-center bg-white border border-black/10 rounded-full focus-within:ring-2 focus-within:ring-primary/20">
+                    <span className="pl-4 pr-1 text-sm font-bold text-muted-foreground select-none">+63</span>
+                    <input type="tel" placeholder="9123456789" value={newAddress.mobile} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setNewAddress({ ...newAddress, mobile: v }); }} maxLength={10} className="flex-1 bg-transparent border-none rounded-r-full py-3 pr-4 text-sm outline-none" />
+                  </div>
+                  {/* Province locked to Oriental Mindoro */}
+                  <div className="w-full bg-white/60 border border-black/10 rounded-full px-4 py-3 text-sm text-muted-foreground cursor-not-allowed">Oriental Mindoro</div>
+                  <select
+                    value={newAddress.city}
+                    onChange={e => {
+                      const selected = addrCities.find((c: any) => c.name === e.target.value);
+                      setNewAddress({ ...newAddress, city: e.target.value, barangay: "" });
+                      setAddrCityCode(selected?.code || "");
+                    }}
+                    className="w-full bg-white border border-black/10 rounded-full px-4 py-3 text-sm outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="" disabled>Select city / municipality</option>
+                    {addrCities.map((c: any) => <option key={c.code} value={c.name}>{c.name}</option>)}
+                  </select>
+                  <select
+                    value={newAddress.barangay}
+                    onChange={e => setNewAddress({ ...newAddress, barangay: e.target.value })}
+                    disabled={!addrCityCode}
+                    className="w-full bg-white border border-black/10 rounded-full px-4 py-3 text-sm outline-none disabled:opacity-50 appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="" disabled>Select barangay</option>
+                    {addrBarangays.map((b: any) => <option key={b.code || b.name} value={b.name}>{b.name}</option>)}
+                  </select>
+                  <input type="text" placeholder="Street / House No. / Landmark" value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} className="w-full bg-white border border-black/10 rounded-full px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
                   <div className="flex gap-2 mt-2">
-                    <Button onClick={handleSaveNewAddress} className="flex-1 rounded-full bg-primary text-white">Save Address</Button>
-                    <Button variant="outline" onClick={() => setShowAddAddress(false)} className="flex-1 rounded-full">Cancel</Button>
+                    <Button onClick={handleSaveNewAddress} disabled={!newAddress.fullName || !newAddress.city} className="flex-1 rounded-full bg-primary text-white">Save Address</Button>
+                    <Button variant="outline" onClick={() => { setShowAddAddress(false); setAddrCityCode(""); setAddrBarangays([]); }} className="flex-1 rounded-full">Cancel</Button>
                   </div>
                 </div>
               )}
@@ -872,6 +971,12 @@ export default function CheckoutPage() {
         </div>
       )}
       {QRModal}
+      <FirstTimeIntro
+        storageKey="checkout"
+        title="Checkout"
+        description="Review your order, enter your delivery address, and choose your payment method — Cash on Delivery or GCash. You're almost there!"
+        icon={<CreditCard className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

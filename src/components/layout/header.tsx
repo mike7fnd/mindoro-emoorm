@@ -17,7 +17,7 @@ import {
   Plus,
   Store,
 } from "lucide-react";
-import { useUser, useSupabase, useDoc, useStableMemo, useSupabaseAuth } from "@/supabase";
+import { useUser, useSupabase, useDoc, useStableMemo, useSupabaseAuth, useCollection } from "@/supabase";
 import Image from "next/image";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
@@ -50,6 +50,20 @@ function HeaderContent() {
   }, [user]);
 
   const { data: userProfile } = useDoc(userProfileRef);
+
+  // Unread notifications count
+  const unreadQuery = useStableMemo(() => {
+    if (!user) return null;
+    return {
+      table: "notifications",
+      filters: [
+        { column: "userId", op: "eq" as const, value: user.uid },
+        { column: "isRead", op: "eq" as const, value: false },
+      ],
+    };
+  }, [user]);
+  const { data: unreadNotifications } = useCollection<{ id: string }>(unreadQuery);
+  const unreadCount = unreadNotifications?.length || 0;
 
   const headerRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -190,9 +204,12 @@ function HeaderContent() {
           <div className="auth-actions">
             {user ? (
               <>
-                <div className="icon-btn" aria-label="Notifications">
+                <Link href="/notifications" className="icon-btn relative" aria-label="Notifications">
                   <Bell className="h-[18px] w-[18px]" />
-                </div>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                  )}
+                </Link>
 
                 <div className="dropdown relative">
                   <div
@@ -276,8 +293,11 @@ function HeaderContent() {
                   <span>Cart</span>
                 </Link>
                 <Link href="/notifications" className={cn("mobile-nav-item", isLinkActive("/notifications") && "active")}>
-                  <div className="mobile-nav-icon">
+                  <div className="mobile-nav-icon relative">
                     <Bell className="h-[30px] w-[30px]" strokeWidth={1.2} fill={isLinkActive("/notifications") ? "currentColor" : "none"} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                    )}
                   </div>
                   <span>Notifications</span>
                 </Link>

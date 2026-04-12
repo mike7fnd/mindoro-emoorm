@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { Trash2, Star, ShoppingCart, Heart } from "lucide-react";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 
 
 const MyWishlistPage = () => {
@@ -148,6 +149,12 @@ const MyWishlistPage = () => {
         )}
         </div>
       </main>
+      <FirstTimeIntro
+        storageKey="wishlist"
+        title="Your Wishlist"
+        description="Save products you love and come back to them anytime. Tap the cart icon to quickly add items to your shopping cart."
+        icon={<Heart className="h-7 w-7" />}
+      />
     </div>
   );
 };

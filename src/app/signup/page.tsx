@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, RotateCw, Loader2 } from "lucide-react";
-import { useUser, useSupabase, setDocumentNonBlocking } from "@/supabase";
+import { useUser, useSupabase } from "@/supabase";
 import { initiateEmailSignUp } from "@/supabase/auth";
 
 export default function SignUpPage() {
@@ -134,8 +134,9 @@ export default function SignUpPage() {
 
       // Email confirmation disabled — create profile now
       if (result.user) {
-        await setDocumentNonBlocking(supabase, "users", {
+        const { error: upsertError } = await supabase.from("users").upsert({
           id: result.user.id,
+          name: `${formData.firstName} ${formData.lastName}`.trim(),
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
@@ -144,8 +145,10 @@ export default function SignUpPage() {
           city: formData.city || "",
           barangay: formData.barangay || "",
           street: formData.street || "",
+          role: "buyer",
           createdAt: new Date().toISOString(),
-        });
+        }, { onConflict: "id" });
+        if (upsertError) console.error("[Signup] Profile save error:", upsertError.message);
         localStorage.removeItem("pendingProfile");
       }
     } catch (err: any) {
@@ -272,9 +275,12 @@ export default function SignUpPage() {
             <div className="space-y-6">
               <h3 className="text-xl font-headline font-normal tracking-[-0.05em] mb-4 text-center">Contact & Address</h3>
               <div className="space-y-2">
-                <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Mobile (+63)</label>
-                <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange}
-                  placeholder="9123456789" maxLength={10} className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20" />
+                <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Mobile Number</label>
+                <div className="flex items-center bg-[#f8f8f8] rounded-full focus-within:ring-2 focus-within:ring-primary/20">
+                  <span className="pl-6 pr-2 text-sm font-bold text-muted-foreground select-none">+63</span>
+                  <input type="tel" name="mobile" value={formData.mobile} onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setFormData(prev => ({ ...prev, mobile: v })); }}
+                    placeholder="9123456789" maxLength={10} className="flex-1 bg-transparent border-none rounded-r-full py-4 pr-6 text-black outline-none" />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold tracking-tight text-muted-foreground ml-1">Province</label>

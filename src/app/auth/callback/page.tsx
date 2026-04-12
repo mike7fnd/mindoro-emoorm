@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSupabase, setDocumentNonBlocking } from "@/supabase";
+import { useSupabase } from "@/supabase";
 
 function AuthCallbackInner() {
   const supabase = useSupabase();
@@ -27,8 +27,9 @@ function AuthCallbackInner() {
         const pendingRaw = localStorage.getItem("pendingProfile");
         if (pendingRaw && data.user) {
           const pending = JSON.parse(pendingRaw);
-          await setDocumentNonBlocking(supabase, "users", {
+          const { error: upsertError } = await supabase.from("users").upsert({
             id: data.user.id,
+            name: `${pending.firstName || ""} ${pending.lastName || ""}`.trim(),
             firstName: pending.firstName || "",
             lastName: pending.lastName || "",
             email: data.user.email || pending.email || "",
@@ -37,7 +38,18 @@ function AuthCallbackInner() {
             city: pending.city || "",
             barangay: pending.barangay || "",
             street: pending.street || "",
+            role: "buyer",
             createdAt: new Date().toISOString(),
+          }, { onConflict: "id" });
+          if (upsertError) console.error("[Auth Callback] Profile save error:", upsertError.message);
+          // Send welcome notification
+          await supabase.from("notifications").insert({
+            userId: data.user.id,
+            title: "Welcome to E-Moorm! 🎉",
+            content: `Hi ${pending.firstName || "there"}! Your account is ready. Start exploring local products and stores in Oriental Mindoro.`,
+            type: "welcome",
+            timestamp: new Date().toISOString(),
+            isRead: false,
           });
           localStorage.removeItem("pendingProfile");
         }

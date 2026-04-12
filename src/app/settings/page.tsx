@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import {
   useUser,
   useSupabase,
@@ -24,7 +25,8 @@ import {
   Shield,
   ArrowLeft,
   Mail,
-  Bell
+  Bell,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -245,12 +247,14 @@ export default function SettingsPage() {
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Mobile</span>
                     <div className="flex items-center gap-1 flex-1 justify-end">
-                      <span className="text-sm text-muted-foreground/40">+63</span>
+                      <span className="text-sm font-bold text-muted-foreground/40 select-none">+63</span>
                       <input
+                        type="tel"
                         value={formData.mobile}
-                        onChange={e => setFormData({ ...formData, mobile: e.target.value })}
+                        onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setFormData({ ...formData, mobile: v }); }}
                         className="text-right text-sm font-medium bg-transparent outline-none border-none text-primary max-w-[120px]"
-                        placeholder="912 345 6789"
+                        placeholder="9123456789"
+                        maxLength={10}
                       />
                     </div>
                   </div>
@@ -376,6 +380,12 @@ export default function SettingsPage() {
             </div>
           </main>
 
+          <FirstTimeIntro
+            storageKey="settings"
+            title="Settings"
+            description="Update your personal info, manage your address, and customize your preferences. Changes are saved when you tap Save."
+            icon={<SettingsIcon className="h-7 w-7" />}
+          />
           <div className="md:hidden">
             <Footer />
           </div>

@@ -26,7 +26,6 @@ export async function getRelevantData(message: string): Promise<string> {
   lines.push(
     'E-Moorm is a warm and hyperlocal digital marketplace in Oriental Mindoro, Philippines, po.',
     'Payment methods: Cash on Delivery (COD) and GCash, po.',
-    'Free delivery within Oriental Mindoro for orders over ₱500, po!',
     'Returns: Items may be returned within 7 days if unopened, po.',
     'Categories: Vegetables, Fruits, Seafood, Meat, Snacks, Rice & Grains, Beverages, Condiments, po.',
     'For order issues, please kindly reach out to Customer Support through the Messages tab, po.'
@@ -96,6 +95,7 @@ export async function askAssistant(
 
   const systemPrompt = `You are Moormy Bot, a friendly, warm, and super smart shopping assistant for E-Moorm, a local eCommerce marketplace in Oriental Mindoro, Philippines.
 Answer ONLY using the context below. If the answer is not in the context, politely say you don't have that information and suggest contacting Customer Support.
+
 Keep your answer warm, helpful, and clear. Maximum 10 sentences.
 Do NOT use asterisks (*) anywhere in your answer.
 ${langInstruction}

@@ -32,6 +32,9 @@ import {
   Timer,
   TrendingUp,
   Users,
+  Minus,
+  Plus,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -65,6 +68,7 @@ interface Facility {
   status: string;
   amenities?: string[];
   stock?: number;
+  sold?: number;
   isAuction?: boolean;
   auctionEndDate?: string;
   startingBid?: number;
@@ -74,6 +78,17 @@ interface Facility {
   storeId?: string;
   sellerId?: string;
   sellerName?: string;
+  category?: string;
+}
+
+interface StoreInfo {
+  id: string;
+  name?: string;
+  city?: string;
+  rating?: number;
+  followerCount?: number;
+  offersDelivery?: boolean;
+  offersPickup?: boolean;
 }
 
 interface Bid {
@@ -148,6 +163,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const [bidSubmitting, setBidSubmitting] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [auctionTimeLeft, setAuctionTimeLeft] = useState("");
+  const [quickSheet, setQuickSheet] = useState<{ open: boolean; intent: 'cart' | 'buy' }>({ open: false, intent: 'cart' });
+  const [sheetQty, setSheetQty] = useState(1);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const isAnimating = useRef(false);
@@ -161,6 +178,13 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   }, [id]);
 
   const { data: facility, isLoading } = useDoc<Facility>(facilityRef);
+
+  // Fetch store/seller info
+  const storeRef = useStableMemo(() => {
+    if (!facility?.storeId) return null;
+    return { table: "stores", id: facility.storeId };
+  }, [facility?.storeId]);
+  const { data: store } = useDoc<StoreInfo>(storeRef);
 
   // Fetch bookings for this facility to show availability
   const bookingsQuery = useStableMemo(() => {
@@ -467,6 +491,26 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
       trackingNumber: null
     };
     addDocumentNonBlocking(supabase, "bookings", bookingData);
+    // Notify buyer
+    supabase.from("notifications").insert({
+      userId: user.uid,
+      title: "Order placed!",
+      content: `Your order for "${facility.name}" (x${quantity}) has been placed. Total: ₱${((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}`,
+      type: "order",
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    });
+    // Notify seller
+    if (facility.sellerId) {
+      supabase.from("notifications").insert({
+        userId: facility.sellerId,
+        title: "New order received!",
+        content: `Someone ordered "${facility.name}" (x${quantity}) — ₱${((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}`,
+        type: "order",
+        timestamp: new Date().toISOString(),
+        isRead: false,
+      });
+    }
     setShowCheckout(false);
     setShowSuccess(true);
     confetti({
@@ -499,6 +543,10 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
       </div>
     );
   }
+
+  const availableStock = facility?.stock ?? facility?.capacity ?? 0;
+  const soldCount = facility?.sold ?? 0;
+  const productCategory = facility?.type || facility?.category || "Product";
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -569,15 +617,17 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               </h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span className="text-sm font-medium">Oriental Mindoro</span>
+                <span className="text-sm font-medium">{store?.city || "Oriental Mindoro"}</span>
               </div>
             </div>
             <div className="flex flex-col items-end shrink-0">
               <div className="flex items-center gap-1.5 bg-black text-white px-3 py-1 rounded-full text-xs font-bold">
                 <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                5.0
+                {store?.rating ? store.rating.toFixed(1) : "New"}
               </div>
-              <span className="text-[10px] text-muted-foreground mt-1 font-bold tracking-tight">15+ Reviews</span>
+              {soldCount > 0 && (
+                <span className="text-[10px] text-muted-foreground mt-1 font-bold tracking-tight">{soldCount} sold</span>
+              )}
             </div>
           </div>
 
@@ -595,8 +645,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     <Clock className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Unit</span>
-                    <span className="text-sm font-medium text-black/80">Per piece / kilo</span>
+                    <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Category</span>
+                    <span className="text-sm font-medium text-black/80">{productCategory}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 group">
@@ -605,9 +655,33 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Stock</span>
-                    <span className="text-sm font-medium text-black/80">{facility.capacity} Available</span>
+                    <span className={cn("text-sm font-medium", availableStock > 0 ? "text-black/80" : "text-red-500")}>
+                      {availableStock > 0 ? `${availableStock} Available` : "Out of stock"}
+                    </span>
                   </div>
                 </div>
+                {soldCount > 0 && (
+                  <div className="flex items-center gap-4 group">
+                    <div className="h-10 w-10 rounded-full bg-[#f8f8f8] flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <TrendingUp className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Sold</span>
+                      <span className="text-sm font-medium text-black/80">{soldCount} units</span>
+                    </div>
+                  </div>
+                )}
+                {facility.status && (
+                  <div className="flex items-center gap-4 group">
+                    <div className="h-10 w-10 rounded-full bg-[#f8f8f8] flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <Info className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-muted-foreground tracking-tight uppercase mb-0.5">Status</span>
+                      <span className="text-sm font-medium text-black/80 capitalize">{facility.status}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator className="bg-black/[0.05]" />
@@ -637,6 +711,40 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                         );
                       })}
                     </div>
+                  </div>
+                </>
+              )}
+
+              {/* Seller / Store Info */}
+              {store && (
+                <>
+                  <Separator className="bg-black/[0.05]" />
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-headline font-normal tracking-tight">Sold by</h3>
+                    <Link href={`/stores/${facility.storeId}`} className="flex items-center gap-4 p-5 bg-[#f8f8f8] rounded-[24px] hover:bg-black/[0.04] transition-colors group">
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <MapPin className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate group-hover:text-primary transition-colors">{store.name || "Store"}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          {store.city && <span>{store.city}</span>}
+                          {store.followerCount != null && store.followerCount > 0 && (
+                            <>
+                              <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                              <span>{store.followerCount} followers</span>
+                            </>
+                          )}
+                          {(store.offersDelivery || store.offersPickup) && (
+                            <>
+                              <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                              <span>{[store.offersDelivery && "Delivery", store.offersPickup && "Pickup"].filter(Boolean).join(" · ")}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    </Link>
                   </div>
                 </>
               )}
@@ -833,7 +941,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   <div className="flex items-center justify-center gap-6 p-6 bg-[#f8f8f8] rounded-[24px]">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-bold hover:bg-primary/10 transition-colors">−</button>
                     <span className="text-3xl font-bold w-16 text-center">{quantity}</span>
-                    <button onClick={() => setQuantity(Math.min(facility.capacity || 999, quantity + 1))} className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-bold hover:bg-primary/10 transition-colors">+</button>
+                    <button onClick={() => setQuantity(Math.min(availableStock || 999, quantity + 1))} className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center text-xl font-bold hover:bg-primary/10 transition-colors">+</button>
                   </div>
 
                   <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
@@ -870,7 +978,11 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                       {addedToCart ? "✓ Added!" : "Add to Cart"}
                     </button>
                     <button
-                      onClick={handleBookingClick}
+                      onClick={() => {
+                        if (!user) { router.push("/login"); return; }
+                        setSheetQty(quantity);
+                        setQuickSheet({ open: true, intent: 'buy' });
+                      }}
                       className="flex-1 py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm"
                     >
                       Buy Now
@@ -878,7 +990,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   </div>
 
                   {(facility.stock !== undefined || facility.capacity > 0) && (
-                    <p className="text-xs text-muted-foreground text-center">{facility.stock || facility.capacity} available in stock</p>
+                    <p className="text-xs text-muted-foreground text-center">{availableStock} available in stock</p>
                   )}
                 </div>
               )}
@@ -1016,21 +1128,21 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           ) : (
             <div className="flex gap-2 shrink-0">
               <button
-                onClick={async () => {
+                onClick={() => {
                   if (!user) { router.push("/login"); return; }
-                  await supabase.from("cart_items").upsert({ userId: user.uid, productId: facility.id, quantity }, { onConflict: "userId,productId" });
-                  setAddedToCart(true);
-                  setTimeout(() => setAddedToCart(false), 2000);
+                  setSheetQty(quantity);
+                  setQuickSheet({ open: true, intent: 'cart' });
                 }}
-                className={cn(
-                  "px-5 h-[52px] rounded-full font-bold transition-all text-xs tracking-tight",
-                  addedToCart ? "bg-green-500 text-white" : "bg-[#f8f8f8] text-black hover:bg-black/10 active:scale-95"
-                )}
+                className="px-5 h-[52px] rounded-full font-bold transition-all text-xs tracking-tight bg-[#f8f8f8] text-black hover:bg-black/10 active:scale-95"
               >
-                {addedToCart ? "✓" : "Cart"}
+                Cart
               </button>
               <button
-                onClick={handleBookingClick}
+                onClick={() => {
+                  if (!user) { router.push("/login"); return; }
+                  setSheetQty(quantity);
+                  setQuickSheet({ open: true, intent: 'buy' });
+                }}
                 className="px-8 h-[52px] rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-xs tracking-tight"
               >
                 Buy Now
@@ -1039,6 +1151,140 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {/* ── Quick Selection Bottom Sheet ─────────────────────────── */}
+      <Sheet open={quickSheet.open} onOpenChange={(v) => setQuickSheet(prev => ({ ...prev, open: v }))}>
+        <SheetContent side="bottom" className="rounded-t-[32px] px-0 pb-0 pt-0 border-none outline-none max-w-lg mx-auto [&>button]:hidden">
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+          </div>
+          <div className="px-6 pb-8 space-y-6">
+            {/* Product snapshot */}
+            <div className="flex gap-4">
+              <div className="h-24 w-24 rounded-[20px] overflow-hidden bg-[#f8f8f8] shrink-0 border border-black/[0.03]">
+                <Image
+                  src={facility.imageUrl || "/placeholder.svg"}
+                  alt={facility.name}
+                  width={96}
+                  height={96}
+                  className="object-cover h-full w-full"
+                  unoptimized
+                />
+              </div>
+              <div className="flex flex-col justify-center min-w-0">
+                <h3 className="text-base font-bold truncate">{facility.name}</h3>
+                <p className="text-lg font-bold text-primary mt-0.5">
+                  ₱{(facility.price || facility.pricePerNight || 0).toLocaleString()}
+                </p>
+                <p className={cn("text-xs mt-1", availableStock > 0 ? "text-muted-foreground" : "text-red-500 font-bold")}>
+                  {availableStock > 0 ? `${availableStock} available` : "Out of stock"}
+                </p>
+              </div>
+            </div>
+
+            <Separator className="bg-black/[0.05]" />
+
+            {/* Variation / Category */}
+            {(facility.type || facility.category) && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Variation</p>
+                <div className="flex flex-wrap gap-2">
+                  <div className="px-4 py-2.5 rounded-full bg-black text-white text-xs font-bold">
+                    {facility.type || facility.category}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Amenities / Highlights as selectable tags */}
+            {facility.amenities && facility.amenities.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Highlights</p>
+                <div className="flex flex-wrap gap-2">
+                  {facility.amenities.map((tag, i) => (
+                    <span key={i} className="px-3 py-2 rounded-full bg-[#f8f8f8] text-xs font-medium text-black/70 border border-black/[0.04]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Separator className="bg-black/[0.05]" />
+
+            {/* Quantity selector */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quantity</p>
+              <div className="flex items-center justify-between bg-[#f8f8f8] rounded-full p-2">
+                <button
+                  onClick={() => setSheetQty(Math.max(1, sheetQty - 1))}
+                  className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-primary/10 transition-colors"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="text-xl font-bold w-16 text-center">{sheetQty}</span>
+                <button
+                  onClick={() => setSheetQty(Math.min(availableStock || 999, sheetQty + 1))}
+                  className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center hover:bg-primary/10 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-sm text-muted-foreground font-medium">Total</span>
+              <span className="text-xl font-bold text-primary">
+                ₱{((facility.price || facility.pricePerNight || 0) * sheetQty).toLocaleString()}
+              </span>
+            </div>
+
+            {/* Confirm Action */}
+            {quickSheet.intent === 'cart' ? (
+              <button
+                disabled={availableStock <= 0}
+                onClick={async () => {
+                  if (!user) { router.push("/login"); return; }
+                  setQuantity(sheetQty);
+                  await supabase.from("cart_items").upsert(
+                    { userId: user.uid, productId: facility.id, quantity: sheetQty },
+                    { onConflict: "userId,productId" }
+                  );
+                  setQuickSheet({ open: false, intent: 'cart' });
+                  setAddedToCart(true);
+                  setTimeout(() => setAddedToCart(false), 2500);
+                }}
+                className="w-full py-4 rounded-full bg-black text-white font-bold shadow-lg active:scale-[0.98] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {addedToCart ? "✓ Added to Cart!" : "Add to Cart"}
+              </button>
+            ) : (
+              <button
+                disabled={availableStock <= 0}
+                onClick={async () => {
+                  if (!user) { router.push("/login"); return; }
+                  setQuantity(sheetQty);
+                  // Add to cart then redirect to checkout page
+                  const { data: cartRow } = await supabase.from("cart_items").upsert(
+                    { userId: user.uid, productId: facility.id, quantity: sheetQty },
+                    { onConflict: "userId,productId" }
+                  ).select("id").single();
+                  if (cartRow?.id) {
+                    localStorage.setItem("checkout_selected_ids", JSON.stringify([cartRow.id]));
+                  }
+                  setQuickSheet({ open: false, intent: 'buy' });
+                  router.push("/checkout");
+                }}
+                className="w-full py-4 rounded-full bg-primary text-white font-bold shadow-lg active:scale-[0.98] transition-all text-sm disabled:opacity-40"
+              >
+                Buy Now · ₱{((facility.price || facility.pricePerNight || 0) * sheetQty).toLocaleString()}
+              </button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={showCheckout} onOpenChange={setShowCheckout}>
         <SheetContent side="bottom" className="h-[95vh] rounded-t-[40px] p-0 border-none outline-none">

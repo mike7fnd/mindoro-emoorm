@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShoppingCart, Trash2, Plus, Minus, Store, MoreVertical, Heart, Share2, Archive, Tag, HelpCircle, Check } from "lucide-react";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -391,6 +392,12 @@ export default function CartPage() {
           </div>
         </div>
       )}
+      <FirstTimeIntro
+        storageKey="cart"
+        title="Your Cart"
+        description="Review items you've added, adjust quantities, and proceed to checkout when you're ready. Items are grouped by store for easy ordering."
+        icon={<ShoppingCart className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

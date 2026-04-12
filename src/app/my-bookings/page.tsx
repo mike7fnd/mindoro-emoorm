@@ -19,8 +19,10 @@ import {
   MapPin,
   Clock,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Package
 } from "lucide-react";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 
 import {
   DropdownMenu,
@@ -296,6 +298,12 @@ export default function MyBookingsPage() {
         </div>
       </main>
 
+      <FirstTimeIntro
+        storageKey="my-bookings"
+        title="My Orders"
+        description="Track all your orders in one place. Filter by status, search by product name, and tap any order to view its details."
+        icon={<Package className="h-7 w-7" />}
+      />
       <Footer />
     </div>
   );

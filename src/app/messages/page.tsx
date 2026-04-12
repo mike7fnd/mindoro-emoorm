@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { FirstTimeIntro } from "@/components/first-time-intro";
 import Image from "next/image";
 import {
   MessagesSquare,
@@ -544,6 +545,12 @@ function MessagesContent() {
         </div>
       </main>
 
+      <FirstTimeIntro
+        storageKey="messages"
+        title="Messages"
+        description="Chat with sellers, get support, and use Moormy Bot for instant help in English or Tagalog. Your conversations are all here."
+        icon={<MessagesSquare className="h-7 w-7" />}
+      />
       {!activeConversationId && <Footer />}
     </div>
   );

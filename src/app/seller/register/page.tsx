@@ -353,14 +353,19 @@ export default function ShopRegistrationPage() {
                   </div>
                   <div className="flex items-center justify-between px-6 py-5">
                     <span className="text-sm text-black/80 dark:text-white/80">Phone Number</span>
-                    <input
-                      name="contact"
-                      value={form.contact}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="09XXXXXXXXX"
-                      required
-                    />
+                    <div className="flex items-center gap-1 flex-1 justify-end ml-4">
+                      <span className="text-sm font-bold text-muted-foreground/40 select-none">+63</span>
+                      <input
+                        type="tel"
+                        name="contact"
+                        value={form.contact}
+                        onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); handleChange({ target: { name: 'contact', value: v } } as any); }}
+                        className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
+                        placeholder="9123456789"
+                        maxLength={10}
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </section>
