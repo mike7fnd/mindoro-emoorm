@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SupabaseProvider } from '@/supabase';
 import { Toaster } from '@/components/ui/toaster';
-import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { ThemeColorMeta } from '@/components/theme-color-meta';
 import { AdminRouteGuard } from '@/components/admin-route-guard';
 
@@ -78,7 +77,6 @@ export default function RootLayout({
             {children}
           </AdminRouteGuard>
           <Toaster />
-          <PWAInstallPrompt />
           <ThemeColorMeta />
         </SupabaseProvider>
       </body>

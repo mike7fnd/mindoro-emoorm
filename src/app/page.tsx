@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 const MindoroStoreMap = dynamic(() => import("@/components/mindoro-store-map"), { ssr: false });
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUser, useSupabase, useCollection, useStableMemo, useDoc } from "@/supabase";
 import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -471,25 +471,25 @@ export default function HomePage() {
           </section>
 
           {/* Browse Tabs */}
-          <div className="flex justify-center">
-            <TabsList className="w-full bg-[#f4f4f4] p-1.5 h-14 rounded-full">
-              {([
-                { key: "products" as BrowseTab, label: "Products", icon: Tag },
-                { key: "stores" as BrowseTab, label: "Stores", icon: Store },
-                { key: "map" as BrowseTab, label: "Map", icon: Map },
-              ]).map(({ key, label, icon: Icon }) => (
-                <TabsTrigger
-                  key={key}
-                  value={key}
-                  className="flex-1 rounded-full h-11 text-sm font-bold gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-        </div>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BrowseTab)} className="w-full">
+            <div className="flex justify-center">
+              <TabsList className="w-full bg-[#f4f4f4] p-1.5 h-14 rounded-full">
+                {([
+                  { key: "products" as BrowseTab, label: "Products", icon: Tag },
+                  { key: "stores" as BrowseTab, label: "Stores", icon: Store },
+                  { key: "map" as BrowseTab, label: "Map", icon: Map },
+                ]).map(({ key, label, icon: Icon }) => (
+                  <TabsTrigger
+                    key={key}
+                    value={key}
+                    className="flex-1 rounded-full h-11 text-sm font-bold gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
         <section className="mb-10">
           {isMobile ? (
@@ -527,8 +527,7 @@ export default function HomePage() {
         </section>
 
         {/* Products Tab */}
-        {activeTab === "products" && (
-          <div className="space-y-10 animate-[fadeSlideIn_0.3s_ease-out]">
+        <TabsContent value="products" className="space-y-10 animate-[fadeSlideIn_0.3s_ease-out]">
 
             {/* ── Category Filter Chips ─────────────────────────────────── */}
             <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
@@ -800,12 +799,10 @@ export default function HomePage() {
               </div>
             </section>
 
-          </div>
-        )}
+          </TabsContent>
 
         {/* Stores Tab */}
-        {activeTab === "stores" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-[fadeSlideIn_0.3s_ease-out]">
+        <TabsContent value="stores" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-[fadeSlideIn_0.3s_ease-out]">
             {isStoresLoading ? (
               <>{Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-[32px] overflow-hidden border border-black/[0.02] bg-[#f8f8f8]">
@@ -857,12 +854,10 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
-        )}
+          </TabsContent>
 
         {/* Map Tab */}
-        {activeTab === "map" && (
-          <div className="animate-[fadeSlideIn_0.3s_ease-out]">
+        <TabsContent value="map" className="animate-[fadeSlideIn_0.3s_ease-out]">
             <div className="mb-6">
               <h2 className="text-xl font-headline font-normal tracking-[-0.04em] mb-1">Discover Stores in Mindoro</h2>
               <p className="text-sm text-muted-foreground">Explore local shops pinned on the map. Tap a marker to see shop details.</p>
@@ -879,8 +874,9 @@ export default function HomePage() {
               }))}
               isLoading={isStoresLoading}
             />
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
+        </div>
       </main>
       <Footer />
 
