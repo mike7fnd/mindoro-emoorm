@@ -197,6 +197,32 @@ export default function SellerSettingsPage() {
           </Button>
         </div>
 
+        {/* Verification Status */}
+        {isLoading ? (
+          <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+            <CardContent className="p-6 md:p-8 space-y-3">
+              <Skeleton className="h-6 w-1/2 rounded-full" />
+              <Skeleton className="h-4 w-full rounded-full" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] ${store?.verified ? "border-blue-200 dark:border-blue-500/30" : "border-orange-200 dark:border-orange-500/30"}`}>
+            <CardContent className={`p-6 md:p-8 space-y-3 ${store?.verified ? "bg-blue-50/50 dark:bg-blue-500/5" : "bg-orange-50/50 dark:bg-orange-500/5"}`}>
+              <div className="flex items-center gap-2">
+                <Shield className={`h-5 w-5 ${store?.verified ? "text-blue-600" : "text-orange-600"}`} />
+                <p className={`text-sm font-semibold ${store?.verified ? "text-blue-900 dark:text-blue-300" : "text-orange-900 dark:text-orange-300"}`}>
+                  {store?.verified ? "✓ Seller Verified" : "⚠ Seller Unverified"}
+                </p>
+              </div>
+              <p className={`text-xs ${store?.verified ? "text-blue-700 dark:text-blue-200" : "text-orange-700 dark:text-orange-200"}`}>
+                {store?.verified 
+                  ? "Your shop is verified! Your products are publicly visible to all customers." 
+                  : "Your shop is pending verification. Your products are only visible to you until an admin approves your shop. Please ensure all your shop information is complete and accurate."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Shop Profile */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8 space-y-5">

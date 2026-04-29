@@ -20,9 +20,11 @@ import {
   Clock,
   Filter,
   MoreVertical,
-  Package
+  Package,
+  Star
 } from "lucide-react";
 import { FirstTimeIntro } from "@/components/first-time-intro";
+import { ReviewModal } from "@/components/review-modal";
 
 import {
   DropdownMenu,
@@ -54,6 +56,11 @@ interface Facility {
   id: string;
   name: string;
   imageUrl: string;
+  storeId?: string;
+}
+
+interface BookingWithStore extends Booking {
+  storeId?: string;
 }
 
 const STATUS_FILTERS = [
@@ -74,12 +81,29 @@ export default function MyBookingsPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
+  const [reviewModal, setReviewModal] = useState<{
+    open: boolean;
+    bookingId?: string;
+    facilityId?: string;
+    facilityName?: string;
+    storeId?: string;
+    storeName?: string;
+    reviewType?: "product" | "seller";
+  }>({
+    open: false,
+  });WithStore>(bookingsQuery);
 
-  const bookingsQuery = useStableMemo(() => {
-    if (!user) return null;
-    return {
-      table: "bookings",
-      filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
+  const facilitiesQuery = useStableMemo(() => {
+    return { table: "facilities" };
+  }, []);
+
+  const { data: facilities } = useCollection<Facility>(facilitiesQuery);
+
+  const storesQuery = useStableMemo(() => {
+    return { table: "stores" };
+  }, []);
+
+  const { data: stores } = useCollection(storser.uid }],
       order: { column: "bookingDate", ascending: false }
     };
   }, [user]);
@@ -220,6 +244,9 @@ export default function MyBookingsPage() {
           ) : filteredBookings.length > 0 ? (
             filteredBookings.map((bk) => {
               const facility = facilities?.find(f => f.id === bk.facilityId);
+              const store = stores?.find(s => s.id === bk.storeId);
+              const isCompleted = bk.status === "Completed";
+
               return (
                 <div key={bk.id} className="bg-white rounded-[30px] overflow-hidden border border-black/[0.05] hover:shadow-xl hover:shadow-black/[0.02] transition-all group">
                   <div className="flex flex-col sm:flex-row">
@@ -279,6 +306,45 @@ export default function MyBookingsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {isCompleted && (
+                        <div className="flex gap-2 mt-4 pt-4 border-t border-black/[0.03]">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() =>
+                              setReviewModal({
+                                open: true,
+                                bookingId: bk.id,
+                                facilityId: bk.facilityId,
+                                facilityName: facility?.name,
+                                reviewType: "product",
+                              })
+                            }
+                          >
+                            <Star className="w-4 h-4 mr-2" />
+                            Rate Product
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() =>
+                              setReviewModal({
+                                open: true,
+                                bookingId: bk.id,
+                                storeId: bk.storeId,
+                                storeName: store?.name,
+                                reviewType: "seller",
+                              })
+                            }
+                          >
+                            <Star className="w-4 h-4 mr-2" />
+                            Rate Seller
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -304,6 +370,21 @@ export default function MyBookingsPage() {
         description="Track all your orders in one place. Filter by status, search by product name, and tap any order to view its details."
         icon={<Package className="h-7 w-7" />}
       />
+
+      {reviewModal.open && user && reviewModal.reviewType && (
+        <ReviewModal
+          open={reviewModal.open}
+          onOpenChange={(open) => setReviewModal({ ...reviewModal, open })}
+          userId={user.uid}
+          bookingId={reviewModal.bookingId || ""}
+          facilityId={reviewModal.facilityId}
+          facilityName={reviewModal.facilityName}
+          storeId={reviewModal.storeId}
+          storeName={reviewModal.storeName}
+          reviewType={reviewModal.reviewType}
+        />
+      )}
+
       <Footer />
     </div>
   );

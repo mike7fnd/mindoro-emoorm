@@ -218,20 +218,26 @@ export default function HomePage() {
       const matchesMinPrice = !minPrice || (f.price || f.pricePerNight || 0) >= minPrice;
       const matchesMaxPrice = !maxPrice || (f.price || f.pricePerNight || 0) <= maxPrice;
       const matchesAuction = !auctionOnly || !!f.isAuction;
-      return matchesSearch && matchesCategory && matchesMunicipality && matchesMinPrice && matchesMaxPrice && matchesAuction;
+      
+      // Check if seller is verified - only show products from verified sellers
+      const sellerId = f.sellerId || f.storeId;
+      const sellerStore = storesData?.find((s: any) => s.id === sellerId);
+      const isVerified = sellerStore?.verified ?? false;
+      
+      return matchesSearch && matchesCategory && matchesMunicipality && matchesMinPrice && matchesMaxPrice && matchesAuction && isVerified;
     });
-  }, [productsData, searchTerm, categoryFilter, municipality, minPrice, maxPrice, auctionOnly]);
+  }, [productsData, searchTerm, categoryFilter, municipality, minPrice, maxPrice, auctionOnly, storesData]);
 
   const filteredStores = useMemo(() => {
     if (!storesData) return [];
-    if (!searchTerm && municipality === "All") return storesData;
+    if (!searchTerm && municipality === "All") return storesData.filter(s => s.verified);
     return storesData.filter(s => {
       const matchesSearch =
         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (s.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (s.city || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesMunicipality = municipality === "All" || (s.city || "").toLowerCase() === municipality.toLowerCase();
-      return matchesSearch && matchesMunicipality;
+      return matchesSearch && matchesMunicipality && s.verified;
     });
   }, [storesData, searchTerm, municipality]);
 
@@ -239,19 +245,33 @@ export default function HomePage() {
   const suggestedProducts = useMemo(() => {
     if (!productsData) return [];
     return [...productsData]
-      .filter(p => (p.rating ?? 0) >= 4 || (p.sold ?? 0) > 0)
+      .filter(p => {
+        const sellerId = p.sellerId || p.storeId;
+        const sellerStore = storesData?.find((s: any) => s.id === sellerId);
+        const isVerified = sellerStore?.verified ?? false;
+        return isVerified && ((p.rating ?? 0) >= 4 || (p.sold ?? 0) > 0);
+      })
       .sort((a, b) => (b.sold ?? 0) - (a.sold ?? 0))
       .slice(0, 8);
-  }, [productsData]);
+  }, [productsData, storesData]);
 
   const newArrivals = useMemo(() => {
     if (!productsData) return [];
-    return [...productsData].reverse().slice(0, 8);
-  }, [productsData]);
+    return [...productsData]
+      .filter(p => {
+        const sellerId = p.sellerId || p.storeId;
+        const sellerStore = storesData?.find((s: any) => s.id === sellerId);
+        const isVerified = sellerStore?.verified ?? false;
+        return isVerified;
+      })
+      .reverse()
+      .slice(0, 8);
+  }, [productsData, storesData]);
 
   const popularStores = useMemo(() => {
     if (!storesData) return [];
     return [...storesData]
+      .filter(s => s.verified)
       .sort((a, b) => (b.totalSales ?? 0) - (a.totalSales ?? 0))
       .slice(0, 6);
   }, [storesData]);

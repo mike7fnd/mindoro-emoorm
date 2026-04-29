@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   ExternalLink,
   AlertTriangle,
+  Shield,
+  ShieldOff,
 } from "lucide-react";
 import {
   useUser,
@@ -61,8 +63,10 @@ export default function AdminSellersPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [verificationFilter, setVerificationFilter] = useState<string>("all");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string; currentStatus: string } | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; currentStatus: boolean } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -99,7 +103,11 @@ export default function AdminSellersPage() {
       statusFilter === "all" ||
       (statusFilter === "active" && s.status !== "suspended") ||
       (statusFilter === "suspended" && s.status === "suspended");
-    return matchesSearch && matchesStatus;
+    const matchesVerification =
+      verificationFilter === "all" ||
+      (verificationFilter === "verified" && s.verified) ||
+      (verificationFilter === "unverified" && !s.verified);
+    return matchesSearch && matchesStatus && matchesVerification;
   });
 
   const getStoreProductCount = (storeId: string) =>
@@ -121,6 +129,21 @@ export default function AdminSellersPage() {
       description: newStatus === "suspended" ? "The store has been suspended." : "The store is now active.",
     });
     setSuspendTarget(null);
+  };
+
+  const handleVerifyStore = (storeId: string, currentVerificationStatus: boolean) => {
+    const newVerificationStatus = !currentVerificationStatus;
+    updateDocumentNonBlocking(supabase, "stores", storeId, {
+      verified: newVerificationStatus,
+      verified_at: newVerificationStatus ? new Date().toISOString() : null,
+    });
+    toast({
+      title: newVerificationStatus ? "Seller verified" : "Seller verification revoked",
+      description: newVerificationStatus
+        ? "This seller is now verified. Their products will be visible to customers."
+        : "This seller's verification has been revoked.",
+    });
+    setVerifyTarget(null);
   };
 
   const handleDeleteStore = (storeId: string) => {
@@ -153,8 +176,8 @@ export default function AdminSellersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: "Total Sellers", value: allStores?.length ?? 0, icon: Store, color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
+            { label: "Verified Sellers", value: allStores?.filter((s: any) => s.verified).length ?? 0, icon: Shield, color: "text-green-600 bg-green-50 dark:bg-green-500/10" },
             { label: "Total Products", value: allProducts?.length ?? 0, icon: Package, color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-            { label: "Total Orders", value: allOrders?.length ?? 0, icon: ShoppingCart, color: "text-green-600 bg-green-50 dark:bg-green-500/10" },
             { label: "Suspended", value: allStores?.filter((s: any) => s.status === "suspended").length ?? 0, icon: Ban, color: "text-red-600 bg-red-50 dark:bg-red-500/10" },
           ].map((stat) => {
             const Icon = stat.icon;
@@ -184,25 +207,61 @@ export default function AdminSellersPage() {
               className="w-full bg-white dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-full pl-11 pr-5 py-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
-          <div className="flex gap-2">
-            {[
-              { key: "all", label: "All" },
-              { key: "active", label: "Active" },
-              { key: "suspended", label: "Suspended" },
-            ].map((f) => (
-              <Button
-                key={f.key}
-                variant={statusFilter === f.key ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "rounded-full px-5 h-11 text-xs font-bold",
-                  statusFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
-                )}
-                onClick={() => setStatusFilter(f.key)}
-              >
-                {f.label}
-              </Button>
-            ))}
+        </div>
+
+        {/* Status and Verification Filters */}
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Store Status</p>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: "all", label: "All" },
+                { key: "active", label: "Active" },
+                { key: "suspended", label: "Suspended" },
+              ].map((f) => (
+                <Button
+                  key={f.key}
+                  variant={statusFilter === f.key ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "rounded-full px-5 h-11 text-xs font-bold shrink-0",
+                    statusFilter === f.key
+                      ? "bg-black text-white hover:bg-primary"
+                      : "border-black/[0.06]"
+                  )}
+                  onClick={() => setStatusFilter(f.key)}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Verification Status</p>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: "all", label: "All", icon: null },
+                { key: "verified", label: "Verified", icon: <Shield className="h-3 w-3" /> },
+                { key: "unverified", label: "Unverified", icon: <ShieldOff className="h-3 w-3" /> },
+              ].map((f) => (
+                <Button
+                  key={f.key}
+                  variant={verificationFilter === f.key ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "rounded-full px-5 h-11 text-xs font-bold shrink-0 gap-2",
+                    verificationFilter === f.key
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "border-black/[0.06]"
+                  )}
+                  onClick={() => setVerificationFilter(f.key)}
+                >
+                  {f.icon}
+                  {f.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -269,6 +328,24 @@ export default function AdminSellersPage() {
                           >
                             {store.status === "suspended" ? "Suspended" : "Active"}
                           </Badge>
+                          <Badge
+                            className={cn(
+                              "rounded-full px-3 py-0.5 text-[10px] font-bold shrink-0 gap-1",
+                              store.verified
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-orange-50 text-orange-600"
+                            )}
+                          >
+                            {store.verified ? (
+                              <>
+                                <Shield className="h-2.5 w-2.5" /> Verified
+                              </>
+                            ) : (
+                              <>
+                                <ShieldOff className="h-2.5 w-2.5" /> Unverified
+                              </>
+                            )}
+                          </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mb-3 truncate">
                           {store.category || "General"} · {store.description?.slice(0, 60) || "No description"}
@@ -309,6 +386,16 @@ export default function AdminSellersPage() {
                             <Link href={`/stores/${store.id}`}>
                               <ExternalLink className="h-4 w-4" /> View Store
                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                            onClick={() => setVerifyTarget({ id: store.id, name: store.name || "this store", currentStatus: store.verified })}
+                          >
+                            {store.verified ? (
+                              <><ShieldOff className="h-4 w-4 text-orange-600" /> Revoke Verification</>
+                            ) : (
+                              <><Shield className="h-4 w-4 text-blue-600" /> Verify Seller</>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
@@ -382,6 +469,33 @@ export default function AdminSellersPage() {
                 onClick={() => suspendTarget && handleSuspendStore(suspendTarget.id, suspendTarget.currentStatus)}
               >
                 {suspendTarget?.currentStatus === "suspended" ? "Reactivate" : "Suspend"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Verification Confirmation Dialog */}
+        <AlertDialog open={!!verifyTarget} onOpenChange={() => setVerifyTarget(null)}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Shield className={cn("h-5 w-5", verifyTarget?.currentStatus ? "text-orange-600" : "text-blue-600")} />
+                {verifyTarget?.currentStatus ? "Revoke Verification" : "Verify Seller"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {verifyTarget?.currentStatus
+                  ? <>Revoke verification for <strong>{verifyTarget?.name}</strong>? Their products will no longer be visible to customers. Existing customers will still see their products in order history.</>
+                  : <>Verify <strong>{verifyTarget?.name}</strong>? Their products will now be visible to all customers. Make sure you've reviewed their business information first.</>
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn("rounded-full", verifyTarget?.currentStatus ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700")}
+                onClick={() => verifyTarget && handleVerifyStore(verifyTarget.id, verifyTarget.currentStatus)}
+              >
+                {verifyTarget?.currentStatus ? "Revoke Verification" : "Verify Seller"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

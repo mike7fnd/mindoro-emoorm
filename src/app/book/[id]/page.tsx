@@ -544,6 +544,26 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     );
   }
 
+  // Check if the seller is verified (unless the current user owns this product)
+  const isOwnProduct = user?.uid === facility.sellerId || user?.uid === facility.storeId;
+  const sellerIsVerified = store?.verified ?? false;
+  
+  // If seller is not verified and user is not the owner, show not available message
+  if (!sellerIsVerified && !isOwnProduct && store !== undefined) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <main className="flex-grow flex flex-col items-center justify-center gap-4">
+          <AlertCircle className="h-12 w-12 text-orange-600" />
+          <p className="text-xl font-headline text-muted-foreground">This product is currently unavailable.</p>
+          <p className="text-sm text-muted-foreground max-w-md text-center">The seller hasn't been verified yet. Please check back later when the seller completes their verification.</p>
+          <button onClick={() => router.push('/')} className="text-primary font-bold tracking-tight flex items-center gap-2 mt-4">
+            <ArrowLeft className="h-4 w-4" /> Return to discovery
+          </button>
+        </main>
+      </div>
+    );
+  }
+
   const availableStock = facility?.stock ?? facility?.capacity ?? 0;
   const soldCount = facility?.sold ?? 0;
   const productCategory = facility?.type || facility?.category || "Product";
@@ -634,7 +654,6 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="w-full bg-[#f8f8f8] p-1 h-14 rounded-full mb-8">
               <TabsTrigger value="details" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Details</TabsTrigger>
-              <TabsTrigger value="availability" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Order</TabsTrigger>
               <TabsTrigger value="reviews" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Reviews</TabsTrigger>
             </TabsList>
 
