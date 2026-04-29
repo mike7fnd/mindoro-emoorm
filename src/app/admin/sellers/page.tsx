@@ -131,7 +131,8 @@ export default function AdminSellersPage() {
         .eq("id", storeId);
 
       if (error) {
-        console.error("Suspend/reactivate error:", error);
+        const errorMsg = error?.message || JSON.stringify(error) || "Unknown error";
+        console.error("Suspend/reactivate error:", errorMsg);
         toast({
           title: "Error",
           description: "Failed to update store status. Please try again.",
@@ -169,7 +170,8 @@ export default function AdminSellersPage() {
         .eq("id", storeId);
 
       if (error) {
-        console.error("Verification error:", error);
+        const errorMsg = error?.message || JSON.stringify(error) || "Unknown error";
+        console.error("Verification error:", errorMsg);
         toast({
           title: "Error",
           description: "Failed to update seller verification. Please try again.",
@@ -204,7 +206,10 @@ export default function AdminSellersPage() {
           .from("facilities")
           .update({ status: "draft" })
           .eq("id", p.id);
-        if (error) console.error(`Error deactivating product ${p.id}:`, error);
+        if (error) {
+          const errorMsg = error?.message || JSON.stringify(error) || "Unknown error";
+          console.error(`Error deactivating product ${p.id}:`, errorMsg);
+        }
       }
 
       // Delete store
@@ -214,7 +219,8 @@ export default function AdminSellersPage() {
         .eq("id", storeId);
 
       if (deleteError) {
-        console.error("Delete error:", deleteError);
+        const errorMsg = deleteError?.message || JSON.stringify(deleteError) || "Unknown error";
+        console.error("Delete error:", errorMsg);
         toast({
           title: "Error",
           description: "Failed to delete store. Please try again.",
