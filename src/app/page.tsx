@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { ExploreMindoroCarousel } from "@/components/explore-mindoro-carousel";
 import { Heart, Star, Search, Store, Tag, Map, Sparkles, MapPin, Clock, ChevronRight, Flame, Leaf, Fish, Drumstick, Cookie, Wheat, Wine, Droplets, ShoppingBag } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -41,6 +42,9 @@ interface Product {
   type?: string;
   pricePerNight?: number;
   sold?: number;
+  city?: string;
+  municipality?: string;
+  totalSales?: number;
 }
 
 interface StoreItem {
@@ -57,6 +61,7 @@ interface StoreItem {
   ownerId: string;
   latitude?: number;
   longitude?: number;
+  verified?: boolean;
 }
 
 type BrowseTab = "products" | "stores" | "map";
@@ -191,7 +196,7 @@ export default function HomePage() {
 
   const wishlistQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "wishlist", filters: [{ column: "userId", op: "eq", value: user.uid }] };
+    return { table: "wishlist", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user]);
 
   const { data: wishlistData } = useCollection<{ id: string; productId: string }>(wishlistQuery);
@@ -585,6 +590,9 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
+
+            {/* ── Explore Oriental Mindoro ──────────────────────────────── */}
+            <ExploreMindoroCarousel />
 
             {/* ── Suggested For You ─────────────────────────────────────── */}
             {!selectedCategory && !searchTerm && suggestedProducts.length > 0 && (

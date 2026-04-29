@@ -121,40 +121,119 @@ export default function AdminSellersPage() {
       ?.filter((o: any) => o.storeId === storeId || o.sellerId === storeId)
       .reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
 
-  const handleSuspendStore = (storeId: string, currentStatus: string) => {
+  const handleSuspendStore = async (storeId: string, currentStatus: string) => {
     const newStatus = currentStatus === "suspended" ? "active" : "suspended";
-    updateDocumentNonBlocking(supabase, "stores", storeId, { status: newStatus });
-    toast({
-      title: newStatus === "suspended" ? "Store suspended" : "Store reactivated",
-      description: newStatus === "suspended" ? "The store has been suspended." : "The store is now active.",
-    });
-    setSuspendTarget(null);
+    
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({ status: newStatus })
+        .eq("id", storeId);
+
+      if (error) {
+        console.error("Suspend/reactivate error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update store status. Please try again.",
+        });
+        return;
+      }
+
+      toast({
+        title: newStatus === "suspended" ? "Store suspended" : "Store reactivated",
+        description: newStatus === "suspended" 
+          ? "The store has been suspended and will no longer be visible to customers." 
+          : "The store is now active and visible to customers.",
+      });
+      setSuspendTarget(null);
+    } catch (err) {
+      console.error("Suspend/reactivate exception:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    }
   };
 
-  const handleVerifyStore = (storeId: string, currentVerificationStatus: boolean) => {
+  const handleVerifyStore = async (storeId: string, currentVerificationStatus: boolean) => {
     const newVerificationStatus = !currentVerificationStatus;
-    updateDocumentNonBlocking(supabase, "stores", storeId, {
-      verified: newVerificationStatus,
-      verified_at: newVerificationStatus ? new Date().toISOString() : null,
-    });
-    toast({
-      title: newVerificationStatus ? "Seller verified" : "Seller verification revoked",
-      description: newVerificationStatus
-        ? "This seller is now verified. Their products will be visible to customers."
-        : "This seller's verification has been revoked.",
-    });
-    setVerifyTarget(null);
+    
+    // Force update with proper promise handling to ensure it completes
+    try {
+      const { error } = await supabase
+        .from("stores")
+        .update({
+          verified: newVerificationStatus,
+          verified_at: newVerificationStatus ? new Date().toISOString() : null,
+        })
+        .eq("id", storeId);
+
+      if (error) {
+        console.error("Verification error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update seller verification. Please try again.",
+        });
+        return;
+      }
+
+      toast({
+        title: newVerificationStatus ? "✓ Seller verified" : "✓ Verification revoked",
+        description: newVerificationStatus
+          ? "This seller is now verified. Their products will be visible to customers immediately."
+          : "This seller's verification has been revoked. Their products will no longer be visible to customers.",
+      });
+      setVerifyTarget(null);
+    } catch (err) {
+      console.error("Verification exception:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    }
   };
 
-  const handleDeleteStore = (storeId: string) => {
-    // Also deactivate all products from this store
-    const storeProducts = allProducts?.filter((p: any) => p.sellerId === storeId || p.storeId === storeId) ?? [];
-    storeProducts.forEach((p: any) => {
-      updateDocumentNonBlocking(supabase, "facilities", p.id, { status: "draft" });
-    });
-    deleteDocumentNonBlocking(supabase, "stores", storeId);
-    toast({ title: "Store deleted", description: `The store and its ${storeProducts.length} products have been handled.` });
-    setDeleteTarget(null);
+  const handleDeleteStore = async (storeId: string) => {
+    try {
+      // Also deactivate all products from this store
+      const storeProducts = allProducts?.filter((p: any) => p.sellerId === storeId || p.storeId === storeId) ?? [];
+      
+      // Deactivate products
+      for (const p of storeProducts) {
+        const { error } = await supabase
+          .from("facilities")
+          .update({ status: "draft" })
+          .eq("id", p.id);
+        if (error) console.error(`Error deactivating product ${p.id}:`, error);
+      }
+
+      // Delete store
+      const { error: deleteError } = await supabase
+        .from("stores")
+        .delete()
+        .eq("id", storeId);
+
+      if (deleteError) {
+        console.error("Delete error:", deleteError);
+        toast({
+          title: "Error",
+          description: "Failed to delete store. Please try again.",
+        });
+        return;
+      }
+
+      toast({
+        title: "Store deleted",
+        description: `The store and its ${storeProducts.length} products have been removed.`,
+      });
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Delete exception:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    }
   };
 
   return (

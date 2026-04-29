@@ -15,7 +15,7 @@ const MyWishlistPage = () => {
 
   const wishlistQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "wishlist", filters: [{ column: "userId", op: "eq", value: user.uid }] };
+    return { table: "wishlist", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
   }, [user]);
   const { data: wishlistData, isLoading: wishlistLoading } = useCollection(wishlistQuery);
 
