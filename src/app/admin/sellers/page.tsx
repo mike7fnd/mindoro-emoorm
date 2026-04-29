@@ -433,7 +433,7 @@ export default function AdminSellersPage() {
                           <p className="text-[11px] text-blue-600 dark:text-blue-400 mb-3">
                             ✓ Verified on {new Date(store.verified_at).toLocaleDateString()}
                           </p>
-                        )
+                        )}
                         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Package className="h-3.5 w-3.5" /> {productCount} products
