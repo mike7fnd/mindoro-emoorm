@@ -103,18 +103,9 @@ export default function MyBookingsPage() {
     return { table: "stores" };
   }, []);
 
-  const { data: stores } = useCollection(storser.uid }],
-      order: { column: "bookingDate", ascending: false }
-    };
-  }, [user]);
+  const { data: stores } = useCollection<Store>(storesQuery);
 
   const { data: bookings, isLoading: isBookingsLoading } = useCollection<Booking>(bookingsQuery);
-
-  const facilitiesQuery = useStableMemo(() => {
-    return { table: "facilities" };
-  }, []);
-
-  const { data: facilities } = useCollection<Facility>(facilitiesQuery);
 
   const filteredBookings = useMemo(() => {
     if (!bookings) return [];

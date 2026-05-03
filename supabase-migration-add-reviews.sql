@@ -49,7 +49,7 @@ CREATE POLICY "Users can delete own reviews"
 
 -- Create review_ratings view to calculate aggregated ratings
 CREATE OR REPLACE VIEW review_ratings AS
-SELECT 
+SELECT
   facilityId,
   COUNT(*) as totalReviews,
   ROUND(AVG(rating)::numeric, 1) as avgRating,
@@ -63,7 +63,7 @@ WHERE reviewType = 'product' AND facilityId IS NOT NULL
 GROUP BY facilityId;
 
 CREATE OR REPLACE VIEW seller_review_ratings AS
-SELECT 
+SELECT
   storeId,
   COUNT(*) as totalReviews,
   ROUND(AVG(rating)::numeric, 1) as avgRating,

@@ -113,6 +113,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'shutterstock.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'nujddmdrhlvaqzszjnkt.supabase.co',
         port: '',
         pathname: '/**',

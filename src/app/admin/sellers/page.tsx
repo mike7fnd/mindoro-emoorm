@@ -67,6 +67,7 @@ export default function AdminSellersPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string; currentStatus: string } | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; currentStatus: boolean } | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -77,7 +78,7 @@ export default function AdminSellersPage() {
   const storesConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "stores" };
-  }, [user, isAdmin]);
+  }, [user, isAdmin, refreshTrigger]);
   const { data: allStores, isLoading } = useCollection(storesConfig);
 
   const productsConfig = useStableMemo(() => {
@@ -123,7 +124,7 @@ export default function AdminSellersPage() {
 
   const handleSuspendStore = async (storeId: string, currentStatus: string) => {
     const newStatus = currentStatus === "suspended" ? "active" : "suspended";
-    
+
     try {
       const { error } = await supabase
         .from("stores")
@@ -140,10 +141,13 @@ export default function AdminSellersPage() {
         return;
       }
 
+      // Trigger a data refresh
+      setRefreshTrigger(prev => prev + 1);
+
       toast({
         title: newStatus === "suspended" ? "Store suspended" : "Store reactivated",
-        description: newStatus === "suspended" 
-          ? "The store has been suspended and will no longer be visible to customers." 
+        description: newStatus === "suspended"
+          ? "The store has been suspended and will no longer be visible to customers."
           : "The store is now active and visible to customers.",
       });
       setSuspendTarget(null);
@@ -158,26 +162,64 @@ export default function AdminSellersPage() {
 
   const handleVerifyStore = async (storeId: string, currentVerificationStatus: boolean) => {
     const newVerificationStatus = !currentVerificationStatus;
-    
-    // Force update with proper promise handling to ensure it completes
+    const verifiedAtTime = newVerificationStatus ? new Date().toISOString() : null;
+
+    console.log("[VERIFY] Starting verification for store:", { storeId, newVerificationStatus, verifiedAtTime });
+
     try {
-      const { error } = await supabase
+      const { data, error, count } = await supabase
         .from("stores")
         .update({
           verified: newVerificationStatus,
-          verified_at: newVerificationStatus ? new Date().toISOString() : null,
+          verified_at: verifiedAtTime,
         })
-        .eq("id", storeId);
+        .eq("id", storeId)
+        .select();
+
+      console.log("[VERIFY] Update response:", { data, error, count });
 
       if (error) {
         const errorMsg = error?.message || JSON.stringify(error) || "Unknown error";
-        console.error("Verification error:", errorMsg);
+        console.error("[VERIFY] Database error:", errorMsg);
         toast({
           title: "Error",
-          description: "Failed to update seller verification. Please try again.",
+          description: `Failed to update seller verification: ${errorMsg}`,
         });
         return;
       }
+
+      if (!data || data.length === 0) {
+        console.error("[VERIFY] No rows were updated. Store ID may not exist:", storeId);
+        toast({
+          title: "Error",
+          description: "Store not found or could not be updated. Please refresh and try again.",
+        });
+        return;
+      }
+
+      console.log("[VERIFY] Update successful, new data:", data[0]);
+
+      // Verify the data was actually persisted
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("stores")
+        .select("verified, verified_at")
+        .eq("id", storeId)
+        .single();
+
+      console.log("[VERIFY] Verification check:", { verified: verifyData?.verified, verified_at: verifyData?.verified_at, error: verifyError });
+
+      if (verifyError) {
+        console.error("[VERIFY] Error checking verification:", verifyError.message);
+      } else if (verifyData?.verified !== newVerificationStatus) {
+        console.error("[VERIFY] CRITICAL: Data was not persisted! Expected:", newVerificationStatus, "Got:", verifyData?.verified);
+        toast({
+          title: "Warning",
+          description: "Verification may not have been saved. Please check manually.",
+        });
+      }
+
+      // Trigger a data refresh by incrementing the refresh counter
+      setRefreshTrigger(prev => prev + 1);
 
       toast({
         title: newVerificationStatus ? "✓ Seller verified" : "✓ Verification revoked",
@@ -187,7 +229,7 @@ export default function AdminSellersPage() {
       });
       setVerifyTarget(null);
     } catch (err) {
-      console.error("Verification exception:", err);
+      console.error("[VERIFY] Exception:", err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -199,7 +241,7 @@ export default function AdminSellersPage() {
     try {
       // Also deactivate all products from this store
       const storeProducts = allProducts?.filter((p: any) => p.sellerId === storeId || p.storeId === storeId) ?? [];
-      
+
       // Deactivate products
       for (const p of storeProducts) {
         const { error } = await supabase
@@ -227,6 +269,9 @@ export default function AdminSellersPage() {
         });
         return;
       }
+
+      // Trigger a data refresh
+      setRefreshTrigger(prev => prev + 1);
 
       toast({
         title: "Store deleted",
