@@ -23,6 +23,12 @@ import {
   AlertTriangle,
   Shield,
   ShieldOff,
+  FileText,
+  Phone,
+  Mail,
+  User,
+  Camera,
+  IdCard,
 } from "lucide-react";
 import {
   useUser,
@@ -50,6 +56,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -68,6 +80,7 @@ export default function AdminSellersPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string; currentStatus: string } | null>(null);
   const [verifyTarget, setVerifyTarget] = useState<{ id: string; name: string; currentStatus: boolean } | null>(null);
+  const [viewRegTarget, setViewRegTarget] = useState<any | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -563,6 +576,12 @@ export default function AdminSellersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                            onClick={() => setViewRegTarget(store)}
+                          >
+                            <FileText className="h-4 w-4 text-indigo-600" /> View Registration
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
                             onClick={() => setVerifyTarget({ id: store.id, name: store.name || "this store", currentStatus: store.verified })}
                           >
                             {store.verified ? (
@@ -647,6 +666,178 @@ export default function AdminSellersPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Registration Data Dialog */}
+        <Dialog open={!!viewRegTarget} onOpenChange={() => setViewRegTarget(null)}>
+          <DialogContent className="rounded-3xl max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-headline font-normal tracking-[-0.03em]">
+                <FileText className="h-5 w-5 text-indigo-600" />
+                Seller Registration — {viewRegTarget?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            {viewRegTarget && (
+              <div className="space-y-6 mt-2">
+                {/* Store Info */}
+                <div className="p-4 bg-[#f8f8f8] rounded-2xl space-y-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Store Information</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <div><span className="text-muted-foreground">Store Name</span><p className="font-medium">{viewRegTarget.name || "—"}</p></div>
+                    <div><span className="text-muted-foreground">Category</span><p className="font-medium">{viewRegTarget.category || "—"}</p></div>
+                    <div><span className="text-muted-foreground">City</span><p className="font-medium">{viewRegTarget.city || "—"}</p></div>
+                    <div><span className="text-muted-foreground">Barangay</span><p className="font-medium">{viewRegTarget.barangay || "—"}</p></div>
+                    <div className="col-span-2"><span className="text-muted-foreground">Address</span><p className="font-medium">{viewRegTarget.address || "—"}</p></div>
+                    <div className="col-span-2"><span className="text-muted-foreground">Description</span><p className="font-medium text-xs leading-relaxed">{viewRegTarget.description || "—"}</p></div>
+                  </div>
+                </div>
+
+                {/* Owner Info */}
+                <div className="p-4 bg-[#f8f8f8] rounded-2xl space-y-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Owner Information</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div><span className="text-muted-foreground text-xs">Full Name</span><p className="font-medium">{viewRegTarget.ownerName || "—"}</p></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div><span className="text-muted-foreground text-xs">Email</span><p className="font-medium truncate">{viewRegTarget.email || "—"}</p></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div><span className="text-muted-foreground text-xs">Contact</span><p className="font-medium">{viewRegTarget.contact || viewRegTarget.phone || "—"}</p></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <IdCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div><span className="text-muted-foreground text-xs">ID Type</span><p className="font-medium">{viewRegTarget.governmentIdType || "—"}</p></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ID Documents */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">KYC Documents</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Government ID Front */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
+                        <IdCard className="h-3.5 w-3.5" /> Government ID (Front)
+                      </p>
+                      {viewRegTarget.governmentIdFront ? (
+                        <a href={viewRegTarget.governmentIdFront} target="_blank" rel="noopener noreferrer">
+                          <Image
+                            src={viewRegTarget.governmentIdFront}
+                            alt="ID Front"
+                            width={280}
+                            height={180}
+                            className="w-full object-cover rounded-2xl border border-black/[0.06] hover:opacity-90 transition-opacity cursor-pointer"
+                            unoptimized
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-full h-32 rounded-2xl bg-[#f8f8f8] border border-dashed border-black/10 flex items-center justify-center text-xs text-muted-foreground">No image uploaded</div>
+                      )}
+                    </div>
+
+                    {/* Government ID Back */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
+                        <IdCard className="h-3.5 w-3.5" /> Government ID (Back)
+                      </p>
+                      {viewRegTarget.governmentIdBack ? (
+                        <a href={viewRegTarget.governmentIdBack} target="_blank" rel="noopener noreferrer">
+                          <Image
+                            src={viewRegTarget.governmentIdBack}
+                            alt="ID Back"
+                            width={280}
+                            height={180}
+                            className="w-full object-cover rounded-2xl border border-black/[0.06] hover:opacity-90 transition-opacity cursor-pointer"
+                            unoptimized
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-full h-32 rounded-2xl bg-[#f8f8f8] border border-dashed border-black/10 flex items-center justify-center text-xs text-muted-foreground">No image uploaded</div>
+                      )}
+                    </div>
+
+                    {/* Selfie / Face Verification */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
+                        <Camera className="h-3.5 w-3.5" /> Selfie Verification
+                      </p>
+                      {viewRegTarget.selfieImage ? (
+                        <a href={viewRegTarget.selfieImage} target="_blank" rel="noopener noreferrer">
+                          <Image
+                            src={viewRegTarget.selfieImage}
+                            alt="Selfie"
+                            width={280}
+                            height={280}
+                            className="w-full aspect-square object-cover rounded-2xl border border-black/[0.06] hover:opacity-90 transition-opacity cursor-pointer"
+                            unoptimized
+                          />
+                        </a>
+                      ) : (
+                        <div className="w-full h-32 rounded-2xl bg-[#f8f8f8] border border-dashed border-black/10 flex items-center justify-center text-xs text-muted-foreground">No selfie uploaded</div>
+                      )}
+                    </div>
+
+                    {/* Store Logo */}
+                    {viewRegTarget.logoUrl && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
+                          <Store className="h-3.5 w-3.5" /> Store Logo
+                        </p>
+                        <Image
+                          src={viewRegTarget.logoUrl}
+                          alt="Store Logo"
+                          width={280}
+                          height={280}
+                          className="w-full aspect-square object-cover rounded-2xl border border-black/[0.06]"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Verification Status */}
+                <div className="p-4 rounded-2xl border border-black/[0.06] flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Verification Status</p>
+                    <p className="text-sm font-bold mt-0.5">
+                      {viewRegTarget.verified
+                        ? <span className="text-blue-600">Verified {viewRegTarget.verified_at && `on ${new Date(viewRegTarget.verified_at).toLocaleDateString()}`}</span>
+                        : <span className="text-orange-600">Not yet verified</span>
+                      }
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setViewRegTarget(null);
+                      setVerifyTarget({ id: viewRegTarget.id, name: viewRegTarget.name || "this store", currentStatus: viewRegTarget.verified });
+                    }}
+                    className={cn(
+                      "px-5 py-2.5 rounded-full text-xs font-bold transition-all",
+                      viewRegTarget.verified
+                        ? "bg-orange-50 text-orange-600 hover:bg-orange-100"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    )}
+                  >
+                    {viewRegTarget.verified ? "Revoke Verification" : "Verify Seller"}
+                  </button>
+                </div>
+
+                {/* Registration date */}
+                {viewRegTarget.createdAt && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Registered on {new Date(viewRegTarget.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}
+                  </p>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Verification Confirmation Dialog */}
         <AlertDialog open={!!verifyTarget} onOpenChange={() => setVerifyTarget(null)}>

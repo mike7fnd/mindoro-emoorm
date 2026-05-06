@@ -75,7 +75,7 @@ export default function HomePage() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
 
-  const [showCookieConsent, setShowCookieConsent] = useState(false);
+
   const [activeTab, setActiveTab] = useState<BrowseTab>("products");
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -164,17 +164,7 @@ export default function HomePage() {
     }
   }, [isSticky]);
 
-  useEffect(() => {
-    const consent = localStorage.getItem("cookieConsent");
-    if (!consent) {
-      setShowCookieConsent(true);
-    }
-  }, []);
 
-  const handleConsent = (choice: "accepted" | "declined") => {
-    localStorage.setItem("cookieConsent", choice);
-    setShowCookieConsent(false);
-  };
 
   const productsQuery = useStableMemo(() => {
     return { table: "facilities", columns: "* , sold" };
@@ -908,31 +898,7 @@ export default function HomePage() {
       </main>
       <Footer />
 
-      {showCookieConsent && (
-        <div className="fixed inset-0 z-[2000] flex items-end md:items-center justify-center p-4 md:p-6 bg-white/60 md:bg-white/90 backdrop-blur-xl animate-in fade-in duration-500">
-          <div className="bg-white rounded-[25px] border border-black/5 shadow-lg p-6 md:p-8 max-w-md w-full text-center mb-20 md:mb-0">
-            <h3 className="text-xl md:text-2xl font-normal mb-3 md:mb-4">Cookie Consent</h3>
-            <p className="text-sm md:text-base text-gray-600 mb-6 md:mb-8 leading-relaxed">
-              We use cookies to enhance your shopping experience. By continuing to browse, you agree to our use of cookies.
-            </p>
-            <div className="flex flex-col md:flex-row gap-3 md:gap-4 justify-center">
-              <Button
-                onClick={() => handleConsent("accepted")}
-                className="rounded-full px-8 py-4 md:py-6 bg-primary hover:bg-primary/90 text-white font-bold h-12 md:h-14"
-              >
-                Accept
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleConsent("declined")}
-                className="rounded-full px-8 py-4 md:py-6 h-12 md:h-14"
-              >
-                Decline
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );

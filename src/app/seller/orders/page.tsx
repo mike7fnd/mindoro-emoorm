@@ -346,7 +346,10 @@ export default function SellerOrdersPage() {
                             <span className="text-xs text-muted-foreground inline-flex items-center gap-0.5">{order.fulfillmentMethod === "pickup" ? <><Package className="h-3 w-3" /> Pickup</> : <><Truck className="h-3 w-3" /> Delivery</>}</span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] text-muted-foreground truncate inline-flex items-center gap-0.5"><User className="h-3 w-3" /> {buyer?.displayName || buyer?.name || "Buyer"}</span>
+                            <span className="text-[11px] text-muted-foreground truncate inline-flex items-center gap-0.5">
+                              <User className="h-3 w-3" />
+                              {buyer ? [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || buyer.email || "Buyer" : "Buyer"}
+                            </span>
                             <span className="text-muted-foreground/40">·</span>
                             <span className="text-[11px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
                           </div>
@@ -372,18 +375,26 @@ export default function SellerOrdersPage() {
                             {/* Buyer Info */}
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Buyer</span>
-                              <span className="text-xs font-medium">{buyer?.displayName || buyer?.name || "—"}</span>
+                              <span className="text-xs font-medium">
+                                {buyer ? [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || "—" : "—"}
+                              </span>
                             </div>
-                            {buyer?.phone && (
+                            {(buyer?.mobile || buyer?.phone) && (
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Phone</span>
-                                <span className="text-xs">{buyer.phone}</span>
+                                <span className="text-xs">{buyer.mobile || buyer.phone}</span>
                               </div>
                             )}
                             {buyer?.email && (
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Email</span>
                                 <span className="text-xs truncate max-w-[180px]">{buyer.email}</span>
+                              </div>
+                            )}
+                            {order.shippingAddress && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Shipping Address</span>
+                                <span className="text-xs text-right max-w-[200px]">{order.shippingAddress}</span>
                               </div>
                             )}
                             {/* Status */}

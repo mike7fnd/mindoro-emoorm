@@ -3,6 +3,7 @@
 import React, { useState, use, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { ReviewForm } from "@/components/review-form";
 import {
   Heart,
   MapPin,
@@ -35,6 +36,8 @@ import {
   Minus,
   Plus,
   ShoppingCart,
+  ThumbsUp,
+  PenLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -110,6 +113,21 @@ interface Booking {
   status: string;
 }
 
+interface ReviewData {
+  id: string;
+  userId: string;
+  bookingId: string;
+  facilityId?: string;
+  storeId?: string;
+  reviewType: string;
+  rating: number;
+  title?: string;
+  comment: string;
+  helpful?: number;
+  unhelpful?: number;
+  createdAt: string;
+}
+
 const getAmenityIcon = (label: string) => {
   const l = label.toLowerCase();
   if (l.includes('organic')) return CheckCircle2;
@@ -125,29 +143,6 @@ const getAmenityIcon = (label: string) => {
   return CheckCircle2;
 };
 
-const MOCK_REVIEWS = [
-  {
-    name: "Maria S.",
-    date: "Oct 2025",
-    text: "Super fresh po yung mga gulay! Galing pa sa farm dito sa Mindoro. Will definitely order again.",
-    avatar: "https://i.pravatar.cc/150?u=maria",
-    stars: 5,
-  },
-  {
-    name: "Krizzel F.",
-    date: "Sept 2025",
-    text: "Ang sarap ng dried fish! Authentic Mindoro quality. Fast delivery and well-packed.",
-    avatar: "https://i.pravatar.cc/150?u=krizzel",
-    stars: 5,
-  },
-  {
-    name: "Paolo R.",
-    date: "Nov 2025",
-    text: "Great quality products at very reasonable prices. Supporting local sellers feels good!",
-    avatar: "https://i.pravatar.cc/150?u=paolo",
-    stars: 5,
-  },
-];
 
 export default function FacilityDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -166,6 +161,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const [bidSubmitting, setBidSubmitting] = useState(false);
   const [bidSheetOpen, setBidSheetOpen] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [auctionTimeLeft, setAuctionTimeLeft] = useState("");
   const [quickSheet, setQuickSheet] = useState<{ open: boolean; intent: 'cart' | 'buy' }>({ open: false, intent: 'cart' });
   const [sheetQty, setSheetQty] = useState(1);
@@ -234,6 +230,78 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     });
     return map;
   }, [bidderUsers]);
+
+  // Reviews for this product
+  const reviewsQuery = useStableMemo(() => {
+    if (!id) return null;
+    return {
+      table: "reviews",
+      filters: [
+        { column: "facilityId", op: "eq" as const, value: id },
+        { column: "reviewType", op: "eq" as const, value: "product" },
+      ],
+      order: { column: "createdAt", ascending: false },
+    };
+  }, [id]);
+  const { data: productReviews } = useCollection<ReviewData>(reviewsQuery);
+
+  const reviewerIds = useMemo(() => {
+    if (!productReviews) return [];
+    return [...new Set(productReviews.map(r => r.userId))];
+  }, [productReviews]);
+
+  const reviewersQuery = useStableMemo(() => {
+    if (reviewerIds.length === 0) return null;
+    return {
+      table: "users",
+      filters: [{ column: "id", op: "in" as const, value: reviewerIds }],
+    };
+  }, [reviewerIds]);
+  const { data: reviewerUsers } = useCollection<{ id: string; firstName?: string; lastName?: string }>(reviewersQuery);
+
+  const reviewerNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    reviewerUsers?.forEach(u => {
+      map[u.id] = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Anonymous';
+    });
+    return map;
+  }, [reviewerUsers]);
+
+  const avgRating = useMemo(() => {
+    if (!productReviews || productReviews.length === 0) return null;
+    const sum = productReviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / productReviews.length).toFixed(1);
+  }, [productReviews]);
+
+  // Check if current user has a completed booking for this product (can write a review)
+  const userCompletedBookingsQuery = useStableMemo(() => {
+    if (!user || !id) return null;
+    return {
+      table: "bookings",
+      filters: [
+        { column: "userId", op: "eq" as const, value: user.uid },
+        { column: "facilityId", op: "eq" as const, value: id },
+        { column: "status", op: "eq" as const, value: "Completed" },
+      ],
+    };
+  }, [user, id]);
+  const { data: userCompletedBookings } = useCollection<{ id: string }>(userCompletedBookingsQuery);
+
+  // Check if current user already reviewed this product
+  const userReviewQuery = useStableMemo(() => {
+    if (!user || !id) return null;
+    return {
+      table: "reviews",
+      filters: [
+        { column: "userId", op: "eq" as const, value: user.uid },
+        { column: "facilityId", op: "eq" as const, value: id },
+        { column: "reviewType", op: "eq" as const, value: "product" },
+      ],
+    };
+  }, [user, id]);
+  const { data: userExistingReviews } = useCollection<{ id: string }>(userReviewQuery);
+
+  const canWriteReview = user && userCompletedBookings && userCompletedBookings.length > 0 && (!userExistingReviews || userExistingReviews.length === 0);
 
   // Auction countdown timer
   useEffect(() => {
@@ -320,14 +388,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
 
   const images = useMemo(() => {
     if (!facility) return [];
-    return [
-      facility.imageUrl,
-      `https://picsum.photos/seed/${id}2/800/600`,
-      `https://picsum.photos/seed/${id}3/800/600`,
-      `https://picsum.photos/seed/${id}4/800/600`,
-      `https://picsum.photos/seed/${id}5/800/600`,
-    ];
-  }, [facility, id]);
+    return [facility.imageUrl].filter(Boolean) as string[];
+  }, [facility]);
 
   useEffect(() => {
     if (images.length > 0 && !isAnimating.current) {
@@ -658,7 +720,12 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="w-full bg-[#f8f8f8] p-1 h-14 rounded-full mb-8">
               <TabsTrigger value="details" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Details</TabsTrigger>
-              <TabsTrigger value="reviews" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Reviews</TabsTrigger>
+              <TabsTrigger value="availability" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                {facility.isAuction ? "Bid" : "Order"}
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="flex-1 rounded-full h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Reviews {productReviews && productReviews.length > 0 && `(${productReviews.length})`}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-10 mt-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -1135,37 +1202,95 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   <h3 className="text-xl font-headline font-normal tracking-tight">Buyer Reviews</h3>
                   <div className="flex items-center gap-2 bg-[#f8f8f8] px-4 py-2 rounded-full">
                     <Star className="h-4 w-4 fill-primary text-primary" />
-                    <span className="text-sm font-bold">5.0 Overall</span>
+                    <span className="text-sm font-bold">{avgRating ?? "—"} {productReviews && productReviews.length > 0 && <span className="font-normal text-muted-foreground">({productReviews.length})</span>}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6">
-                  {MOCK_REVIEWS.map((review, i) => (
-                    <div key={i} className="p-6 bg-[#fcfcfc] border border-black/[0.03] rounded-[24px] space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full overflow-hidden bg-muted">
-                            <img src={review.avatar} alt={review.name} className="h-full w-full object-cover" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">{review.name}</p>
-                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{review.date}</p>
-                          </div>
-                        </div>
-                        <div className="flex text-primary">
-                          {Array.from({ length: review.stars }).map((_, s) => (
-                            <Star key={s} className="h-3 w-3 fill-current" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed italic opacity-80">"{review.text}"</p>
+                {/* Write a Review */}
+                {canWriteReview && !showReviewForm && (
+                  <button
+                    onClick={() => setShowReviewForm(true)}
+                    className="w-full flex items-center gap-3 p-5 bg-primary/5 border border-primary/20 rounded-[24px] text-left hover:bg-primary/10 transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <PenLine className="h-5 w-5 text-primary" />
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Write a Review</p>
+                      <p className="text-xs text-muted-foreground">Share your experience with this product</p>
+                    </div>
+                  </button>
+                )}
 
-                <Button variant="outline" className="w-full h-14 rounded-full border-black/5 font-bold hover:bg-black/5 gap-2">
-                  <MessageSquare className="h-4 w-4" /> Load more reviews
-                </Button>
+                {showReviewForm && user && userCompletedBookings && userCompletedBookings.length > 0 && (
+                  <div className="p-6 bg-[#f8f8f8] rounded-[24px] border border-black/[0.03]">
+                    <h4 className="text-base font-bold mb-4">Write Your Review</h4>
+                    <ReviewForm
+                      userId={user.uid}
+                      bookingId={userCompletedBookings[0].id}
+                      facilityId={id}
+                      storeId={facility.storeId}
+                      reviewType="product"
+                      onSuccess={() => {
+                        setShowReviewForm(false);
+                      }}
+                      onCancel={() => setShowReviewForm(false)}
+                    />
+                  </div>
+                )}
+
+                {userExistingReviews && userExistingReviews.length > 0 && (
+                  <div className="flex items-center gap-2 p-4 bg-green-50 rounded-[20px] text-green-700 text-sm">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>You&apos;ve already reviewed this product. Thank you!</span>
+                  </div>
+                )}
+
+                {/* Real Reviews */}
+                {productReviews && productReviews.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-6">
+                    {productReviews.map((review) => (
+                      <div key={review.id} className="p-6 bg-[#fcfcfc] border border-black/[0.03] rounded-[24px] space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                              {(reviewerNameMap[review.userId] || "?")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">{reviewerNameMap[review.userId] || "Anonymous"}</p>
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                {new Date(review.createdAt).toLocaleDateString("en-PH", { month: "short", year: "numeric" })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex text-primary gap-0.5">
+                            {Array.from({ length: 5 }).map((_, s) => (
+                              <Star key={s} className={cn("h-3 w-3", s < review.rating ? "fill-primary" : "fill-muted text-muted")} />
+                            ))}
+                          </div>
+                        </div>
+                        {review.title && (
+                          <p className="text-sm font-semibold">{review.title}</p>
+                        )}
+                        <p className="text-sm text-muted-foreground leading-relaxed opacity-80">&quot;{review.comment}&quot;</p>
+                        {(review.helpful ?? 0) > 0 && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <ThumbsUp className="h-3 w-3" />
+                            <span>{review.helpful} found this helpful</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                    {!user && (
+                      <p className="text-xs text-muted-foreground mt-1">Buy this product and share your experience!</p>
+                    )}
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
