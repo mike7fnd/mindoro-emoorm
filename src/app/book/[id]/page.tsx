@@ -164,6 +164,7 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const [bidAmount, setBidAmount] = useState("");
   const [bidPlaced, setBidPlaced] = useState(false);
   const [bidSubmitting, setBidSubmitting] = useState(false);
+  const [bidSheetOpen, setBidSheetOpen] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [auctionTimeLeft, setAuctionTimeLeft] = useState("");
   const [quickSheet, setQuickSheet] = useState<{ open: boolean; intent: 'cart' | 'buy' }>({ open: false, intent: 'cart' });
@@ -1263,9 +1264,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           {facility.isAuction ? (
             <button
               onClick={() => {
-                const availabilityTab = document.querySelector('[value="availability"]') as HTMLElement;
-                availabilityTab?.click();
-                availabilityTab?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (!user) { router.push("/login"); return; }
+                setBidSheetOpen(true);
               }}
               className="px-10 h-[52px] rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-xs tracking-tight shrink-0"
             >
@@ -1548,6 +1548,133 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
             </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Bid Placement Bottom Sheet ─────────────────────────── */}
+      <Sheet open={bidSheetOpen} onOpenChange={setBidSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-[32px] px-0 pb-0 pt-0 border-none outline-none max-w-lg mx-auto [&>button]:hidden">
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
+          </div>
+          <div className="px-6 pb-8 space-y-6">
+            {/* Product snapshot */}
+            <div className="flex gap-4">
+              <div className="h-24 w-24 rounded-[20px] overflow-hidden bg-[#f8f8f8] shrink-0 border border-black/[0.03]">
+                <Image
+                  src={facility.imageUrl || "/placeholder.svg"}
+                  alt={facility.name}
+                  width={96}
+                  height={96}
+                  className="object-cover h-full w-full"
+                  unoptimized
+                />
+              </div>
+              <div className="flex flex-col justify-center min-w-0">
+                <h3 className="text-base font-bold truncate">{facility.name}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <Gavel className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-bold text-primary">Live Auction</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bid Info */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-[#f8f8f8] rounded-[20px]">
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Current Bid</p>
+                <p className="text-2xl font-bold text-primary">₱{(facility.currentBid || facility.startingBid || 0).toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Total Bids</p>
+                <p className="text-lg font-bold">{facility.bidCount || 0}</p>
+              </div>
+            </div>
+
+            {facility.currentBidderId === user?.uid && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl text-green-700 text-xs font-bold">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                You are the highest bidder!
+              </div>
+            )}
+
+            {/* Bid Form */}
+            {bidPlaced ? (
+              <div className="flex items-center gap-3 p-6 bg-green-50 rounded-[24px] text-green-700">
+                <CheckCircle2 className="h-5 w-5" />
+                <div>
+                  <p className="text-sm font-bold">Your bid has been placed!</p>
+                  <p className="text-xs opacity-80">You'll be notified if you're outbid.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Your Bid (₱)</label>
+                  <input
+                    type="number"
+                    value={bidAmount}
+                    onChange={(e) => setBidAmount(e.target.value)}
+                    placeholder={`Min ₱${((facility.currentBid || facility.startingBid || 0) + 1).toLocaleString()}`}
+                    className="w-full bg-[#f8f8f8] border-none rounded-full px-6 py-4 text-black outline-none focus:ring-2 focus:ring-primary/20 transition-all text-lg font-bold"
+                  />
+                  {bidAmount && parseFloat(bidAmount) <= (facility.currentBid || facility.startingBid || 0) && (
+                    <p className="text-xs text-red-500 ml-2 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> Bid must be higher than the current bid
+                    </p>
+                  )}
+                </div>
+                <button
+                  disabled={bidSubmitting}
+                  onClick={async () => {
+                    const amt = parseFloat(bidAmount);
+                    if (!amt || amt <= (facility.currentBid || facility.startingBid || 0)) return;
+                    setBidSubmitting(true);
+                    try {
+                      // Insert bid record
+                      await supabase.from("bids").insert({
+                        productId: facility.id,
+                        bidderId: user.uid,
+                        amount: amt,
+                      });
+                      // Update product with new highest bid
+                      await supabase.from("facilities").update({
+                        currentBid: amt,
+                        currentBidderId: user.uid,
+                        bidCount: (facility.bidCount || 0) + 1,
+                      }).eq("id", facility.id);
+                      // Notify the seller about the new bid
+                      if (facility.sellerId) {
+                        await supabase.from("notifications").insert({
+                          userId: facility.sellerId,
+                          title: "New bid on your item!",
+                          content: `Someone placed a ₱${amt.toLocaleString()} bid on "${facility.name}".`,
+                          type: "bid",
+                          timestamp: new Date().toISOString(),
+                          isRead: false,
+                        });
+                      }
+                      setBidPlaced(true);
+                      setBidAmount("");
+                      confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#e03d8f', '#ff8fb1'] });
+                      // Reset after 3s so user can close the sheet
+                      setTimeout(() => {
+                        setBidPlaced(false);
+                        setBidSheetOpen(false);
+                      }, 3000);
+                    } catch (err) {
+                      console.error("Bid error:", err);
+                    } finally {
+                      setBidSubmitting(false);
+                    }
+                  }}
+                  className="w-full py-5 rounded-full bg-primary text-white font-bold shadow-lg active:scale-95 transition-all text-sm disabled:opacity-50"
+                >
+                  {bidSubmitting ? "Placing Bid..." : "Place Bid"}
+                </button>
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>
