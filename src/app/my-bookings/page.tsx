@@ -59,6 +59,13 @@ interface Facility {
   storeId?: string;
 }
 
+interface Store {
+  id: string;
+  name: string;
+  ownerId: string;
+  imageUrl?: string;
+}
+
 interface BookingWithStore extends Booking {
   storeId?: string;
 }
@@ -91,7 +98,15 @@ export default function MyBookingsPage() {
     reviewType?: "product" | "seller";
   }>({
     open: false,
-  });WithStore>(bookingsQuery);
+  });
+
+  const bookingsQuery = useStableMemo(() => {
+    if (!user?.id) return null;
+    return {
+      table: "bookings",
+      filter: { userId: user.id },
+    };
+  }, [user?.id]);
 
   const facilitiesQuery = useStableMemo(() => {
     return { table: "facilities" };
