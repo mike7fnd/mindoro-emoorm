@@ -79,6 +79,9 @@ interface Facility {
   sellerId?: string;
   sellerName?: string;
   category?: string;
+  productType?: "normal" | "wholesale";
+  minimumBulkQuantity?: number;
+  bulkPricePerUnit?: number;
 }
 
 interface StoreInfo {
@@ -949,6 +952,116 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     </div>
                   )}
                 </div>
+              ) : facility.productType === "wholesale" ? (
+                /* Wholesale / Bulk Mode */
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-amber-600" />
+                      <h3 className="text-2xl font-headline font-normal tracking-tight">Wholesale Order</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">This is a wholesale product. Minimum order: <span className="font-bold text-amber-700">{facility.minimumBulkQuantity} units</span></p>
+                  </div>
+
+                  <div className="p-6 bg-amber-50 border border-amber-200 rounded-[24px] space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs font-bold text-amber-900 uppercase tracking-tight">Price per unit</p>
+                        <p className="text-2xl font-bold text-amber-700">₱{(facility.bulkPricePerUnit || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-amber-900 uppercase tracking-tight">Min. Order</p>
+                        <p className="text-2xl font-bold text-amber-700">{facility.minimumBulkQuantity} units</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-muted-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Enter Quantity (minimum: {facility.minimumBulkQuantity})
+                    </label>
+                    <div className="flex items-center justify-between gap-3 p-4 bg-[#f8f8f8] rounded-[20px]">
+                      <button 
+                        onClick={() => setQuantity(Math.max(facility.minimumBulkQuantity || 1, quantity - 10))} 
+                        className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center font-bold hover:bg-primary/10 transition-colors"
+                      >
+                        −10
+                      </button>
+                      <input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          setQuantity(Math.max(facility.minimumBulkQuantity || 1, val));
+                        }}
+                        min={facility.minimumBulkQuantity || 1}
+                        step="1"
+                        className="flex-1 text-center text-3xl font-bold outline-none bg-transparent"
+                      />
+                      <button 
+                        onClick={() => setQuantity(quantity + 10)} 
+                        className="h-12 w-12 rounded-full bg-white shadow-sm flex items-center justify-center font-bold hover:bg-primary/10 transition-colors"
+                      >
+                        +10
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-primary/5 rounded-[24px] space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">₱{(facility.bulkPricePerUnit || 0).toLocaleString()} × {quantity} units</span>
+                        <span className="font-bold">₱{((facility.bulkPricePerUnit || 0) * quantity).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <Separator className="bg-primary/10" />
+                    <div className="flex justify-between text-base font-bold pt-2">
+                      <span>Total Order</span>
+                      <span className="text-primary text-xl">₱{((facility.bulkPricePerUnit || 0) * quantity).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!user) { router.push("/login"); return; }
+                        if (quantity < (facility.minimumBulkQuantity || 1)) {
+                          alert(`Minimum order quantity is ${facility.minimumBulkQuantity} units`);
+                          return;
+                        }
+                        await supabase.from("cart_items").upsert(
+                          { userId: user.uid, productId: facility.id, quantity, isWholesale: true },
+                          { onConflict: "userId,productId" }
+                        );
+                        setAddedToCart(true);
+                        setTimeout(() => setAddedToCart(false), 2000);
+                      }}
+                      className={cn(
+                        "py-5 rounded-full font-bold shadow-lg text-sm transition-all active:scale-95",
+                        addedToCart ? "bg-green-500 text-white" : "bg-primary text-white hover:bg-primary/80"
+                      )}
+                    >
+                      {addedToCart ? "✓ Added to Wholesale Cart!" : "Add to Cart"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!user) { router.push("/login"); return; }
+                        if (quantity < (facility.minimumBulkQuantity || 1)) {
+                          alert(`Minimum order quantity is ${facility.minimumBulkQuantity} units`);
+                          return;
+                        }
+                        // Open wholesale inquiry modal or navigate to bulk order page
+                        setShowCheckout(true);
+                      }}
+                      className="py-5 rounded-full bg-[#f8f8f8] text-black font-bold shadow-sm text-sm hover:bg-black/10 transition-all active:scale-95"
+                    >
+                      Request Quote
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center pt-2">For bulk orders, sellers may provide special pricing. Contact the seller for more details.</p>
+                </div>
               ) : (
                 /* Standard Purchase Mode */
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-black/[0.03] space-y-8">
@@ -1080,6 +1193,11 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                           Auction
                         </div>
                       )}
+                      {(product as any).productType === "wholesale" && (
+                        <div className="absolute top-2 left-2 z-10 px-3 py-1.5 bg-amber-600/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                          Wholesale
+                        </div>
+                      )}
                     </div>
                     <div className="px-1">
                       <h3 className="text-sm font-normal font-headline tracking-[-0.03em] line-clamp-1 group-hover:text-primary transition-colors">{product.name}</h3>
@@ -1112,11 +1230,18 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               <span className="text-xl font-bold tracking-tight">
                 {facility.isAuction
                   ? `₱${(facility.currentBid || facility.startingBid || 0).toLocaleString()}`
+                  : facility.productType === "wholesale"
+                  ? `₱${((facility.bulkPricePerUnit || 0) * quantity).toLocaleString()}`
                   : `₱${((facility.price || facility.pricePerNight || 0) * quantity).toLocaleString()}`
                 }
               </span>
               <span className="text-xs text-muted-foreground font-medium">
-                {facility.isAuction ? "current bid" : quantity > 1 ? `${quantity} items` : "/unit"}
+                {facility.isAuction 
+                  ? "current bid" 
+                  : facility.productType === "wholesale"
+                  ? `${quantity} units`
+                  : quantity > 1 ? `${quantity} items` : "/unit"
+                }
               </span>
             </div>
             {!facility.isAuction && (
@@ -1128,7 +1253,9 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   availabilityTab?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }}
               >
-                {quantity > 1 ? `${quantity} × ₱${(facility.price || facility.pricePerNight || 0).toLocaleString()}` : "Select quantity"}
+                {facility.productType === "wholesale"
+                  ? `${quantity} × ₱${(facility.bulkPricePerUnit || 0).toLocaleString()}`
+                  : quantity > 1 ? `${quantity} × ₱${(facility.price || facility.pricePerNight || 0).toLocaleString()}` : "Select quantity"}
               </button>
             )}
           </div>
@@ -1144,6 +1271,29 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
             >
               Place Bid
             </button>
+          ) : facility.productType === "wholesale" ? (
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  if (!user) { router.push("/login"); return; }
+                  setSheetQty(quantity);
+                  setQuickSheet({ open: true, intent: 'cart' });
+                }}
+                className="px-5 h-[52px] rounded-full font-bold transition-all text-xs tracking-tight bg-[#f8f8f8] text-black hover:bg-black/10 active:scale-95"
+              >
+                Cart
+              </button>
+              <button
+                onClick={() => {
+                  if (!user) { router.push("/login"); return; }
+                  setSheetQty(quantity);
+                  setQuickSheet({ open: true, intent: 'buy' });
+                }}
+                className="px-10 h-[52px] rounded-full bg-amber-600 text-white font-bold shadow-lg active:scale-95 transition-all text-xs tracking-tight shrink-0"
+              >
+                Bulk Order
+              </button>
+            </div>
           ) : (
             <div className="flex gap-2 shrink-0">
               <button

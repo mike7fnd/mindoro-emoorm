@@ -9,43 +9,71 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
-  Download,
-  Calendar,
-  DollarSign,
-  Users,
-  ShoppingCart,
+  Search,
+  Eye,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  ShieldAlert,
+  Package,
   Store,
-  TrendingUp,
-  Filter,
+  User as UserIcon,
+  Star,
+  MessageCircle,
 } from "lucide-react";
 import {
   useUser,
+  useSupabase,
   useStableMemo,
   useCollection,
+  updateDocumentNonBlocking,
 } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { logAdminAction } from "@/lib/admin-audit";
 
-function exportReportCSV(title: string, stats: { label: string; value: string }[]) {
-  const headers = ["Metric", "Value"];
-  const rows = stats.map((s) => [s.label, s.value]);
-  const csvContent = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
+const TARGET_ICONS: Record<string, React.ElementType> = {
+  product: Package,
+  seller: Store,
+  user: UserIcon,
+  review: Star,
+  order: ShieldAlert,
+  message: MessageCircle,
+};
+
+const PRIORITY_TONE: Record<string, string> = {
+  high: "bg-red-50 text-red-600 border-red-200",
+  medium: "bg-orange-50 text-orange-600 border-orange-200",
+  low: "bg-blue-50 text-blue-600 border-blue-200",
+};
+
+const STATUS_TONE: Record<string, string> = {
+  open: "bg-orange-50 text-orange-600 border-orange-200",
+  investigating: "bg-blue-50 text-blue-600 border-blue-200",
+  resolved: "bg-green-50 text-green-600 border-green-200",
+  rejected: "bg-muted text-muted-foreground border-transparent",
+};
 
 export default function AdminReportsPage() {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
+  const supabase = useSupabase();
   const router = useRouter();
   const { toast } = useToast();
   const { isAdmin, isAdminLoading } = useIsAdmin();
-  const [timeRange, setTimeRange] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("open");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<any>(null);
+  const [resolution, setResolution] = useState("");
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -53,199 +81,211 @@ export default function AdminReportsPage() {
     }
   }, [isAdmin, isAdminLoading, router]);
 
-  const ordersConfig = useStableMemo(() => {
+  const reportsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
-    return { table: "bookings" };
+    return {
+      table: "reports",
+      order: { column: "createdAt", ascending: false },
+    };
   }, [user, isAdmin]);
-  const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersConfig);
-
-  const usersConfig = useStableMemo(() => {
-    if (!user || !isAdmin) return null;
-    return { table: "users" };
-  }, [user, isAdmin]);
-  const { data: allUsers, isLoading: usersLoading } = useCollection(usersConfig);
-
-  const productsConfig = useStableMemo(() => {
-    if (!user || !isAdmin) return null;
-    return { table: "facilities" };
-  }, [user, isAdmin]);
-  const { data: allProducts, isLoading: productsLoading } = useCollection(productsConfig);
-
-  const storesConfig = useStableMemo(() => {
-    if (!user || !isAdmin) return null;
-    return { table: "stores" };
-  }, [user, isAdmin]);
-  const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
+  const { data: reports, isLoading } = useCollection(reportsConfig);
 
   if (isAdminLoading || !isAdmin) return null;
 
-  const isLoading = ordersLoading || usersLoading || productsLoading || storesLoading;
-
-  // Filter orders by time range
-  const filteredOrders = (allOrders ?? []).filter((o: any) => {
-    if (timeRange === "all") return true;
-    const orderDate = new Date(o.createdAt || o.bookingDate);
-    const now = new Date();
-    if (timeRange === "today") {
-      return orderDate.toDateString() === now.toDateString();
-    }
-    if (timeRange === "week") {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return orderDate >= weekAgo;
-    }
-    if (timeRange === "month") {
-      return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-    }
-    return true;
+  const filtered = (reports ?? []).filter((r: any) => {
+    const matchesSearch =
+      !searchQuery ||
+      (r.targetLabel || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.targetId || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    const matchesPriority = priorityFilter === "all" || r.priority === priorityFilter;
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const totalRevenue = filteredOrders.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0);
-  const completedOrders = filteredOrders.filter((o: any) => o.status === "Completed" || o.status === "completed");
-  const cancelledOrders = filteredOrders.filter((o: any) => o.status === "Cancelled" || o.status === "cancelled");
-  const pendingOrders = filteredOrders.filter((o: any) => o.status === "Pending" || o.status === "pending" || o.status === "To Pay");
+  const total = reports?.length ?? 0;
+  const open = reports?.filter((r: any) => r.status === "open").length ?? 0;
+  const investigating = reports?.filter((r: any) => r.status === "investigating").length ?? 0;
+  const highPriority = reports?.filter((r: any) => r.priority === "high" && r.status === "open").length ?? 0;
 
-  const reports = [
-    {
-      title: "Revenue Report",
-      description: "Total revenue, average order value, and payment breakdown",
-      icon: DollarSign,
-      color: "text-green-600 bg-green-50 dark:bg-green-500/10",
-      stats: [
-        { label: "Total Revenue", value: `₱${totalRevenue.toLocaleString()}` },
-        { label: "Avg Order", value: `₱${filteredOrders.length ? Math.round(totalRevenue / filteredOrders.length).toLocaleString() : 0}` },
-        { label: "Completed Revenue", value: `₱${completedOrders.reduce((s, o: any) => s + (Number(o.totalPrice) || 0), 0).toLocaleString()}` },
-      ],
-    },
-    {
-      title: "Orders Report",
-      description: "Order volume, status breakdown, and fulfillment metrics",
-      icon: ShoppingCart,
-      color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10",
-      stats: [
-        { label: "Total Orders", value: String(filteredOrders.length) },
-        { label: "Completed", value: String(completedOrders.length) },
-        { label: "Cancelled", value: String(cancelledOrders.length) },
-        { label: "Pending", value: String(pendingOrders.length) },
-      ],
-    },
-    {
-      title: "Users Report",
-      description: "User registrations, roles, and activity",
-      icon: Users,
-      color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10",
-      stats: [
-        { label: "Total Users", value: String(allUsers?.length ?? 0) },
-        { label: "Sellers", value: String(allUsers?.filter((u: any) => u.role === "seller").length ?? 0) },
-        { label: "Buyers", value: String((allUsers?.length ?? 0) - (allUsers?.filter((u: any) => u.role === "seller" || u.role === "admin").length ?? 0)) },
-        { label: "Admins", value: String(allUsers?.filter((u: any) => u.role === "admin").length ?? 0) },
-      ],
-    },
-    {
-      title: "Product Report",
-      description: "Product listings, categories, and inventory status",
-      icon: Store,
-      color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10",
-      stats: [
-        { label: "Total Products", value: String(allProducts?.length ?? 0) },
-        { label: "Active Sellers", value: String(allStores?.length ?? 0) },
-        { label: "Avg Price", value: `₱${allProducts?.length ? Math.round((allProducts as any[]).reduce((s, p) => s + (Number(p.price || p.pricePerNight) || 0), 0) / allProducts.length).toLocaleString() : 0}` },
-      ],
-    },
-  ];
+  const handleStatusChange = async (
+    report: any,
+    newStatus: "investigating" | "resolved" | "rejected",
+    note?: string
+  ) => {
+    const updates: any = {
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    if (newStatus === "investigating") {
+      updates.assignedAdminId = user?.uid;
+    }
+    if (newStatus === "resolved" || newStatus === "rejected") {
+      updates.resolution = note ?? "";
+      updates.resolvedAt = new Date().toISOString();
+      updates.resolvedByAdminId = user?.uid;
+    }
+    updateDocumentNonBlocking(supabase, "reports", report.id, updates);
+    if (user) {
+      await logAdminAction(supabase, {
+        adminId: user.uid,
+        adminEmail: user.email ?? undefined,
+        action: newStatus === "rejected" ? "report.reject" : "report.resolve",
+        targetType: "report",
+        targetId: report.id,
+        targetLabel: report.targetLabel || `${report.targetType}:${report.targetId?.slice(0, 8)}`,
+        reason: note,
+        metadata: { newStatus, originalCategory: report.category },
+      });
+    }
+    toast({ title: `Report ${newStatus}`, description: "The report has been updated." });
+    setSelected(null);
+    setResolution("");
+  };
 
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-8 md:space-y-10">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">
-              Reports
-            </h1>
-            <p className="text-sm text-muted-foreground font-normal">
-              Generate and view platform reports
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">
+            Reports & Disputes
+          </h1>
+          <p className="text-sm text-muted-foreground font-normal">
+            {total} total · {open} open · {investigating} investigating · {highPriority} high-priority
+          </p>
         </div>
 
-        {/* Time Range Filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { key: "all", label: "All Time" },
-            { key: "today", label: "Today" },
-            { key: "week", label: "This Week" },
-            { key: "month", label: "This Month" },
-          ].map((t) => (
-            <Button
-              key={t.key}
-              variant={timeRange === t.key ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "rounded-full px-5 h-11 text-xs font-bold shrink-0",
-                timeRange === t.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
-              )}
-              onClick={() => setTimeRange(t.key)}
-            >
-              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-              {t.label}
-            </Button>
-          ))}
+            { label: "Open", value: open, icon: Clock, color: "text-orange-600 bg-orange-50" },
+            { label: "Investigating", value: investigating, icon: ShieldAlert, color: "text-blue-600 bg-blue-50" },
+            { label: "High Priority", value: highPriority, icon: AlertTriangle, color: "text-red-600 bg-red-50" },
+            { label: "All-Time", value: total, icon: FileText, color: "text-purple-600 bg-purple-50" },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <Card key={s.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+                <CardContent className="p-5">
+                  <div className={`p-2.5 rounded-2xl ${s.color} w-fit mb-3`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
+                  <p className="text-2xl font-normal font-headline tracking-[-0.05em]">{s.value}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Reports */}
-        {isLoading ? (
-          <div className="space-y-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-6 md:p-8">
-                <Skeleton className="h-6 w-48 rounded-full mb-4" />
-                <Skeleton className="h-3 w-64 rounded-full mb-6" />
-                <div className="grid grid-cols-3 gap-4">
-                  {Array.from({ length: 3 }).map((_, j) => (
-                    <div key={j}>
-                      <Skeleton className="h-3 w-20 rounded-full mb-2" />
-                      <Skeleton className="h-7 w-16 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <div className="flex-1 relative min-w-[200px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search reports..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] rounded-full pl-11 pr-5 py-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: "open", label: "Open" },
+              { key: "investigating", label: "Investigating" },
+              { key: "resolved", label: "Resolved" },
+              { key: "rejected", label: "Rejected" },
+              { key: "all", label: "All" },
+            ].map((f) => (
+              <Button
+                key={f.key}
+                variant={statusFilter === f.key ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "rounded-full px-4 h-11 text-xs font-bold shrink-0",
+                  statusFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                )}
+                onClick={() => setStatusFilter(f.key)}
+              >
+                {f.label}
+              </Button>
             ))}
           </div>
+          <div className="flex gap-2">
+            {["all", "high", "medium", "low"].map((p) => (
+              <Button
+                key={p}
+                variant={priorityFilter === p ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "rounded-full px-4 h-11 text-xs font-bold shrink-0 capitalize",
+                  priorityFilter === p ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                )}
+                onClick={() => setPriorityFilter(p)}
+              >
+                {p}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-3xl" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+            <CardContent className="py-20 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No reports found</p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="space-y-6">
-            {reports.map((report) => {
-              const Icon = report.icon;
+          <div className="space-y-3">
+            {filtered.map((report: any) => {
+              const Icon = TARGET_ICONS[report.targetType] || FileText;
               return (
-                <Card key={report.title} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-                  <CardContent className="p-6 md:p-8">
-                    <div className="flex items-start justify-between gap-4 mb-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-2xl ${report.color} shrink-0`}>
-                          <Icon className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-medium font-headline tracking-[-0.02em]">{report.title}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">{report.description}</p>
-                        </div>
+                <Card
+                  key={report.id}
+                  className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden cursor-pointer hover:border-primary/20 transition-colors"
+                  onClick={() => setSelected(report)}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-2xl bg-muted shrink-0">
+                        <Icon className="h-5 w-5" />
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full px-4 h-9 text-xs font-bold gap-1.5 border-black/[0.06] shrink-0"
-                        onClick={() => {
-                          exportReportCSV(report.title, report.stats);
-                          toast({ title: "Exported", description: `${report.title} exported as CSV.` });
-                        }}
-                      >
-                        <Download className="h-3.5 w-3.5" /> Export
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                      {report.stats.map((stat) => (
-                        <div key={stat.label}>
-                          <p className="text-xs text-muted-foreground font-medium mb-1">{stat.label}</p>
-                          <p className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">{stat.value}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="text-sm font-bold truncate">
+                            {report.category || "Untitled report"}
+                          </p>
+                          <Badge variant="outline" className={cn("rounded-full text-[10px] px-2 py-0", PRIORITY_TONE[report.priority] || PRIORITY_TONE.medium)}>
+                            {report.priority || "medium"}
+                          </Badge>
+                          <Badge variant="outline" className={cn("rounded-full text-[10px] px-2 py-0 capitalize", STATUS_TONE[report.status] || STATUS_TONE.open)}>
+                            {report.status || "open"}
+                          </Badge>
                         </div>
-                      ))}
+                        {report.targetLabel && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            against {report.targetType}: <span className="font-medium">{report.targetLabel}</span>
+                          </p>
+                        )}
+                        {report.description && (
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            {report.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Reported {report.createdAt ? new Date(report.createdAt).toLocaleString() : "—"} by {report.reporterRole || "user"}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -253,6 +293,119 @@ export default function AdminReportsPage() {
             })}
           </div>
         )}
+
+        {/* Detail Dialog */}
+        <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setResolution(""); }}>
+          <DialogContent className="sm:max-w-[600px] rounded-3xl max-h-[90vh] overflow-y-auto">
+            {selected && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="font-headline tracking-[-0.03em] flex items-center gap-2">
+                    {selected.category}
+                    <Badge variant="outline" className={cn("rounded-full text-[10px] ml-2", PRIORITY_TONE[selected.priority] || PRIORITY_TONE.medium)}>
+                      {selected.priority || "medium"}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription>
+                    Report against {selected.targetType}: <strong>{selected.targetLabel || selected.targetId}</strong>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Reporter</p>
+                    <p className="text-sm">{selected.reporterRole} · <span className="font-mono text-xs">{selected.reporterId?.slice(0, 12)}</span></p>
+                  </div>
+
+                  {selected.description && (
+                    <div>
+                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Description</p>
+                      <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-2xl p-4">{selected.description}</p>
+                    </div>
+                  )}
+
+                  {Array.isArray(selected.evidence) && selected.evidence.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Evidence</p>
+                      <ul className="text-xs space-y-1">
+                        {selected.evidence.map((e: any, i: number) => (
+                          <li key={i} className="font-mono text-muted-foreground">{typeof e === "string" ? e : JSON.stringify(e)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selected.resolution && (
+                    <div>
+                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Previous Resolution</p>
+                      <p className="text-sm bg-green-50 text-green-800 rounded-2xl p-4">{selected.resolution}</p>
+                    </div>
+                  )}
+
+                  {selected.targetType !== "order" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full gap-2"
+                      onClick={() => {
+                        const route = selected.targetType === "product"
+                          ? `/book/${selected.targetId}`
+                          : selected.targetType === "seller"
+                          ? `/stores/${selected.targetId}`
+                          : null;
+                        if (route) window.open(route, "_blank");
+                      }}
+                    >
+                      <Eye className="h-4 w-4" /> View target
+                    </Button>
+                  )}
+
+                  {(selected.status === "open" || selected.status === "investigating") && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <label className="text-xs font-bold tracking-tight text-muted-foreground">Resolution / Notes</label>
+                      <textarea
+                        value={resolution}
+                        onChange={(e) => setResolution(e.target.value)}
+                        rows={3}
+                        placeholder="Action taken, contacted user, etc..."
+                        className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-2xl px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  {selected.status === "open" && (
+                    <Button
+                      variant="outline"
+                      className="rounded-full gap-2"
+                      onClick={() => handleStatusChange(selected, "investigating")}
+                    >
+                      <ShieldAlert className="h-4 w-4" /> Take Up
+                    </Button>
+                  )}
+                  {(selected.status === "open" || selected.status === "investigating") && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="rounded-full gap-2 text-muted-foreground"
+                        onClick={() => handleStatusChange(selected, "rejected", resolution)}
+                      >
+                        <XCircle className="h-4 w-4" /> Reject
+                      </Button>
+                      <Button
+                        className="rounded-full gap-2 ml-auto bg-green-600 hover:bg-green-700"
+                        onClick={() => handleStatusChange(selected, "resolved", resolution)}
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Resolve
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

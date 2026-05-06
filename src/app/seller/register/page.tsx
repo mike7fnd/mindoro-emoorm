@@ -249,6 +249,25 @@ export default function ShopRegistrationPage() {
                       required
                     />
                   </div>
+                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
+                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Shop Category</span>
+                    <select
+                      name="category"
+                      value={form.category}
+                      onChange={handleChange}
+                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
+                      required
+                    >
+                      <option value="">Select your shop type</option>
+                      <option value="Local Seller">Local Seller</option>
+                      <option value="Agriculture">Agriculture</option>
+                      <option value="Wholesale">Wholesale/Bulk</option>
+                      <option value="General">General Store</option>
+                      <option value="Handmade">Handmade/Crafts</option>
+                      <option value="Organic">Organic Products</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
                   <div className="flex items-center gap-4 px-6 py-5">
                     <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Store Profile Image</span>
                     <input

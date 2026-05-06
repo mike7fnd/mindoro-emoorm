@@ -54,6 +54,9 @@ interface Product {
   sold?: number;
   city?: string;
   municipality?: string;
+  productType?: "normal" | "wholesale";
+  minimumBulkQuantity?: number;
+  bulkPricePerUnit?: number;
 }
 
 interface StoreItem {
@@ -403,6 +406,11 @@ export default function ExploreLocationPage() {
                             fill
                             className="object-cover group-hover:scale-110 transition-transform duration-300"
                           />
+                          {product.productType === "wholesale" && (
+                            <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-amber-600/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+                              Wholesale
+                            </div>
+                          )}
                           <button
                             onClick={(e) => toggleLike(e, product.id)}
                             className={cn(

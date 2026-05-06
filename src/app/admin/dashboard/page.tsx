@@ -10,28 +10,24 @@ import { Badge } from "@/components/ui/badge";
 import {
   DollarSign,
   Package,
-  ShoppingCart,
   Users,
   TrendingUp,
-  TrendingDown,
-  Plus,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Truck,
   MoreVertical,
   BarChart3,
   Settings,
   Store,
   MessageCircle,
   FileText,
-  ArrowRight,
   Star,
+  ShieldCheck,
+  Megaphone,
+  Tag,
+  Image as ImageIcon,
+  Activity,
+  Gavel,
 } from "lucide-react";
 import Link from "next/link";
 import {
-  useUser,
   useStableMemo,
   useCollection,
 } from "@/supabase";
@@ -53,22 +49,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 
-const statusConfig: Record<string, { icon: React.ElementType; className: string }> = {
-  "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
-  "To Ship": { icon: AlertCircle, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-  "To Receive": { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-  Completed: { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-  Cancelled: { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10" },
-  Pending: { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
-  Confirmed: { icon: CheckCircle2, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-  pending: { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
-  processing: { icon: AlertCircle, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-  shipped: { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-  completed: { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-  cancelled: { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10" },
-};
-
-/** Compute % change between this month and last month for an array of dated items */
+/** Compute % change between this month and last month */
 function computeTrend(items: any[], valueKey?: string) {
   const now = new Date();
   const thisMonth = now.getMonth();
@@ -113,14 +94,15 @@ export default function AdminDashboardPage() {
   }, [user, isAdmin]);
   const { data: allUsers, isLoading: usersLoading } = useCollection(usersConfig);
 
-  const ordersConfig = useStableMemo(() => {
+  // Aggregate-only order data (anonymous totals, no per-order detail)
+  const ordersAggConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return {
       table: "bookings",
-      order: { column: "createdAt", ascending: false },
+      columns: "id, totalPrice, createdAt, bookingDate",
     };
   }, [user, isAdmin]);
-  const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersConfig);
+  const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersAggConfig);
 
   const productsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -134,7 +116,16 @@ export default function AdminDashboardPage() {
   }, [user, isAdmin]);
   const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
 
-  // Chart data — monthly aggregation
+  const reportsConfig = useStableMemo(() => {
+    if (!user || !isAdmin) return null;
+    return {
+      table: "reports",
+      filters: [{ column: "status", op: "eq" as const, value: "open" }],
+    };
+  }, [user, isAdmin]);
+  const { data: openReports } = useCollection(reportsConfig);
+
+  // Monthly revenue (aggregate only — no order IDs, no buyer info)
   const monthlyData = React.useMemo(() => {
     if (!allOrders || allOrders.length === 0) return [];
     const months: Record<string, number> = {};
@@ -153,36 +144,25 @@ export default function AdminDashboardPage() {
 
   const totalRevenue =
     allOrders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
-  const totalOrders = allOrders?.length ?? 0;
   const totalProducts = allProducts?.length ?? 0;
   const totalUsers = allUsers?.length ?? 0;
   const totalSellers = allStores?.length ?? 0;
-  const pendingOrders =
-    allOrders?.filter(
-      (o: any) => o.status === "Pending" || o.status === "pending" || o.status === "To Pay"
-    ).length ?? 0;
+  const verifiedSellers = allStores?.filter((s: any) => s.verified).length ?? 0;
+  const pendingSellerVerifications = totalSellers - verifiedSellers;
 
   const revenueTrend = allOrders ? computeTrend(allOrders as any[], "totalPrice") : "0%";
-  const ordersTrend = allOrders ? computeTrend(allOrders as any[]) : "0%";
   const usersTrend = allUsers ? computeTrend(allUsers as any[]) : "0%";
   const sellersTrend = allStores ? computeTrend(allStores as any[]) : "0%";
+  const productsTrend = allProducts ? computeTrend(allProducts as any[]) : "0%";
 
   const stats = [
     {
-      label: "Total Revenue",
+      label: "Platform Revenue",
       value: `₱${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: "text-green-600 bg-green-50 dark:bg-green-500/10",
       trend: revenueTrend,
       positive: isTrendPositive(revenueTrend),
-    },
-    {
-      label: "Total Orders",
-      value: String(totalOrders),
-      icon: ShoppingCart,
-      color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10",
-      trend: ordersTrend,
-      positive: isTrendPositive(ordersTrend),
     },
     {
       label: "Total Users",
@@ -194,16 +174,24 @@ export default function AdminDashboardPage() {
     },
     {
       label: "Active Sellers",
-      value: String(totalSellers),
+      value: String(verifiedSellers),
       icon: Store,
       color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10",
       trend: sellersTrend,
       positive: isTrendPositive(sellersTrend),
     },
+    {
+      label: "Listings",
+      value: String(totalProducts),
+      icon: Package,
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10",
+      trend: productsTrend,
+      positive: isTrendPositive(productsTrend),
+    },
   ];
 
   const chartData = monthlyData.length > 0 ? monthlyData : [];
-  const recentOrders = (allOrders ?? []).slice(0, 6);
+  const openReportsCount = openReports?.length ?? 0;
 
   return (
     <AdminLayout>
@@ -215,15 +203,10 @@ export default function AdminDashboardPage() {
               Admin Dashboard
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              Platform overview &amp; management
+              Oversight &amp; moderation · Order details remain private to buyers and sellers
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/admin/products">
-              <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2 hidden md:inline-flex">
-                <Plus className="h-4 w-4" /> Add Product
-              </Button>
-            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="icon" variant="ghost" className="rounded-full h-10 w-10">
@@ -232,22 +215,28 @@ export default function AdminDashboardPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none"
+                className="w-56 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none"
               >
                 <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
                   <Link href="/admin/users"><Users className="h-4 w-4" /> Users</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/orders"><ShoppingCart className="h-4 w-4" /> Orders</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
                   <Link href="/admin/sellers"><Store className="h-4 w-4" /> Sellers</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
+                  <Link href="/admin/products"><Package className="h-4 w-4" /> Products</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/messages"><MessageCircle className="h-4 w-4" /> Messages</Link>
+                  <Link href="/admin/reviews"><Star className="h-4 w-4" /> Reviews</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/admin/reports"><FileText className="h-4 w-4" /> Reports</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/admin/audit-log"><ShieldCheck className="h-4 w-4" /> Audit Log</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
+                  <Link href="/admin/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
                   <Link href="/admin/settings"><Settings className="h-4 w-4" /> Settings</Link>
@@ -333,6 +322,9 @@ export default function AdminDashboardPage() {
                       View Details
                     </Link>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Aggregate platform revenue per month. Individual order details are private.
+                  </p>
                   {chartData.length > 0 ? (
                     <div className="h-[280px] md:h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -353,7 +345,7 @@ export default function AdminDashboardPage() {
                     </div>
                   ) : (
                     <div className="h-[280px] md:h-[350px] flex items-center justify-center text-muted-foreground text-sm">
-                      No revenue data yet. Orders will appear here once placed.
+                      No revenue data yet.
                     </div>
                   )}
                 </CardContent>
@@ -365,11 +357,6 @@ export default function AdminDashboardPage() {
                     Quick Actions
                   </h2>
                   <div className="space-y-3">
-                    <Link href="/admin/orders">
-                      <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
-                        <ShoppingCart className="h-5 w-5 text-primary" /> View All Orders
-                      </button>
-                    </Link>
                     <Link href="/admin/users">
                       <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
                         <Users className="h-5 w-5 text-primary" /> Manage Users
@@ -380,9 +367,14 @@ export default function AdminDashboardPage() {
                         <Store className="h-5 w-5 text-primary" /> Manage Sellers
                       </button>
                     </Link>
-                    <Link href="/admin/messages">
+                    <Link href="/admin/reports">
                       <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
-                        <MessageCircle className="h-5 w-5 text-primary" /> Messages
+                        <FileText className="h-5 w-5 text-primary" /> Reports & Disputes
+                      </button>
+                    </Link>
+                    <Link href="/admin/broadcast">
+                      <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
+                        <Megaphone className="h-5 w-5 text-primary" /> Broadcast
                       </button>
                     </Link>
                   </div>
@@ -394,7 +386,7 @@ export default function AdminDashboardPage() {
                           Platform Status
                         </p>
                         <p className="text-sm font-medium leading-tight">
-                          {pendingOrders} pending orders need attention. {totalSellers} active sellers.
+                          {pendingSellerVerifications} seller{pendingSellerVerifications === 1 ? "" : "s"} pending verification · {openReportsCount} open report{openReportsCount === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
@@ -403,79 +395,40 @@ export default function AdminDashboardPage() {
               </Card>
             </div>
 
-            {/* Recent Orders Table */}
+            {/* Moderation Shortcuts (replaces Recent Orders for privacy) */}
             <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
               <CardContent className="p-6 md:p-8">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">
-                    Recent Orders
+                    Moderation & Tools
                   </h2>
-                  <Link href="/admin/orders">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full px-6 h-10 shadow-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted text-xs font-bold"
-                    >
-                      View all <ArrowRight className="ml-2 h-3 w-3" />
-                    </Button>
-                  </Link>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[500px]">
-                    <thead>
-                      <tr className="border-b text-muted-foreground font-medium tracking-tight text-xs">
-                        <th className="text-left pb-5 px-2">Order ID</th>
-                        <th className="text-left pb-5 px-2">Product</th>
-                        <th className="text-left pb-5 px-2">Status</th>
-                        <th className="text-left pb-5 px-2">Qty</th>
-                        <th className="text-right pb-5 px-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentOrders.map((bk: any) => {
-                        const status = bk.status || "pending";
-                        return (
-                          <tr key={bk.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                            <td className="py-5 px-2 font-mono font-bold text-xs">
-                              {bk.id?.slice(0, 10)}
-                            </td>
-                            <td className="py-5 px-2 text-xs truncate max-w-[150px]">
-                              {bk.facilityName || "Order"}
-                            </td>
-                            <td className="py-5 px-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "rounded-full px-4 py-1 text-[10px] font-bold capitalize",
-                                  status === "Confirmed" && "bg-blue-50 text-blue-600 border-blue-200",
-                                  (status === "Pending" || status === "pending") && "bg-orange-50 text-orange-600 border-orange-200",
-                                  (status === "Completed" || status === "completed") &&
-                                    "bg-green-50 text-green-600 border-green-200",
-                                  (status === "Cancelled" || status === "cancelled") &&
-                                    "bg-red-50 text-red-600 border-red-200"
-                                )}
-                              >
-                                {status}
-                              </Badge>
-                            </td>
-                            <td className="py-5 px-2 text-muted-foreground">
-                              {bk.numberOfGuests || bk.quantity || 1}
-                            </td>
-                            <td className="py-5 px-2 text-right font-black text-lg">
-                              ₱{Number(bk.totalPrice || 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {recentOrders.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="py-20 text-center text-muted-foreground italic">
-                            No recent orders found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                  {[
+                    { href: "/admin/products", icon: Package, label: "Products" },
+                    { href: "/admin/reviews", icon: Star, label: "Reviews" },
+                    { href: "/admin/bidding", icon: Gavel, label: "Bidding" },
+                    { href: "/admin/reports", icon: FileText, label: "Reports", badge: openReportsCount },
+                    { href: "/admin/vouchers", icon: Tag, label: "Vouchers" },
+                    { href: "/admin/banners", icon: ImageIcon, label: "Banners" },
+                    { href: "/admin/audit-log", icon: ShieldCheck, label: "Audit Log" },
+                    { href: "/admin/system-health", icon: Activity, label: "System" },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link href={item.href} key={item.href}>
+                        <div className="relative flex flex-col items-center justify-center gap-2 h-24 rounded-2xl bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted transition-all p-3">
+                          <Icon className="h-5 w-5 text-primary" />
+                          <span className="text-xs font-medium">{item.label}</span>
+                          {item.badge ? (
+                            <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0 rounded-full px-1.5 py-0 text-[9px] h-4 min-w-[16px]">
+                              {item.badge}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

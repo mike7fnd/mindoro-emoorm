@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   ArrowLeft,
   ImageIcon,
   Loader2,
@@ -28,6 +34,7 @@ import {
   Save,
   Gavel,
   CalendarClock,
+  ShoppingCart,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -87,10 +94,14 @@ function AddProductPageInner() {
     isAuction: false,
     startingBid: "",
     auctionEndDate: "",
+    productType: "normal", // "normal" or "wholesale"
+    minimumBulkQuantity: "", // For wholesale orders
+    bulkPricePerUnit: "", // For wholesale pricing
   });
   const [formLoaded, setFormLoaded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [activeTab, setActiveTab] = useState("regular"); // "regular", "wholesale", or "bidding"
   const imageInputRef = React.useRef<HTMLInputElement>(null);
 
   // Pre-fill form when editing and product data arrives
@@ -107,7 +118,18 @@ function AddProductPageInner() {
         isAuction: p.isAuction || false,
         startingBid: p.startingBid?.toString() || "",
         auctionEndDate: p.auctionEndDate ? p.auctionEndDate.slice(0, 16) : "",
+        productType: p.productType || "normal",
+        minimumBulkQuantity: p.minimumBulkQuantity?.toString() || "",
+        bulkPricePerUnit: p.bulkPricePerUnit?.toString() || "",
       });
+      // Set active tab based on product type
+      if (p.isAuction) {
+        setActiveTab("bidding");
+      } else if (p.productType === "wholesale") {
+        setActiveTab("wholesale");
+      } else {
+        setActiveTab("regular");
+      }
       setFormLoaded(true);
     }
   }, [isEditing, existingProduct, formLoaded]);
@@ -132,13 +154,22 @@ function AddProductPageInner() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !form.name || !form.price) return;
+    if (!user || !form.name) return;
+    
+    // Validate based on active tab
+    if (activeTab === "regular" && !form.price) return;
+    if (activeTab === "wholesale" && (!form.price || !form.minimumBulkQuantity || !form.bulkPricePerUnit)) return;
+    if (activeTab === "bidding" && !form.startingBid) return;
+    
     setAdding(true);
+
+    const isAuctionMode = activeTab === "bidding";
+    const isWholesaleMode = activeTab === "wholesale";
 
     const productData: Record<string, any> = {
       name: form.name,
-      price: form.isAuction ? 0 : Number(form.price) || 0,
-      stock: form.isAuction ? 1 : Number(form.stock) || 0,
+      price: isAuctionMode ? 0 : (isWholesaleMode ? Number(form.price) || 0 : Number(form.price) || 0),
+      stock: isAuctionMode ? 1 : Number(form.stock) || 0,
       category: form.category || "General",
       description: form.description,
       imageUrl: form.imageUrl || "",
@@ -150,12 +181,15 @@ function AddProductPageInner() {
       type: form.category || "General",
       sold: isEditing && existingProduct && typeof existingProduct.sold === 'number' ? existingProduct.sold : 0,
       updatedAt: new Date().toISOString(),
-      isAuction: form.isAuction,
-      startingBid: form.isAuction ? Number(form.startingBid) || 0 : 0,
+      isAuction: isAuctionMode,
+      startingBid: isAuctionMode ? Number(form.startingBid) || 0 : 0,
       currentBid: isEditing && existingProduct ? (existingProduct as any).currentBid || 0 : 0,
       currentBidderId: isEditing && existingProduct ? (existingProduct as any).currentBidderId || null : null,
       bidCount: isEditing && existingProduct ? (existingProduct as any).bidCount || 0 : 0,
-      auctionEndDate: form.isAuction && form.auctionEndDate ? new Date(form.auctionEndDate).toISOString() : null,
+      auctionEndDate: isAuctionMode && form.auctionEndDate ? new Date(form.auctionEndDate).toISOString() : null,
+      productType: isWholesaleMode ? "wholesale" : "normal",
+      minimumBulkQuantity: isWholesaleMode ? Number(form.minimumBulkQuantity) || 0 : 0,
+      bulkPricePerUnit: isWholesaleMode ? Number(form.bulkPricePerUnit) || 0 : 0,
     };
 
     if (isEditing && editId) {
@@ -170,7 +204,20 @@ function AddProductPageInner() {
     router.push("/seller/products");
   };
 
-  const isValid = form.name.trim() !== "" && (form.isAuction ? form.startingBid.trim() !== "" : form.price.trim() !== "");
+  const isValid = () => {
+    if (!form.name.trim() || !form.category.trim()) return false;
+    
+    if (activeTab === "regular") {
+      return form.price.trim() !== "";
+    }
+    if (activeTab === "wholesale") {
+      return form.price.trim() !== "" && form.minimumBulkQuantity.trim() !== "" && form.bulkPricePerUnit.trim() !== "";
+    }
+    if (activeTab === "bidding") {
+      return form.startingBid.trim() !== "";
+    }
+    return false;
+  };
 
   return (
     <SellerLayout>
@@ -266,42 +313,11 @@ function AddProductPageInner() {
               />
             </div>
 
-            {/* Price & Stock */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                  <DollarSign className="h-3.5 w-3.5" /> Price (₱){" "}
-                  <span className="text-red-400">*</span>
-                </Label>
-                <Input
-                  className="rounded-xl h-12"
-                  placeholder="0.00"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.price}
-                  onChange={(e) => updateField("price", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Layers className="h-3.5 w-3.5" /> Stock
-                </Label>
-                <Input
-                  className="rounded-xl h-12"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={form.stock}
-                  onChange={(e) => updateField("stock", e.target.value)}
-                />
-              </div>
-            </div>
-
             {/* Category */}
             <div className="space-y-2">
               <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                <Tag className="h-3.5 w-3.5" /> Category
+                <Tag className="h-3.5 w-3.5" /> Category{" "}
+                <span className="text-red-400">*</span>
               </Label>
               <Select
                 value={form.category}
@@ -332,68 +348,184 @@ function AddProductPageInner() {
                 onChange={(e) => updateField("description", e.target.value)}
               />
             </div>
-
           </CardContent>
         </Card>
 
-        {/* Auction / Bidding Toggle */}
+        {/* Product Type Tabs */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Gavel className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold">List as Auction Item</p>
-                  <p className="text-xs text-muted-foreground">Buyers will place bids instead of buying directly</p>
-                </div>
+          <CardContent className="p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="mb-6">
+                <p className="text-sm font-bold mb-4 text-muted-foreground">Select Listing Type</p>
+                <TabsList className="grid w-full grid-cols-3 rounded-xl bg-[#f8f8f8] p-1">
+                  <TabsTrigger value="regular" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg transition-all">
+                    <ShoppingCart className="h-4 w-4" />
+                    <span className="hidden sm:inline">Regular</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="wholesale" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg transition-all">
+                    <Package className="h-4 w-4" />
+                    <span className="hidden sm:inline">Wholesale</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="bidding" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg transition-all">
+                    <Gavel className="h-4 w-4" />
+                    <span className="hidden sm:inline">Bidding</span>
+                  </TabsTrigger>
+                </TabsList>
               </div>
-              <button
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, isAuction: !prev.isAuction }))}
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${form.isAuction ? 'bg-primary' : 'bg-black/10'
-                  }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${form.isAuction ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                />
-              </button>
-            </div>
 
-            {form.isAuction && (
-              <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                    <DollarSign className="h-3.5 w-3.5" /> Starting Bid (₱){" "}
-                    <span className="text-red-400">*</span>
-                  </Label>
-                  <Input
-                    className="rounded-xl h-12"
-                    placeholder="0.00"
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={form.startingBid}
-                    onChange={(e) => updateField("startingBid", e.target.value)}
-                  />
+              {/* Regular Product Tab */}
+              <TabsContent value="regular" className="space-y-4 animate-in fade-in duration-300">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-900/20 mb-4">
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Regular Product</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">Customers buy directly at your set price</p>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                    <CalendarClock className="h-3.5 w-3.5" /> Auction End Date & Time
-                  </Label>
-                  <Input
-                    className="rounded-xl h-12"
-                    type="datetime-local"
-                    value={form.auctionEndDate}
-                    min={new Date().toISOString().slice(0, 16)}
-                    onChange={(e) => updateField("auctionEndDate", e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground ml-1">Leave empty for no end date (manual close).</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5" /> Price (₱){" "}
+                      <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      placeholder="0.00"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={(e) => updateField("price", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5" /> Stock
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={form.stock}
+                      onChange={(e) => updateField("stock", e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              </TabsContent>
+
+              {/* Wholesale Tab */}
+              <TabsContent value="wholesale" className="space-y-4 animate-in fade-in duration-300">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/20 mb-4">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Wholesale/Bulk Product</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">For bulk buyers with minimum quantity requirements</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5" /> Regular Price (₱)
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      placeholder="0.00"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={(e) => updateField("price", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Price per regular unit</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5" /> Total Stock
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={form.stock}
+                      onChange={(e) => updateField("stock", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-black/10">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5" /> Minimum Quantity{" "}
+                      <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 10"
+                      value={form.minimumBulkQuantity}
+                      onChange={(e) => updateField("minimumBulkQuantity", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Minimum units per order</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5" /> Bulk Price/Unit (₱){" "}
+                      <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={form.bulkPricePerUnit}
+                      onChange={(e) => updateField("bulkPricePerUnit", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Discounted bulk rate</p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Bidding Tab */}
+              <TabsContent value="bidding" className="space-y-4 animate-in fade-in duration-300">
+                <div className="p-4 bg-primary/10 dark:bg-primary/20 rounded-xl border border-primary/20 dark:border-primary/30 mb-4">
+                  <p className="text-sm font-semibold text-primary">Auction / Bidding</p>
+                  <p className="text-xs text-primary/80 mt-1">Let buyers place bids. Highest bidder wins</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5" /> Starting Bid (₱){" "}
+                      <span className="text-red-400">*</span>
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      placeholder="0.00"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={form.startingBid}
+                      onChange={(e) => updateField("startingBid", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">The minimum bid amount to start</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                      <CalendarClock className="h-3.5 w-3.5" /> Auction End Date & Time
+                    </Label>
+                    <Input
+                      className="rounded-xl h-12"
+                      type="datetime-local"
+                      value={form.auctionEndDate}
+                      min={new Date().toISOString().slice(0, 16)}
+                      onChange={(e) => updateField("auctionEndDate", e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Leave empty for no end date (manual close)</p>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -409,7 +541,7 @@ function AddProductPageInner() {
           <Button
             className="flex-1 bg-black hover:bg-primary transition-colors rounded-full h-12 shadow-sm"
             onClick={handleSubmit}
-            disabled={adding || !isValid}
+            disabled={adding || !isValid()}
           >
             {adding ? (
               <>

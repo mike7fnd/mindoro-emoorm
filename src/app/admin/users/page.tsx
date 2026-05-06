@@ -49,6 +49,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export default function AdminUsersPage() {
   const { user, isUserLoading } = useUser();
@@ -114,6 +115,17 @@ export default function AdminUsersPage() {
       if (!res.ok) {
         toast({ variant: "destructive", title: "Delete failed", description: result.error || "Something went wrong." });
       } else {
+        const target = (allUsers ?? []).find((u: any) => u.id === userId);
+        if (user) {
+          await logAdminAction(supabase, {
+            adminId: user.uid,
+            adminEmail: user.email ?? undefined,
+            action: "user.delete",
+            targetType: "user",
+            targetId: userId,
+            targetLabel: target?.email || target?.name || userId,
+          });
+        }
         toast({ title: "User deleted", description: "The user and all related data have been permanently removed." });
       }
     } catch {
@@ -135,6 +147,18 @@ export default function AdminUsersPage() {
     }
     const newRole = currentRole === "seller" ? "buyer" : "seller";
     updateDocumentNonBlocking(supabase, "users", userId, { role: newRole });
+    const target = (allUsers ?? []).find((u: any) => u.id === userId);
+    if (user) {
+      logAdminAction(supabase, {
+        adminId: user.uid,
+        adminEmail: user.email ?? undefined,
+        action: "user.role_change",
+        targetType: "user",
+        targetId: userId,
+        targetLabel: target?.email || target?.name || userId,
+        metadata: { from: currentRole, to: newRole },
+      });
+    }
     toast({ title: "Role updated", description: `User role changed to ${newRole}.` });
     setRoleTarget(null);
   };

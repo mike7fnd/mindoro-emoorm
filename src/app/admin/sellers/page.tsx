@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import Link from "next/link";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export default function AdminSellersPage() {
   const { user, isUserLoading } = useUser();
@@ -144,6 +145,19 @@ export default function AdminSellersPage() {
       // Trigger a data refresh
       setRefreshTrigger(prev => prev + 1);
 
+      const target = (allStores ?? []).find((s: any) => s.id === storeId);
+      if (user) {
+        await logAdminAction(supabase, {
+          adminId: user.uid,
+          adminEmail: user.email ?? undefined,
+          action: "seller.suspend",
+          targetType: "seller",
+          targetId: storeId,
+          targetLabel: target?.name || storeId,
+          metadata: { from: currentStatus, to: newStatus },
+        });
+      }
+
       toast({
         title: newStatus === "suspended" ? "Store suspended" : "Store reactivated",
         description: newStatus === "suspended"
@@ -221,6 +235,18 @@ export default function AdminSellersPage() {
       // Trigger a data refresh by incrementing the refresh counter
       setRefreshTrigger(prev => prev + 1);
 
+      const target = (allStores ?? []).find((s: any) => s.id === storeId);
+      if (user) {
+        await logAdminAction(supabase, {
+          adminId: user.uid,
+          adminEmail: user.email ?? undefined,
+          action: newVerificationStatus ? "seller.verify" : "seller.unverify",
+          targetType: "seller",
+          targetId: storeId,
+          targetLabel: target?.name || storeId,
+        });
+      }
+
       toast({
         title: newVerificationStatus ? "✓ Seller verified" : "✓ Verification revoked",
         description: newVerificationStatus
@@ -272,6 +298,19 @@ export default function AdminSellersPage() {
 
       // Trigger a data refresh
       setRefreshTrigger(prev => prev + 1);
+
+      const target = (allStores ?? []).find((s: any) => s.id === storeId);
+      if (user) {
+        await logAdminAction(supabase, {
+          adminId: user.uid,
+          adminEmail: user.email ?? undefined,
+          action: "seller.delete",
+          targetType: "seller",
+          targetId: storeId,
+          targetLabel: target?.name || storeId,
+          metadata: { productsRemoved: storeProducts.length },
+        });
+      }
 
       toast({
         title: "Store deleted",
