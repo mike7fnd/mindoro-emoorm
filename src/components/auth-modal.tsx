@@ -854,12 +854,38 @@ function AuthModalInner() {
   );
   const [method, setMethod] = useState<"email" | "phone">("email");
 
+  /* ── animation state ── */
+  const [rendered, setRendered] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRendered(true);
+      const raf = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setVisible(true)),
+      );
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setVisible(false);
+      const t = setTimeout(() => setRendered(false), 260);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (mode === "signin" || mode === "signup") setTab(mode);
   }, [mode]);
   useEffect(() => {
     if (user && isOpen) close();
   }, [user, isOpen]);
+
+  /* Escape key to close */
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen]);
 
   const close = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -875,12 +901,16 @@ function AuthModalInner() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  if (!isOpen) return null;
+  if (!rendered) return null;
 
   return (
     <div
       className="fixed inset-0 z-[9998] flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      style={{
+        backgroundColor: "rgba(0,0,0,0.45)",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 220ms ease",
+      }}
       onClick={close}
     >
       <div
@@ -888,6 +918,11 @@ function AuthModalInner() {
         style={{
           borderRadius: 16,
           boxShadow: "0 20px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04)",
+          opacity: visible ? 1 : 0,
+          transform: visible ? "scale(1) translateY(0)" : "scale(0.95) translateY(20px)",
+          transition: visible
+            ? "opacity 240ms ease, transform 300ms cubic-bezier(0.34,1.4,0.64,1)"
+            : "opacity 200ms ease, transform 200ms ease",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -914,18 +949,26 @@ function AuthModalInner() {
         <div className="px-6 pt-5 pb-6 space-y-5">
           {/* ── Method toggle ── */}
           <div
-            className="flex rounded-lg p-1 gap-1"
+            className="relative flex rounded-lg p-1"
             style={{ background: "#f2f2f0" }}
           >
+            {/* sliding pill */}
+            <div
+              className="absolute top-1 bottom-1 rounded-md bg-white shadow-sm pointer-events-none"
+              style={{
+                width: "calc(50% - 4px)",
+                left: 4,
+                transform: method === "email" ? "translateX(0)" : "translateX(100%)",
+                transition: "transform 220ms cubic-bezier(0.34,1.4,0.64,1)",
+              }}
+            />
             {(["email", "phone"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMethod(m)}
                 className={[
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold transition-all",
-                  method === m
-                    ? "bg-white text-[#111] shadow-sm"
-                    : "text-[#999] hover:text-[#555]",
+                  "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-sm font-semibold transition-colors",
+                  method === m ? "text-[#111]" : "text-[#999] hover:text-[#555]",
                 ].join(" ")}
               >
                 {m === "email" ? (

@@ -9,7 +9,22 @@
       "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File /tmp/check_unused.ps1)",
       "Bash(sort -k3)",
       "Bash(awk -F' -> ' '{key=$1; file=$2; if\\(prev_key != key\\) {if\\(prev_key\\) print \"\"; print key \": \"} printf \"  - %s\\\\n\", file; prev_key=key} END {if\\(prev_key\\) print \"\"}')",
-      "Bash(npx prettier *)"
+      "Bash(npx prettier *)",
+      "Bash(Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue)",
+      "Bash(Write-Host \"Cache cleared\")",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\" && git show 3008d16:src/app/book/[id]/page.tsx > src/app/book/[id]/page.tsx)",
+      "Bash(Get-Content \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\\\\src\\\\app\\\\book\\\\[id]\\\\page.tsx\")",
+      "Bash(Measure-Object -Line)",
+      "Bash(xargs grep -l \"support_tickets\")",
+      "Bash(findstr \"header.tsx\")",
+      "Bash(Select-String \"header\")",
+      "PowerShell(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\"; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"auth-modal\" })"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Documents\\BellasParadise-emoorm\\src\\app\\book\\[id]"
     ]
   }
 }

@@ -11,11 +11,7 @@ import {
   Send,
   ArrowLeft,
   MoreVertical,
-  Smile,
-  Image as ImageIcon,
   Sparkles,
-  Settings,
-  Archive,
   Search,
   Languages,
   Trash2,
@@ -46,6 +42,8 @@ interface Conversation {
   lastMessage?: string;
   updatedAt?: string;
   userId?: string;
+  recipientId?: string;
+  avatar?: string;
 }
 
 interface Message {
@@ -170,7 +168,9 @@ function MessagesContent() {
     await supabase.from("messages").insert({
       conversationId: activeConversationId,
       senderId: user.uid,
-      recipientId: isBotConvo(activeConversationId) ? "bella-bot" : "admin",
+      recipientId: isBotConvo(activeConversationId)
+        ? "bella-bot"
+        : (activeConversation?.recipientId || "admin"),
       content,
       createdAt: now,
     });
@@ -183,7 +183,13 @@ function MessagesContent() {
         updatedAt: now,
         name: isBotConvo(activeConversationId)
           ? "Moormy Bot"
-          : "Customer Support",
+          : (activeConversation?.name || "Customer Support"),
+        ...(activeConversation?.recipientId
+          ? { recipientId: activeConversation.recipientId }
+          : {}),
+        ...(activeConversation?.avatar
+          ? { avatar: activeConversation.avatar }
+          : {}),
       },
       { onConflict: "id" },
     );
@@ -322,8 +328,14 @@ function MessagesContent() {
                 height={36}
                 className="object-cover h-full w-full"
               />
+            ) : activeConversation?.avatar ? (
+              <img
+                src={activeConversation.avatar}
+                alt={activeConversation.name}
+                className="h-full w-full object-cover"
+              />
             ) : (
-              activeConversation?.name?.[0] || "B"
+              activeConversation?.name?.[0]?.toUpperCase() || "S"
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -333,7 +345,7 @@ function MessagesContent() {
             <p className="text-[11px] text-[#29a366]">
               {isBotConvo(activeConversationId)
                 ? "Shopping Assistant"
-                : "Support online"}
+                : "Online"}
             </p>
           </div>
           {isBotConvo(activeConversationId) && (
@@ -538,8 +550,14 @@ function MessagesContent() {
                               height={40}
                               className="object-cover h-full w-full"
                             />
+                          ) : convo.avatar ? (
+                            <img
+                              src={convo.avatar}
+                              alt={convo.name}
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
-                            convo.name?.[0] || "B"
+                            convo.name?.[0]?.toUpperCase() || "S"
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -590,8 +608,14 @@ function MessagesContent() {
                                 height={36}
                                 className="object-cover h-full w-full"
                               />
+                            ) : activeConversation?.avatar ? (
+                              <img
+                                src={activeConversation.avatar}
+                                alt={activeConversation.name}
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                              activeConversation?.name?.[0] || "B"
+                              activeConversation?.name?.[0]?.toUpperCase() || "S"
                             )}
                           </div>
                           <div>
@@ -601,7 +625,7 @@ function MessagesContent() {
                             <p className="text-[11px] text-[#29a366]">
                               {isBotConvo(activeConversationId)
                                 ? "Shopping Assistant Active"
-                                : "Support online"}
+                                : "Online"}
                             </p>
                           </div>
                         </div>

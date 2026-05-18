@@ -305,14 +305,20 @@
   }
 
   .top-bar-profile-dropdown {
-    display: none;
+    display: flex;
+    flex-direction: column;
     position: absolute;
     top: 100%;
     right: 0;
     padding-top: 10px;
     z-index: 2000;
-    flex-direction: column;
     min-width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.97);
+    transform-origin: top right;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+    pointer-events: none;
   }
 
   .top-bar-profile-dropdown-inner {
@@ -327,7 +333,11 @@
   }
 
   .top-bar-profile-wrap:hover .top-bar-profile-dropdown {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 0s;
+    pointer-events: auto;
   }
 
   .top-bar-profile-dropdown-item,
@@ -427,6 +437,20 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.16);
     z-index: 2100;
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.97);
+    transform-origin: top right;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+    pointer-events: none;
+  }
+
+  .top-bar-notif-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 0s;
+    pointer-events: auto;
   }
   .top-bar-notif-header {
     display: flex;

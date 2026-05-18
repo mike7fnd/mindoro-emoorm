@@ -631,48 +631,46 @@ function HeaderContent() {
                   </span>
                 )}
               </Link>
-              {showNotifDropdown && (
-                <div className="top-bar-notif-dropdown">
-                  <div className="top-bar-notif-header">
-                    <span>Notifications</span>
-                    {unreadCount > 0 && (
-                      <span className="top-bar-notif-unread-pill">
-                        {unreadCount} new
-                      </span>
-                    )}
-                  </div>
-                  <div className="top-bar-notif-list">
-                    {!user ? (
-                      <p className="top-bar-notif-empty">
-                        Sign in to see notifications
-                      </p>
-                    ) : !recentNotifications ||
-                      recentNotifications.length === 0 ? (
-                      <p className="top-bar-notif-empty">
-                        No notifications yet
-                      </p>
-                    ) : (
-                      recentNotifications.map((n) => (
-                        <Link
-                          key={n.id}
-                          href="/notifications"
-                          className={`top-bar-notif-item${!n.isRead ? " unread" : ""}`}
-                        >
-                          <div className="top-bar-notif-item-title">
-                            {n.title}
-                          </div>
-                          <div className="top-bar-notif-item-body">
-                            {n.content}
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                  <Link href="/notifications" className="top-bar-notif-footer">
-                    View all notifications →
-                  </Link>
+              <div className={`top-bar-notif-dropdown${showNotifDropdown ? " open" : ""}`}>
+                <div className="top-bar-notif-header">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="top-bar-notif-unread-pill">
+                      {unreadCount} new
+                    </span>
+                  )}
                 </div>
-              )}
+                <div className="top-bar-notif-list">
+                  {!user ? (
+                    <p className="top-bar-notif-empty">
+                      Sign in to see notifications
+                    </p>
+                  ) : !recentNotifications ||
+                    recentNotifications.length === 0 ? (
+                    <p className="top-bar-notif-empty">
+                      No notifications yet
+                    </p>
+                  ) : (
+                    recentNotifications.map((n) => (
+                      <Link
+                        key={n.id}
+                        href="/notifications"
+                        className={`top-bar-notif-item${!n.isRead ? " unread" : ""}`}
+                      >
+                        <div className="top-bar-notif-item-title">
+                          {n.title}
+                        </div>
+                        <div className="top-bar-notif-item-body">
+                          {n.content}
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
+                <Link href="/notifications" className="top-bar-notif-footer">
+                  View all notifications →
+                </Link>
+              </div>
             </div>
             <div className="top-bar-divider" />
             <div className="top-bar-lang">

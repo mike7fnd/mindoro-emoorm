@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -47,14 +46,16 @@ const inpNoIcon = [
   "transition-all disabled:opacity-50",
 ].join(" ");
 
-/* ─── Seller Auth Modal ─────────────────────────────────────────────── */
+/* ─── Auth Dropdown (expands from navbar) ───────────────────────────── */
 type ModalMode = "signin" | "signup";
 
-function SellerAuthModal({
+function AuthDropdown({
+  open,
   mode,
   onClose,
   onModeChange,
 }: {
+  open: boolean;
   mode: ModalMode;
   onClose: () => void;
   onModeChange: (m: ModalMode) => void;
@@ -74,14 +75,6 @@ function SellerAuthModal({
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sentEmail, setSentEmail] = useState("");
-
-  useEffect(() => {
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
-  }, [onClose]);
 
   /* redirect after sign-in */
   useEffect(() => {
@@ -184,24 +177,24 @@ function SellerAuthModal({
     }
   };
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  if (!mounted) return null;
-
-  return createPortal(
+  /* Panel — absolutely positioned below the nav actions wrapper */
+  return (
     <div
-      className="fixed inset-0 z-[10010] flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-      onClick={onClose}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 10px)",
+        right: 0,
+        width: 360,
+        zIndex: 200,
+        opacity: open ? 1 : 0,
+        transform: open ? "translateY(0px)" : "translateY(-10px)",
+        transition: "opacity 200ms ease, transform 200ms ease",
+        pointerEvents: open ? "auto" : "none",
+      }}
     >
       <div
-        className="bg-white w-full max-w-[420px] rounded-2xl overflow-hidden"
-        style={{
-          boxShadow: "0 24px 64px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)",
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl overflow-hidden"
+        style={{ boxShadow: "0 12px 48px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06)" }}
       >
         {/* Tab switcher */}
         <div className="flex border-b border-black/[0.06]">
@@ -499,8 +492,7 @@ function SellerAuthModal({
           </p>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 
@@ -669,8 +661,8 @@ function NavExpandedContent({ link }: { link: NavLink | undefined }) {
   const group = link.dropdown[0];
 
   return (
-    <div className="px-8 py-5 border-t border-black/[0.05]">
-      <div className="max-w-6xl mx-auto">
+    <div className="px-4 md:px-8 py-5 border-t border-black/[0.05]">
+      <div className="max-w-[1280px] mx-auto">
         {group.title && (
           <p className="text-[11px] font-semibold text-[#bbb] mb-3 ml-1">
             {group.title}
@@ -708,35 +700,22 @@ function NavExpandedContent({ link }: { link: NavLink | undefined }) {
 
         {link.label === "Benefits" && (
           <div className="grid grid-cols-3 gap-2">
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <a
-                  key={item.title}
-                  href={item.href}
-                  className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#f2f2f0] transition-colors group"
-                >
-                  {Icon && (
-                    <div className="h-7 w-7 rounded-lg bg-[#f0fdf4] flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#29a366]/10 transition-colors">
-                      <Icon
-                        className="h-3.5 w-3.5 text-[#29a366]"
-                        strokeWidth={1.8}
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-[#111] leading-tight">
-                      {item.title}
-                    </p>
-                    {item.desc && (
-                      <p className="text-[11px] text-[#888] leading-snug mt-0.5">
-                        {item.desc}
-                      </p>
-                    )}
-                  </div>
-                </a>
-              );
-            })}
+            {group.items.map((item) => (
+              <a
+                key={item.title}
+                href={item.href}
+                className="px-3 py-2.5 rounded-xl hover:bg-[#f2f2f0] transition-colors"
+              >
+                <p className="text-sm font-semibold text-[#111] leading-tight">
+                  {item.title}
+                </p>
+                {item.desc && (
+                  <p className="text-[11px] text-[#888] leading-snug mt-0.5">
+                    {item.desc}
+                  </p>
+                )}
+              </a>
+            ))}
           </div>
         )}
 
@@ -761,8 +740,9 @@ function NavExpandedContent({ link }: { link: NavLink | undefined }) {
 export default function SellLandingPage() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<ModalMode>("signup");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<ModalMode>("signup");
+  const [activeNav, setActiveNav] = useState<string | null>(null);
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
 
@@ -772,14 +752,14 @@ export default function SellLandingPage() {
   );
   const { data: store, isLoading: storeLoading } = useDoc(storeRef);
 
-  const openModal = (mode: ModalMode) => {
-    setModalMode(mode);
-    setModalOpen(true);
+  const openAuth = (mode: ModalMode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
   };
 
   const handleCTA = () => {
     if (!user) {
-      openModal("signup");
+      openAuth("signup");
       return;
     }
     router.push(store ? "/seller/dashboard" : "/seller/register");
@@ -796,15 +776,6 @@ export default function SellLandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Floating auth modal */}
-      {modalOpen && !user && (
-        <SellerAuthModal
-          mode={modalMode}
-          onClose={() => setModalOpen(false)}
-          onModeChange={setModalMode}
-        />
-      )}
-
       {/* ── Top announcement bar ─────────────────────────────── */}
       <div
         className="h-10 flex items-center justify-center px-4 gap-2 text-xs font-medium text-white"
@@ -816,81 +787,127 @@ export default function SellLandingPage() {
         </span>
       </div>
 
-      {/* ── Nav bar ──────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-white border-b border-black/[0.06] h-16 flex items-center px-8 gap-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-1.5 shrink-0">
-          <Image
-            src="/brand-icon.png"
-            alt="Emoorm"
-            width={36}
-            height={36}
-            className="rounded-lg"
-          />
-          <span
-            style={{
-              fontFamily: "'Ubuntu', sans-serif",
-              fontWeight: 700,
-              fontSize: "1.5rem",
-              letterSpacing: "-0.06em",
-            }}
-          >
-            <span style={{ color: "#29a366" }}>emoorm</span>
-          </span>
-        </Link>
+      {/* ── Nav bar — expands on hover ────────────────────────── */}
+      <header
+        className="sticky top-0 z-50 bg-white border-b border-black/[0.06]"
+        onMouseLeave={() => setActiveNav(null)}
+      >
+        {/* Main nav row */}
+        <div className="h-16 flex items-center px-4 md:px-8 gap-8 max-w-[1280px] mx-auto w-full">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <Image
+              src="/brand-icon.png"
+              alt="Emoorm"
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
+            <span
+              style={{
+                fontFamily: "'Ubuntu', sans-serif",
+                fontWeight: 700,
+                fontSize: "1.5rem",
+                letterSpacing: "-0.06em",
+              }}
+            >
+              <span style={{ color: "#29a366" }}>emoorm</span>
+            </span>
+          </Link>
 
-        {/* Desktop nav links */}
-        <nav className="hidden md:flex items-center gap-1 flex-1">
-          {NAV_LINKS.map((l) => (
-            <NavItem key={l.label} link={l} />
-          ))}
-        </nav>
+          {/* Desktop nav links */}
+          <nav className="hidden md:flex items-center gap-1 flex-1">
+            {NAV_LINKS.map((l) => (
+              <NavTrigger
+                key={l.label}
+                link={l}
+                active={activeNav === l.label}
+                onHover={() => setActiveNav(l.label)}
+              />
+            ))}
+          </nav>
 
-        {/* Right actions */}
-        <div className="ml-auto flex items-center gap-3">
-          {!user ? (
-            <>
+          {/* Right actions */}
+          <div className="ml-auto flex items-center gap-3 relative">
+            <AuthDropdown
+              open={authOpen && !user}
+              mode={authMode}
+              onClose={() => setAuthOpen(false)}
+              onModeChange={setAuthMode}
+            />
+            {!user ? (
+              <>
+                <button
+                  onClick={() => openAuth("signin")}
+                  className="hidden sm:flex h-10 px-5 items-center rounded-lg border border-black/[0.10] text-base font-semibold text-[#555] hover:bg-[#f2f2f0] transition-colors"
+                >
+                  Log in
+                </button>
+                <button
+                  onClick={() => openAuth("signup")}
+                  className="h-10 px-5 rounded-lg text-base font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: "#29a366" }}
+                >
+                  Start selling
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => openModal("signin")}
-                className="hidden sm:flex h-10 px-5 items-center rounded-lg border border-black/[0.10] text-base font-semibold text-[#555] hover:bg-[#f2f2f0] transition-colors"
-              >
-                Log in
-              </button>
-              <button
-                onClick={() => openModal("signup")}
-                className="h-10 px-5 rounded-lg text-base font-semibold text-white transition-opacity hover:opacity-90"
+                onClick={handleCTA}
+                disabled={isUserLoading || storeLoading}
+                className="h-10 px-5 rounded-lg text-base font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 style={{ background: "#29a366" }}
               >
-                Start selling
+                {ctaLabel}
               </button>
-            </>
-          ) : (
-            <button
-              onClick={handleCTA}
-              disabled={isUserLoading || storeLoading}
-              className="h-10 px-5 rounded-lg text-base font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ background: "#29a366" }}
-            >
-              {ctaLabel}
-            </button>
-          )}
-          {/* Mobile menu button */}
-          <button
-            className="md:hidden p-1.5 rounded-lg hover:bg-[#f2f2f0] transition-colors ml-1"
-            onClick={() => setMobileMenuOpen((v) => !v)}
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5 text-[#555]" />
-            ) : (
-              <Menu className="h-5 w-5 text-[#555]" />
             )}
-          </button>
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-1.5 rounded-lg hover:bg-[#f2f2f0] transition-colors ml-1"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+            >
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5 text-[#555]" />
+              ) : (
+                <Menu className="h-5 w-5 text-[#555]" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Expandable mega menu — smooth grid-template-rows animation */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateRows: activeNav ? "1fr" : "0fr",
+            transition: "grid-template-rows 220ms ease",
+          }}
+        >
+          <div style={{ overflow: "hidden" }}>
+            <NavExpandedContent
+              link={NAV_LINKS.find((l) => l.label === activeNav)}
+            />
+          </div>
         </div>
       </header>
 
+      {/* Dim backdrop when auth dropdown is open */}
+      {authOpen && !user && (
+        <div
+          onClick={() => setAuthOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            top: 66,
+            background: "rgba(0,0,0,0.35)",
+            zIndex: 49,
+          }}
+        />
+      )}
+
       {/* Mobile nav menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-black/[0.06] px-6 py-4 flex flex-col gap-1 z-40">
+        <div className="md:hidden bg-white border-b border-black/[0.06] px-4 md:px-8 py-4 flex flex-col gap-1 z-40">
           {NAV_LINKS.map((l) => (
             <a
               key={l.label}
@@ -904,7 +921,7 @@ export default function SellLandingPage() {
           <button
             onClick={() => {
               setMobileMenuOpen(false);
-              openModal("signin");
+              openAuth("signin");
             }}
             className="px-3 py-2.5 rounded-xl text-sm text-[#555] hover:bg-[#f2f2f0] font-medium transition-colors text-left"
           >
@@ -914,7 +931,8 @@ export default function SellLandingPage() {
       )}
 
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="px-6 pt-14 pb-16 md:pt-20 md:pb-24 max-w-6xl mx-auto w-full">
+      <section className="px-4 md:px-8 pt-14 pb-16 md:pt-20 md:pb-24">
+        <div className="max-w-6xl mx-auto">
         <div className="flex flex-col lg:flex-row items-center gap-12">
           {/* Left — headline */}
           <div className="flex-1 min-w-0">
@@ -940,7 +958,7 @@ export default function SellLandingPage() {
               </button>
               {!user && (
                 <button
-                  onClick={() => openModal("signin")}
+                  onClick={() => openAuth("signin")}
                   className="flex items-center justify-center h-14 px-10 rounded-full border border-black/[0.12] text-base font-semibold text-[#555] hover:bg-[#f2f2f0] transition-colors"
                 >
                   Already a seller? Log in
@@ -982,10 +1000,11 @@ export default function SellLandingPage() {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* ── Benefits ─────────────────────────────────────────── */}
-      <section id="benefits" className="py-16 md:py-20 px-6 bg-[#f9fafb]">
+      <section id="benefits" className="py-16 md:py-20 px-4 md:px-8 bg-[#f9fafb]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-black text-[#111] mb-3">
@@ -1014,7 +1033,7 @@ export default function SellLandingPage() {
       </section>
 
       {/* ── How it works ─────────────────────────────────────── */}
-      <section id="how-it-works" className="py-16 md:py-20 px-6">
+      <section id="how-it-works" className="py-16 md:py-20 px-4 md:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-black text-[#111] mb-3">
@@ -1049,7 +1068,7 @@ export default function SellLandingPage() {
       </section>
 
       {/* ── Categories ───────────────────────────────────────── */}
-      <section id="categories" className="py-16 px-6 bg-[#f9fafb]">
+      <section id="categories" className="py-16 px-4 md:px-8 bg-[#f9fafb]">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-xl font-black text-[#111] mb-2">
             What can you sell?
@@ -1085,7 +1104,7 @@ export default function SellLandingPage() {
 
       {/* ── Final CTA ────────────────────────────────────────── */}
       <section
-        className="py-16 md:py-20 px-6 text-center"
+        className="py-16 md:py-20 px-4 md:px-8 text-center"
         style={{
           background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)",
         }}
@@ -1108,7 +1127,7 @@ export default function SellLandingPage() {
             <p className="text-xs text-white/40 mt-4">
               Already a seller?{" "}
               <button
-                onClick={() => openModal("signin")}
+                onClick={() => openAuth("signin")}
                 className="text-white/70 hover:text-white underline underline-offset-2"
               >
                 Log in
