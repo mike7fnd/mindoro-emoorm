@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -90,7 +90,10 @@ export default function AdminVouchersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    code: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -123,7 +126,9 @@ export default function AdminVouchersPage() {
 
   const total = vouchers?.length ?? 0;
   const active = vouchers?.filter((v: any) => v.active).length ?? 0;
-  const totalRedemptions = vouchers?.reduce((s: number, v: any) => s + (v.redemptionCount || 0), 0) ?? 0;
+  const totalRedemptions =
+    vouchers?.reduce((s: number, v: any) => s + (v.redemptionCount || 0), 0) ??
+    0;
 
   const openCreateDialog = () => {
     setEditing(null);
@@ -141,7 +146,9 @@ export default function AdminVouchersPage() {
       minOrderAmount: Number(v.minOrderAmount || 0),
       maxRedemptions: Number(v.maxRedemptions || 0),
       perUserLimit: Number(v.perUserLimit || 1),
-      validUntil: v.validUntil ? new Date(v.validUntil).toISOString().slice(0, 10) : "",
+      validUntil: v.validUntil
+        ? new Date(v.validUntil).toISOString().slice(0, 10)
+        : "",
       active: v.active ?? true,
     });
     setEditDialogOpen(true);
@@ -149,7 +156,11 @@ export default function AdminVouchersPage() {
 
   const handleSave = async () => {
     if (!form.code.trim()) {
-      toast({ variant: "destructive", title: "Missing code", description: "Voucher code is required." });
+      toast({
+        variant: "destructive",
+        title: "Missing code",
+        description: "Voucher code is required.",
+      });
       return;
     }
     const id = editing?.id || crypto.randomUUID();
@@ -162,7 +173,9 @@ export default function AdminVouchersPage() {
       minOrderAmount: form.minOrderAmount,
       maxRedemptions: form.maxRedemptions || null,
       perUserLimit: form.perUserLimit,
-      validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : null,
+      validUntil: form.validUntil
+        ? new Date(form.validUntil).toISOString()
+        : null,
       active: form.active,
       createdByAdminId: user?.uid,
     };
@@ -190,7 +203,9 @@ export default function AdminVouchersPage() {
   };
 
   const handleToggleActive = async (v: any) => {
-    updateDocumentNonBlocking(supabase, "vouchers", v.id, { active: !v.active });
+    updateDocumentNonBlocking(supabase, "vouchers", v.id, {
+      active: !v.active,
+    });
     if (user) {
       await logAdminAction(supabase, {
         adminId: user.uid,
@@ -230,7 +245,8 @@ export default function AdminVouchersPage() {
               Vouchers & Promo Codes
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              {total} vouchers · {active} active · {totalRedemptions} total redemptions
+              {total} vouchers · {active} active · {totalRedemptions} total
+              redemptions
             </p>
           </div>
           <Button
@@ -265,7 +281,9 @@ export default function AdminVouchersPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-5 h-11 text-xs font-bold shrink-0",
-                  statusFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  statusFilter === f.key
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setStatusFilter(f.key)}
               >
@@ -286,7 +304,9 @@ export default function AdminVouchersPage() {
           <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
             <CardContent className="py-20 text-center">
               <Tag className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">No vouchers yet</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                No vouchers yet
+              </p>
               <Button className="rounded-full" onClick={openCreateDialog}>
                 <Plus className="h-4 w-4 mr-2" /> Create First Voucher
               </Button>
@@ -296,14 +316,16 @@ export default function AdminVouchersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((v: any) => {
               const Icon = TYPE_ICON[v.discountType] || Percent;
-              const expired = v.validUntil && new Date(v.validUntil) < new Date();
-              const exhausted = v.maxRedemptions && v.redemptionCount >= v.maxRedemptions;
+              const expired =
+                v.validUntil && new Date(v.validUntil) < new Date();
+              const exhausted =
+                v.maxRedemptions && v.redemptionCount >= v.maxRedemptions;
               return (
                 <Card
                   key={v.id}
                   className={cn(
                     "shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden",
-                    !v.active && "opacity-60"
+                    !v.active && "opacity-60",
                   )}
                 >
                   <CardContent className="p-6">
@@ -313,49 +335,93 @@ export default function AdminVouchersPage() {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="rounded-full h-8 w-8">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full h-8 w-8"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1 bg-white/80 backdrop-blur-xl border-none">
-                          <DropdownMenuItem className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer" onClick={() => openEditDialog(v)}>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 rounded-2xl p-1 bg-white/80 backdrop-blur-xl border-none"
+                        >
+                          <DropdownMenuItem
+                            className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                            onClick={() => openEditDialog(v)}
+                          >
                             <Edit className="h-4 w-4" /> Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer" onClick={() => handleToggleActive(v)}>
-                            {v.active ? <><PowerOff className="h-4 w-4" /> Disable</> : <><Power className="h-4 w-4" /> Enable</>}
+                          <DropdownMenuItem
+                            className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                            onClick={() => handleToggleActive(v)}
+                          >
+                            {v.active ? (
+                              <>
+                                <PowerOff className="h-4 w-4" /> Disable
+                              </>
+                            ) : (
+                              <>
+                                <Power className="h-4 w-4" /> Enable
+                              </>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600" onClick={() => setDeleteTarget({ id: v.id, code: v.code })}>
+                          <DropdownMenuItem
+                            className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
+                            onClick={() =>
+                              setDeleteTarget({ id: v.id, code: v.code })
+                            }
+                          >
                             <Trash2 className="h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <p className="font-mono font-black text-lg tracking-tight">{v.code}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 min-h-[32px]">{v.description || "No description"}</p>
+                    <p className="font-mono font-black text-lg tracking-tight">
+                      {v.code}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 min-h-[32px]">
+                      {v.description || "No description"}
+                    </p>
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px]">
                         {v.discountType === "percentage"
                           ? `${v.discountValue}% off`
                           : v.discountType === "fixed"
-                          ? `₱${v.discountValue} off`
-                          : "Free shipping"}
+                            ? `₱${v.discountValue} off`
+                            : "Free shipping"}
                       </Badge>
                       {v.minOrderAmount > 0 && (
-                        <Badge variant="outline" className="rounded-full text-[10px]">min ₱{v.minOrderAmount}</Badge>
+                        <Badge
+                          variant="outline"
+                          className="rounded-full text-[10px]"
+                        >
+                          min ₱{v.minOrderAmount}
+                        </Badge>
                       )}
                       {expired && (
-                        <Badge className="bg-red-50 text-red-600 border-0 rounded-full text-[10px]">Expired</Badge>
+                        <Badge className="bg-red-50 text-red-600 border-0 rounded-full text-[10px]">
+                          Expired
+                        </Badge>
                       )}
                       {exhausted && (
-                        <Badge className="bg-orange-50 text-orange-600 border-0 rounded-full text-[10px]">Exhausted</Badge>
+                        <Badge className="bg-orange-50 text-orange-600 border-0 rounded-full text-[10px]">
+                          Exhausted
+                        </Badge>
                       )}
                     </div>
                     <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs text-muted-foreground">
-                      <span>{v.redemptionCount || 0}{v.maxRedemptions ? `/${v.maxRedemptions}` : ""} redeemed</span>
+                      <span>
+                        {v.redemptionCount || 0}
+                        {v.maxRedemptions ? `/${v.maxRedemptions}` : ""}{" "}
+                        redeemed
+                      </span>
                       {v.validUntil && (
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {new Date(v.validUntil).toLocaleDateString()}
+                          <Calendar className="h-3 w-3" />{" "}
+                          {new Date(v.validUntil).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -374,36 +440,50 @@ export default function AdminVouchersPage() {
                 {editing ? "Edit Voucher" : "New Voucher"}
               </DialogTitle>
               <DialogDescription>
-                {editing ? "Update voucher details below." : "Create a promo code buyers can apply at checkout."}
+                {editing
+                  ? "Update voucher details below."
+                  : "Create a promo code buyers can apply at checkout."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold tracking-tight text-muted-foreground">Code *</label>
+                <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                  Code *
+                </label>
                 <input
                   type="text"
                   value={form.code}
-                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setForm({ ...form, code: e.target.value.toUpperCase() })
+                  }
                   placeholder="MOORM10"
                   className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-6 py-3 text-sm font-mono font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold tracking-tight text-muted-foreground">Description</label>
+                <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                  Description
+                </label>
                 <input
                   type="text"
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   placeholder="Welcome 10% off for new buyers"
                   className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-6 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Type</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Type
+                  </label>
                   <select
                     value={form.discountType}
-                    onChange={(e) => setForm({ ...form, discountType: e.target.value as any })}
+                    onChange={(e) =>
+                      setForm({ ...form, discountType: e.target.value as any })
+                    }
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   >
                     <option value="percentage">Percentage %</option>
@@ -412,12 +492,19 @@ export default function AdminVouchersPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Value</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Value
+                  </label>
                   <input
                     type="number"
                     min="0"
                     value={form.discountValue}
-                    onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        discountValue: Number(e.target.value),
+                      })
+                    }
                     disabled={form.discountType === "free_shipping"}
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
                   />
@@ -425,43 +512,65 @@ export default function AdminVouchersPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Min order ₱</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Min order ₱
+                  </label>
                   <input
                     type="number"
                     min="0"
                     value={form.minOrderAmount}
-                    onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        minOrderAmount: Number(e.target.value),
+                      })
+                    }
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Max redemptions</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Max redemptions
+                  </label>
                   <input
                     type="number"
                     min="0"
                     value={form.maxRedemptions}
-                    onChange={(e) => setForm({ ...form, maxRedemptions: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        maxRedemptions: Number(e.target.value),
+                      })
+                    }
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Per-user limit</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Per-user limit
+                  </label>
                   <input
                     type="number"
                     min="1"
                     value={form.perUserLimit}
-                    onChange={(e) => setForm({ ...form, perUserLimit: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setForm({ ...form, perUserLimit: Number(e.target.value) })
+                    }
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-tight text-muted-foreground">Valid until</label>
+                  <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                    Valid until
+                  </label>
                   <input
                     type="date"
                     value={form.validUntil}
-                    onChange={(e) => setForm({ ...form, validUntil: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, validUntil: e.target.value })
+                    }
                     className="w-full bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
@@ -470,16 +579,25 @@ export default function AdminVouchersPage() {
                 <input
                   type="checkbox"
                   checked={form.active}
-                  onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                  onChange={(e) =>
+                    setForm({ ...form, active: e.target.checked })
+                  }
                   className="h-4 w-4 rounded"
                 />
                 <span className="text-sm">Active immediately</span>
               </label>
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" className="flex-1 rounded-full h-12" onClick={() => setEditDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-full h-12"
+                  onClick={() => setEditDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button className="flex-1 rounded-full h-12 bg-black hover:bg-primary gap-2" onClick={handleSave}>
+                <Button
+                  className="flex-1 rounded-full h-12 bg-black hover:bg-primary gap-2"
+                  onClick={handleSave}
+                >
                   <Save className="h-4 w-4" />
                   {editing ? "Update" : "Create"}
                 </Button>
@@ -489,21 +607,31 @@ export default function AdminVouchersPage() {
         </Dialog>
 
         {/* Delete Confirmation */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialog
+          open={!!deleteTarget}
+          onOpenChange={() => setDeleteTarget(null)}
+        >
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-500" /> Delete Voucher
+                <AlertTriangle className="h-5 w-5 text-red-500" /> Delete
+                Voucher
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Permanently delete <strong>{deleteTarget?.code}</strong>? This cannot be undone.
+                Permanently delete <strong>{deleteTarget?.code}</strong>? This
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-red-600 hover:bg-red-700"
-                onClick={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.code)}
+                onClick={() =>
+                  deleteTarget &&
+                  handleDelete(deleteTarget.id, deleteTarget.code)
+                }
               >
                 Delete
               </AlertDialogAction>

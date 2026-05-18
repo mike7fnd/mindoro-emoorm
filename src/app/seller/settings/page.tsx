@@ -1,14 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Store,
   Bell,
@@ -23,7 +17,11 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), { ssr: false });
+const LocationPickerMap = dynamic(
+  () => import("@/components/location-picker-map"),
+  { ssr: false },
+);
+
 import {
   Select,
   SelectContent,
@@ -31,27 +29,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, updateDocumentNonBlocking } from "@/supabase";
+import {
+  useSupabaseAuth,
+  useSupabase,
+  useStableMemo,
+  useDoc,
+  updateDocumentNonBlocking,
+} from "@/supabase";
 import { uploadImage } from "@/lib/upload-image";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const inputClass =
+  "w-full bg-[#f2f2f0] border border-black/[0.08] rounded-md px-3 py-2 text-sm text-[#111] outline-none focus:border-[#29a366] focus:bg-white transition-all";
+const labelClass = "block text-xs font-medium text-[#555] mb-1.5";
 
 export default function SellerSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingQR, setUploadingQR] = useState(false);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const qrInputRef = React.useRef<HTMLInputElement>(null);
 
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
-  // Fetch store data
   const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store, isLoading } = useDoc(storeRef);
 
-  // Form state
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -67,7 +75,6 @@ export default function SellerSettingsPage() {
     longitude: null as number | null,
   });
 
-  // Populate form when store data loads
   useEffect(() => {
     if (store) {
       const s = store as any;
@@ -87,59 +94,52 @@ export default function SellerSettingsPage() {
       });
     }
   }, [store]);
-  // QR PH upload
-  const [uploadingQR, setUploadingQR] = useState(false);
-  const qrInputRef = React.useRef<HTMLInputElement>(null);
-  const handleQRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setUploadingQR(true);
-    try {
-      const url = await uploadImage(supabase, "stores", file, `qrph/${user.uid}`);
-      setForm(prev => ({ ...prev, qrphUrl: url }));
-    } catch (err) {
-      console.error("QR upload error:", err);
-      alert("Failed to upload QR PH code.");
-    } finally {
-      setUploadingQR(false);
-    }
-  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setUploadingLogo(true);
     try {
-      const url = await uploadImage(supabase, "stores", file, `logo/${user.uid}`);
-      setForm(prev => ({ ...prev, imageUrl: url }));
-    } catch (err) {
-      console.error("Logo upload error:", err);
+      const url = await uploadImage(
+        supabase,
+        "stores",
+        file,
+        `logo/${user.uid}`,
+      );
+      setForm((prev) => ({ ...prev, imageUrl: url }));
+    } catch {
       alert("Failed to upload shop logo.");
     } finally {
       setUploadingLogo(false);
     }
   };
 
+  const handleQRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingQR(true);
+    try {
+      const url = await uploadImage(
+        supabase,
+        "stores",
+        file,
+        `qrph/${user.uid}`,
+      );
+      setForm((prev) => ({ ...prev, qrphUrl: url }));
+    } catch {
+      alert("Failed to upload QR PH code.");
+    } finally {
+      setUploadingQR(false);
+    }
+  };
+
   const handleSave = () => {
     if (!user) return;
     setSaving(true);
-
     updateDocumentNonBlocking(supabase, "stores", user.uid, {
-      name: form.name,
-      description: form.description,
-      category: form.category,
-      imageUrl: form.imageUrl,
-      city: form.city,
-      street: form.street,
-      barangay: form.barangay,
-      qrphUrl: form.qrphUrl,
-      offersDelivery: form.offersDelivery,
-      offersPickup: form.offersPickup,
-      latitude: form.latitude,
-      longitude: form.longitude,
+      ...form,
       updatedAt: new Date().toISOString(),
     });
-
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
@@ -150,29 +150,28 @@ export default function SellerSettingsPage() {
   if (isLoading) {
     return (
       <SellerLayout>
-        <div className="max-w-3xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6 md:space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <Skeleton className="h-7 w-40 rounded-full mb-2" />
-              <Skeleton className="h-4 w-56 rounded-full" />
+        <div className="max-w-[1280px] mx-auto px-4 md:px-6 pt-6 pb-8 space-y-4">
+          <div className="bg-white rounded-xl border border-black/[0.06] px-6 py-5 flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36 rounded" />
+              <Skeleton className="h-3.5 w-52 rounded" />
             </div>
-            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-xl" />
           </div>
-          <div className="rounded-[32px] border border-black/[0.02] bg-white p-6 space-y-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-20 w-20 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-32 rounded-full" />
-                <Skeleton className="h-3 w-48 rounded-full" />
-              </div>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-xl border border-black/[0.06] p-6 space-y-4"
+            >
+              <Skeleton className="h-4 w-32 rounded" />
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="space-y-1.5">
+                  <Skeleton className="h-3 w-20 rounded" />
+                  <Skeleton className="h-9 w-full rounded-md" />
+                </div>
+              ))}
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-3 w-20 rounded-full" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </SellerLayout>
     );
@@ -180,172 +179,252 @@ export default function SellerSettingsPage() {
 
   return (
     <SellerLayout>
-      <div className="max-w-3xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6 md:space-y-8">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 pt-6 pb-8 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-black/[0.06] px-6 py-5 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Settings</h1>
-            <p className="text-sm text-muted-foreground font-normal">Manage your shop preferences</p>
+            <h1 className="text-lg font-semibold text-[#111]">Shop Settings</h1>
+            <p className="text-sm text-[#888]">Manage your shop preferences</p>
           </div>
-          <Button
-            className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2"
+          <button
             onClick={handleSave}
             disabled={saving}
+            className="flex items-center gap-2 h-9 px-5 rounded-xl text-white text-sm font-semibold transition-colors disabled:opacity-60"
+            style={{ background: "#29a366" }}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saved ? "Saved!" : saving ? "Saving..." : "Save"}
-          </Button>
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
+          </button>
         </div>
 
         {/* Verification Status */}
-        {isLoading ? (
-          <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-            <CardContent className="p-6 md:p-8 space-y-3">
-              <Skeleton className="h-6 w-1/2 rounded-full" />
-              <Skeleton className="h-4 w-full rounded-full" />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] ${store?.verified ? "border-blue-200 dark:border-blue-500/30" : "border-orange-200 dark:border-orange-500/30"}`}>
-            <CardContent className={`p-6 md:p-8 space-y-3 ${store?.verified ? "bg-blue-50/50 dark:bg-blue-500/5" : "bg-orange-50/50 dark:bg-orange-500/5"}`}>
-              <div className="flex items-center gap-2">
-                <Shield className={`h-5 w-5 ${store?.verified ? "text-blue-600" : "text-orange-600"}`} />
-                <p className={`text-sm font-semibold ${store?.verified ? "text-blue-900 dark:text-blue-300" : "text-orange-900 dark:text-orange-300"}`}>
-                  {store?.verified ? "✓ Seller Verified" : "⚠ Seller Unverified"}
-                </p>
-              </div>
-              <p className={`text-xs ${store?.verified ? "text-blue-700 dark:text-blue-200" : "text-orange-700 dark:text-orange-200"}`}>
-                {store?.verified 
-                  ? "Your shop is verified! Your products are publicly visible to all customers." 
-                  : "Your shop is pending verification. Your products are only visible to you until an admin approves your shop. Please ensure all your shop information is complete and accurate."}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <div
+          className="rounded-xl border p-4"
+          style={{
+            background: (store as any)?.verified ? "#eff6ff" : "#fffbeb",
+            borderColor: (store as any)?.verified ? "#bfdbfe" : "#fde68a",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Shield
+              className="h-4 w-4"
+              style={{
+                color: (store as any)?.verified ? "#2563eb" : "#d97706",
+              }}
+            />
+            <p
+              className="text-sm font-semibold"
+              style={{
+                color: (store as any)?.verified ? "#1e40af" : "#92400e",
+              }}
+            >
+              {(store as any)?.verified
+                ? "✓ Seller Verified"
+                : "⚠ Seller Unverified"}
+            </p>
+          </div>
+          <p
+            className="text-xs"
+            style={{ color: (store as any)?.verified ? "#3b82f6" : "#b45309" }}
+          >
+            {(store as any)?.verified
+              ? "Your shop is verified! Your products are publicly visible to all customers."
+              : "Your shop is pending verification. Products are only visible to you until an admin approves your shop."}
+          </p>
+        </div>
 
         {/* Shop Profile */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                <Store className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Shop Profile</h2>
+        <div className="bg-white rounded-xl border border-black/[0.06]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-black/[0.05]">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#f0faf5" }}
+            >
+              <Store
+                className="h-4 w-4"
+                style={{ color: "#29a366" }}
+                strokeWidth={1.8}
+              />
             </div>
-            <Separator className="opacity-50" />
-
+            <p className="text-sm font-semibold text-[#111]">Shop Profile</p>
+          </div>
+          <div className="p-6 space-y-5">
+            {/* Logo upload */}
             <div
               className="flex items-center gap-4 cursor-pointer"
               onClick={() => logoInputRef.current?.click()}
-              title="Upload shop logo"
             >
-              <div className="w-20 h-20 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center relative group overflow-hidden">
+              <div className="w-16 h-16 rounded-xl border border-black/[0.08] bg-[#f2f2f0] flex items-center justify-center relative group overflow-hidden shrink-0">
                 {form.imageUrl ? (
-                  <img src={form.imageUrl} alt="Shop logo" className="w-full h-full object-cover" />
+                  <img
+                    src={form.imageUrl}
+                    alt="Shop logo"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <Store className="h-8 w-8 text-muted-foreground/40" />
+                  <Store className="h-6 w-6 text-[#ccc]" />
                 )}
-                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   {uploadingLogo ? (
-                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    <Loader2 className="h-4 w-4 text-white animate-spin" />
                   ) : (
-                    <Camera className="h-5 w-5 text-white" />
+                    <Camera className="h-4 w-4 text-white" />
                   )}
                 </div>
-                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo}
+                />
               </div>
               <div>
-                <p className="text-sm font-medium">Shop Logo</p>
-                <p className="text-xs text-muted-foreground">{uploadingLogo ? "Uploading..." : "Click to upload • 200×200px"}</p>
+                <p className="text-sm font-medium text-[#333]">Shop Logo</p>
+                <p className="text-xs text-[#888]">
+                  {uploadingLogo
+                    ? "Uploading…"
+                    : "Click to upload · 200×200px recommended"}
+                </p>
               </div>
             </div>
 
-            {/* QR PH Upload */}
+            {/* QR PH upload */}
             <div
-              className="flex items-center gap-4 cursor-pointer mt-4"
+              className="flex items-center gap-4 cursor-pointer"
               onClick={() => qrInputRef.current?.click()}
-              title="Upload QR PH Code"
             >
-              <div className="w-20 h-20 rounded-2xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center relative group overflow-hidden">
+              <div className="w-16 h-16 rounded-xl border border-black/[0.08] bg-[#f2f2f0] flex items-center justify-center relative group overflow-hidden shrink-0">
                 {form.qrphUrl ? (
-                  <img src={form.qrphUrl} alt="QR PH code" className="w-full h-full object-cover" />
+                  <img
+                    src={form.qrphUrl}
+                    alt="QR PH"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <span className="text-xs text-muted-foreground">QR PH</span>
+                  <span className="text-[10px] font-bold text-[#bbb]">
+                    QR PH
+                  </span>
                 )}
-                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   {uploadingQR ? (
-                    <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    <Loader2 className="h-4 w-4 text-white animate-spin" />
                   ) : (
-                    <Camera className="h-5 w-5 text-white" />
+                    <Camera className="h-4 w-4 text-white" />
                   )}
                 </div>
-                <input ref={qrInputRef} type="file" accept="image/*" className="hidden" onChange={handleQRUpload} disabled={uploadingQR} />
+                <input
+                  ref={qrInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleQRUpload}
+                  disabled={uploadingQR}
+                />
               </div>
               <div>
-                <p className="text-sm font-medium">QR PH Code</p>
-                <p className="text-xs text-muted-foreground">{uploadingQR ? "Uploading..." : form.qrphUrl ? "Click to change QR code" : "Click to upload QR PH code"}</p>
+                <p className="text-sm font-medium text-[#333]">QR PH Code</p>
+                <p className="text-xs text-[#888]">
+                  {uploadingQR
+                    ? "Uploading…"
+                    : form.qrphUrl
+                      ? "Click to change QR code"
+                      : "Click to upload QR PH code"}
+                </p>
               </div>
             </div>
+
+            <div className="border-t border-black/[0.04]" />
 
             <div>
-              <Label className="text-sm text-muted-foreground">Shop Name</Label>
-              <Input
-                className="mt-1.5 rounded-xl"
+              <label className={labelClass}>Shop Name</label>
+              <input
+                className={inputClass}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <Label className="text-sm text-muted-foreground">Description</Label>
-              <Textarea
-                className="mt-1.5 rounded-xl min-h-[80px]"
+              <label className={labelClass}>Description</label>
+              <textarea
+                className={`${inputClass} min-h-[80px] resize-none`}
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
               />
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label className="text-sm text-muted-foreground">Category</Label>
-                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger className="mt-1.5 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="General">General</SelectItem>
-                    <SelectItem value="Jewelry">Jewelry</SelectItem>
-                    <SelectItem value="Clothing">Clothing</SelectItem>
-                    <SelectItem value="Accessories">Accessories</SelectItem>
-                    <SelectItem value="Home & Living">Home & Living</SelectItem>
-                    <SelectItem value="Food & Beverages">Food & Beverages</SelectItem>
-                    <SelectItem value="Vegetables">Vegetables</SelectItem>
-                    <SelectItem value="Fruits">Fruits</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <label className={labelClass}>Category</label>
+              <Select
+                value={form.category}
+                onValueChange={(v) => setForm({ ...form, category: v })}
+              >
+                <SelectTrigger className="mt-0 rounded-md bg-[#f2f2f0] border-black/[0.08] focus:border-[#29a366] focus:bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    "General",
+                    "Jewelry",
+                    "Clothing",
+                    "Accessories",
+                    "Home & Living",
+                    "Food & Beverages",
+                    "Vegetables",
+                    "Fruits",
+                  ].map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Fulfillment Options */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
-                <Truck className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Fulfillment Options</h2>
+        <div className="bg-white rounded-xl border border-black/[0.06]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-black/[0.05]">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#f5f3ff" }}
+            >
+              <Truck
+                className="h-4 w-4"
+                style={{ color: "#7c3aed" }}
+                strokeWidth={1.8}
+              />
             </div>
-            <Separator className="opacity-50" />
-            <p className="text-xs text-muted-foreground">Choose how customers can receive their orders. At least one option must be enabled.</p>
+            <p className="text-sm font-semibold text-[#111]">
+              Fulfillment Options
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
+            <p className="text-xs text-[#888]">
+              Choose how customers can receive their orders. At least one option
+              must be enabled.
+            </p>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between py-3 border-b border-black/[0.04]">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10">
-                  <Truck className="h-4 w-4" />
+                <div
+                  className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "#eff6ff" }}
+                >
+                  <Truck className="h-4 w-4 text-blue-600" strokeWidth={1.8} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Delivery</p>
-                  <p className="text-xs text-muted-foreground">Orders will be delivered to the customer&apos;s address</p>
+                  <p className="text-sm font-medium text-[#333]">Delivery</p>
+                  <p className="text-xs text-[#888]">
+                    Orders delivered to customer's address
+                  </p>
                 </div>
               </div>
               <Switch
@@ -357,14 +436,22 @@ export default function SellerSettingsPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10">
-                  <MapPin className="h-4 w-4" />
+                <div
+                  className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "#fff7ed" }}
+                >
+                  <MapPin
+                    className="h-4 w-4 text-orange-600"
+                    strokeWidth={1.8}
+                  />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Pickup</p>
-                  <p className="text-xs text-muted-foreground">Customers will pick up orders at your shop</p>
+                  <p className="text-sm font-medium text-[#333]">Pickup</p>
+                  <p className="text-xs text-[#888]">
+                    Customers pick up orders at your shop
+                  </p>
                 </div>
               </div>
               <Switch
@@ -377,161 +464,230 @@ export default function SellerSettingsPage() {
             </div>
 
             {!form.offersDelivery && form.offersPickup && (
-              <p className="text-xs text-orange-600 bg-orange-50 rounded-xl p-3">Customers will only see &quot;Pickup&quot; as a fulfillment option at checkout.</p>
+              <p className="text-xs text-orange-600 bg-orange-50 rounded-xl px-3 py-2">
+                Customers will only see "Pickup" as a fulfillment option.
+              </p>
             )}
             {form.offersDelivery && !form.offersPickup && (
-              <p className="text-xs text-blue-600 bg-blue-50 rounded-xl p-3">Customers will only see &quot;Delivery&quot; as a fulfillment option at checkout.</p>
+              <p className="text-xs text-blue-600 bg-blue-50 rounded-xl px-3 py-2">
+                Customers will only see "Delivery" as a fulfillment option.
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Business Info */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                <Globe className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Business Information</h2>
+        {/* Business Information */}
+        <div className="bg-white rounded-xl border border-black/[0.06]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-black/[0.05]">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#eff6ff" }}
+            >
+              <Globe className="h-4 w-4 text-blue-600" strokeWidth={1.8} />
             </div>
-            <Separator className="opacity-50" />
-
+            <p className="text-sm font-semibold text-[#111]">
+              Business Information
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
             <div>
-              <Label className="text-sm text-muted-foreground">City</Label>
-              <Input
-                className="mt-1.5 rounded-xl"
+              <label className={labelClass}>City</label>
+              <input
+                className={inputClass}
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm text-muted-foreground">Barangay</Label>
-                <Input
-                  className="mt-1.5 rounded-xl"
+                <label className={labelClass}>Barangay</label>
+                <input
+                  className={inputClass}
                   value={form.barangay}
-                  onChange={(e) => setForm({ ...form, barangay: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, barangay: e.target.value })
+                  }
                 />
               </div>
               <div>
-                <Label className="text-sm text-muted-foreground">Street</Label>
-                <Input
-                  className="mt-1.5 rounded-xl"
+                <label className={labelClass}>Street</label>
+                <input
+                  className={inputClass}
                   value={form.street}
                   onChange={(e) => setForm({ ...form, street: e.target.value })}
                 />
               </div>
             </div>
 
-            <Separator className="opacity-50" />
-
-            {/* Map Pin Location */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-pink-50 text-pink-600 dark:bg-pink-500/10">
-                  <Map className="h-4 w-4" />
+            <div className="border-t border-black/[0.04] pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "#fdf2f8" }}
+                >
+                  <Map className="h-4 w-4 text-pink-600" strokeWidth={1.8} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Pin Your Store Location</p>
-                  <p className="text-xs text-muted-foreground">Tap on the map to set your exact location. This will appear on the Map tab for customers.</p>
+                  <p className="text-sm font-medium text-[#333]">
+                    Pin Your Store Location
+                  </p>
+                  <p className="text-xs text-[#888]">
+                    Tap on the map to set your exact location for the Map tab.
+                  </p>
                 </div>
               </div>
               <LocationPickerMap
                 latitude={form.latitude}
                 longitude={form.longitude}
-                onLocationChange={(lat, lng) => setForm({ ...form, latitude: lat, longitude: lng })}
+                onLocationChange={(lat, lng) =>
+                  setForm({ ...form, latitude: lat, longitude: lng })
+                }
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Notifications */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 rounded-2xl bg-yellow-50 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-400">
-                <Bell className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Notifications</h2>
+        <div className="bg-white rounded-xl border border-black/[0.06]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-black/[0.05]">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#fefce8" }}
+            >
+              <Bell className="h-4 w-4 text-yellow-600" strokeWidth={1.8} />
             </div>
-            <Separator className="opacity-50" />
-
+            <p className="text-sm font-semibold text-[#111]">Notifications</p>
+          </div>
+          <div className="divide-y divide-black/[0.04]">
             {[
-              { label: "New Orders", desc: "Get notified when a new order is placed", defaultChecked: true },
-              { label: "Order Updates", desc: "Receive updates when order status changes", defaultChecked: true },
-              { label: "Product Reviews", desc: "Get notified about new product reviews", defaultChecked: true },
-              { label: "Marketing Emails", desc: "Receive promotional tips and offers", defaultChecked: false },
+              {
+                label: "New Orders",
+                desc: "Get notified when a new order is placed",
+                defaultChecked: true,
+              },
+              {
+                label: "Order Updates",
+                desc: "Receive updates when order status changes",
+                defaultChecked: true,
+              },
+              {
+                label: "Product Reviews",
+                desc: "Get notified about new product reviews",
+                defaultChecked: true,
+              },
+              {
+                label: "Marketing Emails",
+                desc: "Receive promotional tips and offers",
+                defaultChecked: false,
+              },
             ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
+              <div
+                key={item.label}
+                className="flex items-center justify-between px-6 py-4"
+              >
                 <div>
-                  <p className="text-sm">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  <p className="text-sm font-medium text-[#333]">
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-[#888]">{item.desc}</p>
                 </div>
                 <Switch defaultChecked={item.defaultChecked} />
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Privacy */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 rounded-2xl bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400">
-                <Shield className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Privacy & Visibility</h2>
+        <div className="bg-white rounded-xl border border-black/[0.06]">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-black/[0.05]">
+            <div
+              className="h-8 w-8 rounded-xl flex items-center justify-center"
+              style={{ background: "#f0faf5" }}
+            >
+              <Shield
+                className="h-4 w-4"
+                style={{ color: "#29a366" }}
+                strokeWidth={1.8}
+              />
             </div>
-            <Separator className="opacity-50" />
-
+            <p className="text-sm font-semibold text-[#111]">
+              Privacy & Visibility
+            </p>
+          </div>
+          <div className="divide-y divide-black/[0.04]">
             {[
-              { label: "Show Address", desc: "Display your business address publicly", defaultChecked: false },
-              { label: "Allow Messages", desc: "Let customers message you directly", defaultChecked: true },
+              {
+                label: "Show Address",
+                desc: "Display your business address publicly",
+                defaultChecked: false,
+              },
+              {
+                label: "Allow Messages",
+                desc: "Let customers message you directly",
+                defaultChecked: true,
+              },
             ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
+              <div
+                key={item.label}
+                className="flex items-center justify-between px-6 py-4"
+              >
                 <div>
-                  <p className="text-sm">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  <p className="text-sm font-medium text-[#333]">
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-[#888]">{item.desc}</p>
                 </div>
                 <Switch defaultChecked={item.defaultChecked} />
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Danger Zone */}
-        <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-red-100 dark:border-red-500/10 rounded-[32px] bg-white dark:bg-white/[0.03]">
-          <CardContent className="p-6 md:p-8 space-y-4">
-            <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] text-red-600">Danger Zone</h2>
-            <Separator className="opacity-50" />
-            <div className="flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-red-100">
+          <div className="px-6 py-4 border-b border-red-100">
+            <p className="text-sm font-semibold text-red-600">Danger Zone</p>
+          </div>
+          <div className="divide-y divide-red-50">
+            <div className="flex items-center justify-between px-6 py-4">
               <div>
-                <p className="text-sm">Deactivate Shop</p>
-                <p className="text-xs text-muted-foreground">Temporarily hide your shop from customers</p>
+                <p className="text-sm font-medium text-[#333]">
+                  Deactivate Shop
+                </p>
+                <p className="text-xs text-[#888]">
+                  Temporarily hide your shop from customers
+                </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500/20 dark:hover:bg-red-500/10"
+              <button
+                className="h-8 px-4 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
                 onClick={() => {
-                  if (!user || !confirm("Are you sure you want to deactivate your shop?")) return;
-                  updateDocumentNonBlocking(supabase, "stores", user.uid, { status: "inactive", updatedAt: new Date().toISOString() });
+                  if (
+                    !user ||
+                    !confirm("Are you sure you want to deactivate your shop?")
+                  )
+                    return;
+                  updateDocumentNonBlocking(supabase, "stores", user.uid, {
+                    status: "inactive",
+                    updatedAt: new Date().toISOString(),
+                  });
                 }}
               >
                 Deactivate
-              </Button>
+              </button>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-6 py-4">
               <div>
-                <p className="text-sm">Delete Shop</p>
-                <p className="text-xs text-muted-foreground">Permanently delete your shop and all data</p>
+                <p className="text-sm font-medium text-[#333]">Delete Shop</p>
+                <p className="text-xs text-[#888]">
+                  Permanently delete your shop and all data
+                </p>
               </div>
-              <Button variant="outline" size="sm" className="rounded-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500/20 dark:hover:bg-red-500/10">
+              <button className="h-8 px-4 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
                 Delete
-              </Button>
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </SellerLayout>
   );

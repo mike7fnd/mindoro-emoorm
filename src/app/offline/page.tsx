@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 export default function OfflinePage() {
   return (
@@ -23,8 +23,8 @@ export default function OfflinePage() {
         You&apos;re Offline
       </h1>
       <p className="mb-8 max-w-sm text-muted-foreground">
-        It looks like you&apos;ve lost your internet connection. Please check your
-        connection and try again.
+        It looks like you&apos;ve lost your internet connection. Please check
+        your connection and try again.
       </p>
       <button
         onClick={() => window.location.reload()}

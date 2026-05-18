@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
@@ -10,7 +10,7 @@ import {
   useDoc,
   useStableMemo,
   useSupabaseAuth,
-  updateDocumentNonBlocking
+  updateDocumentNonBlocking,
 } from "@/supabase";
 import {
   User,
@@ -26,16 +26,13 @@ import {
   ArrowLeft,
   Mail,
   Bell,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { ProfileSidebar } from "@/app/profile/page";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -68,7 +65,7 @@ export default function SettingsPage() {
     province: "",
     city: "",
     barangay: "",
-    street: ""
+    street: "",
   });
 
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -85,7 +82,7 @@ export default function SettingsPage() {
         province: profile.province || "",
         city: profile.city || "",
         barangay: profile.barangay || "",
-        street: profile.street || ""
+        street: profile.street || "",
       });
     }
   }, [profile]);
@@ -100,30 +97,34 @@ export default function SettingsPage() {
       isDark = false;
     } else {
       // No saved theme, use system preference
-      isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      isDark =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
     setIsDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
 
     // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {
       if (!localStorage.getItem("theme")) {
         setIsDarkMode(e.matches);
         document.documentElement.classList.toggle("dark", e.matches);
       }
     };
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
 
-    fetch('https://psgc.gitlab.io/api/provinces.json')
-      .then(res => res.json())
-      .then(data => {
-        setProvinces(data.sort((a: any, b: any) => a.name.localeCompare(b.name)));
+    fetch("https://psgc.gitlab.io/api/provinces.json")
+      .then((res) => res.json())
+      .then((data) => {
+        setProvinces(
+          data.sort((a: any, b: any) => a.name.localeCompare(b.name)),
+        );
       })
-      .catch(err => console.error("Error loading provinces:", err));
+      .catch((err) => console.error("Error loading provinces:", err));
 
     return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
   }, []);
 
@@ -139,7 +140,7 @@ export default function SettingsPage() {
 
     updateDocumentNonBlocking(supabase, "users", user.uid, {
       ...formData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
 
     toast({
@@ -157,59 +158,73 @@ export default function SettingsPage() {
     }
   };
 
-  if (isUserLoading) return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
-      <Header />
-      <main className="flex-grow container mx-auto px-6 pt-0 md:pt-32 pb-24 max-w-2xl">
-        <div className="mt-8 md:mt-0 mb-8">
-          <Skeleton className="h-7 w-32 rounded-full mb-2" />
-          <Skeleton className="h-4 w-56 rounded-full" />
-        </div>
-        <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-6">
-              <Skeleton className="h-3 w-24 rounded-full mb-4" />
-              {Array.from({ length: 3 }).map((_, j) => (
-                <div key={j} className="flex items-center justify-between py-4">
-                  <Skeleton className="h-4 w-28 rounded-full" />
-                  <Skeleton className="h-4 w-32 rounded-full" />
-                </div>
-              ))}
+  if (isUserLoading)
+    return (
+      <div
+        className="flex min-h-screen flex-col"
+        style={{ backgroundColor: "#f2f2f0" }}
+      >
+        <Header />
+        <main className="flex-grow pt-6">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24 max-w-2xl space-y-4">
+            <div className="bg-white rounded-[5px] border border-black/[0.06] px-6 py-5">
+              <Skeleton className="h-6 w-28 rounded mb-1.5" />
+              <Skeleton className="h-4 w-48 rounded" />
             </div>
-          ))}
-        </div>
-      </main>
-      <Footer />
-    </div>
-  );
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-[5px] border border-black/[0.06] p-5 space-y-3"
+              >
+                <Skeleton className="h-3 w-24 rounded" />
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <div
+                    key={j}
+                    className="flex items-center justify-between py-3 border-t border-black/[0.04]"
+                  >
+                    <Skeleton className="h-4 w-28 rounded" />
+                    <Skeleton className="h-4 w-32 rounded" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   if (!user) {
     if (typeof window !== "undefined") router.push("/login");
     return null;
   }
 
-  const sectionHeaderClass = "text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3";
-  const groupedContainerClass = "bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02]";
-  const rowClass = "flex items-center justify-between px-6 py-5 transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]";
-  const rowLabelClass = "text-sm text-black/80 dark:text-white/80 shrink-0";
-  const rowInputClass = "flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30";
+  const sectionHeaderClass = "text-xs font-semibold text-[#555] mb-2";
+  const groupedContainerClass =
+    "bg-white rounded-[5px] overflow-hidden border border-black/[0.06]";
+  const rowClass =
+    "flex items-center justify-between px-5 py-4 transition-colors hover:bg-[#f9f9f8]";
+  const rowLabelClass = "text-sm text-[#333] shrink-0";
+  const rowInputClass =
+    "flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-[#29a366] placeholder:text-[#ccc]";
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-white dark:bg-[#050505] transition-colors">
-        <ProfileSidebar onLogout={handleLogout} />
-
-        <div className="flex-1 flex flex-col">
-          <div className="md:hidden">
-            <Header />
-          </div>
-
-          <main className="flex-grow container mx-auto px-6 md:px-12 pt-8 md:pt-16 pb-32 max-w-2xl">
-            <div className="mb-12">
-              <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] mb-1.5 text-black dark:text-white">Settings</h1>
-              <p className="text-sm text-muted-foreground font-medium opacity-60">Personalize your shopping experience.</p>
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ backgroundColor: "#f2f2f0" }}
+    >
+      <Header />
+      <main className="flex-grow pt-6">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24 flex gap-5 items-start">
+          <ProfileSidebar onLogout={handleLogout} />
+          <div className="flex-1 min-w-0 max-w-[680px]">
+            <div className="bg-white rounded-[5px] border border-black/[0.06] px-6 py-5 mb-4">
+              <h1 className="text-lg font-semibold text-[#111]">Settings</h1>
+              <p className="text-sm text-[#888]">
+                Personalize your shopping experience.
+              </p>
             </div>
 
-            <div className="space-y-12">
+            <div className="space-y-4">
               {/* Personal Section */}
               <div>
                 <h3 className={sectionHeaderClass}>Personal Profile</h3>
@@ -218,40 +233,56 @@ export default function SettingsPage() {
                     <span className={rowLabelClass}>First Name</span>
                     <input
                       value={formData.firstName}
-                      onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
                       className={rowInputClass}
                       placeholder="Required"
                     />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Last Name</span>
                     <input
                       value={formData.lastName}
-                      onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
                       className={rowInputClass}
                       placeholder="Required"
                     />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Avatar URL</span>
                     <input
                       value={formData.profilePictureUrl}
-                      onChange={e => setFormData({ ...formData, profilePictureUrl: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          profilePictureUrl: e.target.value,
+                        })
+                      }
                       className={rowInputClass}
                       placeholder="https://..."
                     />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Mobile</span>
                     <div className="flex items-center gap-1 flex-1 justify-end">
-                      <span className="text-sm font-bold text-muted-foreground/40 select-none">+63</span>
+                      <span className="text-sm font-bold text-muted-foreground/40 select-none">
+                        +63
+                      </span>
                       <input
                         type="tel"
                         value={formData.mobile}
-                        onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); setFormData({ ...formData, mobile: v }); }}
+                        onChange={(e) => {
+                          const v = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 10);
+                          setFormData({ ...formData, mobile: v });
+                        }}
                         className="text-right text-sm font-medium bg-transparent outline-none border-none text-primary max-w-[120px]"
                         placeholder="9123456789"
                         maxLength={10}
@@ -269,39 +300,51 @@ export default function SettingsPage() {
                     <span className={rowLabelClass}>Province</span>
                     <select
                       value={formData.province}
-                      onChange={e => setFormData({ ...formData, province: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, province: e.target.value })
+                      }
                       className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
                     >
                       <option value="">Select</option>
-                      {provinces.map(p => <option key={p.code} value={p.name}>{p.name}</option>)}
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>City</span>
                     <input
                       value={formData.city}
-                      onChange={e => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, city: e.target.value })
+                      }
                       className={rowInputClass}
                       placeholder="Your city"
                     />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Barangay</span>
                     <input
                       value={formData.barangay}
-                      onChange={e => setFormData({ ...formData, barangay: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, barangay: e.target.value })
+                      }
                       className={rowInputClass}
                       placeholder="Hagan"
                     />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <span className={rowLabelClass}>Street</span>
                     <input
                       value={formData.street}
-                      onChange={e => setFormData({ ...formData, street: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, street: e.target.value })
+                      }
                       className={rowInputClass}
                       placeholder="Balahid"
                     />
@@ -320,9 +363,13 @@ export default function SettingsPage() {
                       </div>
                       <span className={rowLabelClass}>Dark Mode</span>
                     </div>
-                    <Switch checked={isDarkMode} onCheckedChange={handleDarkModeToggle} className="scale-90" />
+                    <Switch
+                      checked={isDarkMode}
+                      onCheckedChange={handleDarkModeToggle}
+                      className="scale-90"
+                    />
                   </div>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <div className="flex items-center gap-3">
                       <div className="h-7 w-7 rounded-lg bg-blue-500 flex items-center justify-center text-white">
@@ -335,8 +382,12 @@ export default function SettingsPage() {
                         <SelectValue placeholder="Language" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-2xl bg-white dark:bg-[#111]">
-                        <SelectItem value="English" className="rounded-xl">English</SelectItem>
-                        <SelectItem value="Filipino" className="rounded-xl">Filipino</SelectItem>
+                        <SelectItem value="English" className="rounded-xl">
+                          English
+                        </SelectItem>
+                        <SelectItem value="Filipino" className="rounded-xl">
+                          Filipino
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -356,7 +407,7 @@ export default function SettingsPage() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
                   </button>
-                  <Separator className="bg-black/[0.03] mx-6 w-auto" />
+                  <div className="border-t border-black/[0.04] mx-5" />
                   <div className={rowClass}>
                     <div className="flex items-center gap-3">
                       <div className="h-7 w-7 rounded-lg bg-green-500 flex items-center justify-center text-white">
@@ -364,33 +415,38 @@ export default function SettingsPage() {
                       </div>
                       <span className={rowLabelClass}>Two-Factor</span>
                     </div>
-                    <Badge variant="secondary" className="bg-muted text-[9px] rounded-full px-2 py-0.5 border-none opacity-50">Disabled</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="bg-muted text-[9px] rounded-full px-2 py-0.5 border-none opacity-50"
+                    >
+                      Disabled
+                    </Badge>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-6">
-                <Button
+              <div className="pt-2">
+                <button
                   onClick={handleUpdateProfile}
-                  className="w-full h-16 rounded-full bg-black hover:bg-primary text-white text-lg shadow-xl active:scale-[0.98] transition-all gap-3"
+                  className="w-full h-11 rounded-[5px] text-white text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "#29a366" }}
                 >
-                  <Save className="h-5 w-5" /> Save Changes
-                </Button>
+                  <Save className="h-4 w-4" /> Save Changes
+                </button>
               </div>
             </div>
-          </main>
-
-          <FirstTimeIntro
-            storageKey="settings"
-            title="Settings"
-            description="Update your personal info, manage your address, and customize your preferences. Changes are saved when you tap Save."
-            icon={<SettingsIcon className="h-7 w-7" />}
-          />
-          <div className="md:hidden">
-            <Footer />
           </div>
+          {/* end flex-1 */}
         </div>
-      </div>
-    </SidebarProvider>
+      </main>
+
+      <FirstTimeIntro
+        storageKey="settings"
+        title="Settings"
+        description="Update your personal info, manage your address, and customize your preferences. Changes are saved when you tap Save."
+        icon={<SettingsIcon className="h-7 w-7" />}
+      />
+      <Footer />
+    </div>
   );
 }

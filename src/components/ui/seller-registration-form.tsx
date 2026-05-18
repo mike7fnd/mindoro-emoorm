@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function SellerRegistrationForm({ onSuccess }: { onSuccess: () => void }) {
+export function SellerRegistrationForm({
+  onSuccess,
+}: {
+  onSuccess: () => void;
+}) {
   const [form, setForm] = useState({
     storeName: "",
     contact: "",
@@ -10,7 +14,9 @@ export function SellerRegistrationForm({ onSuccess }: { onSuccess: () => void })
   });
   const [submitting, setSubmitting] = useState(false);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 

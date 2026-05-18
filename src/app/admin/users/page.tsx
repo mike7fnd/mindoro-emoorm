@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -59,9 +59,16 @@ export default function AdminUsersPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [roleTarget, setRoleTarget] = useState<{ id: string; name: string; currentRole: string } | null>(null);
+  const [roleTarget, setRoleTarget] = useState<{
+    id: string;
+    name: string;
+    currentRole: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -91,18 +98,26 @@ export default function AdminUsersPage() {
   });
 
   const totalUsers = allUsers?.length ?? 0;
-  const sellerCount = allUsers?.filter((u: any) => u.role === "seller").length ?? 0;
-  const adminCount = allUsers?.filter((u: any) => u.role === "admin").length ?? 0;
+  const sellerCount =
+    allUsers?.filter((u: any) => u.role === "seller").length ?? 0;
+  const adminCount =
+    allUsers?.filter((u: any) => u.role === "admin").length ?? 0;
   const buyerCount = totalUsers - sellerCount - adminCount;
 
   const handleDeleteUser = async (userId: string) => {
     if (userId === user?.uid) {
-      toast({ variant: "destructive", title: "Cannot delete", description: "You cannot delete your own account." });
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description: "You cannot delete your own account.",
+      });
       return;
     }
     setIsDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const res = await fetch("/api/admin/delete-user", {
         method: "POST",
         headers: {
@@ -113,7 +128,11 @@ export default function AdminUsersPage() {
       });
       const result = await res.json();
       if (!res.ok) {
-        toast({ variant: "destructive", title: "Delete failed", description: result.error || "Something went wrong." });
+        toast({
+          variant: "destructive",
+          title: "Delete failed",
+          description: result.error || "Something went wrong.",
+        });
       } else {
         const target = (allUsers ?? []).find((u: any) => u.id === userId);
         if (user) {
@@ -126,10 +145,18 @@ export default function AdminUsersPage() {
             targetLabel: target?.email || target?.name || userId,
           });
         }
-        toast({ title: "User deleted", description: "The user and all related data have been permanently removed." });
+        toast({
+          title: "User deleted",
+          description:
+            "The user and all related data have been permanently removed.",
+        });
       }
     } catch {
-      toast({ variant: "destructive", title: "Delete failed", description: "Network error. Please try again." });
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: "Network error. Please try again.",
+      });
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
@@ -138,11 +165,19 @@ export default function AdminUsersPage() {
 
   const handleToggleRole = (userId: string, currentRole: string) => {
     if (userId === user?.uid) {
-      toast({ variant: "destructive", title: "Cannot change", description: "You cannot change your own role." });
+      toast({
+        variant: "destructive",
+        title: "Cannot change",
+        description: "You cannot change your own role.",
+      });
       return;
     }
     if (currentRole === "admin") {
-      toast({ variant: "destructive", title: "Cannot change", description: "Admin role can only be changed via the database." });
+      toast({
+        variant: "destructive",
+        title: "Cannot change",
+        description: "Admin role can only be changed via the database.",
+      });
       return;
     }
     const newRole = currentRole === "seller" ? "buyer" : "seller";
@@ -159,13 +194,20 @@ export default function AdminUsersPage() {
         metadata: { from: currentRole, to: newRole },
       });
     }
-    toast({ title: "Role updated", description: `User role changed to ${newRole}.` });
+    toast({
+      title: "Role updated",
+      description: `User role changed to ${newRole}.`,
+    });
     setRoleTarget(null);
   };
 
   const handleSendEmail = (email: string) => {
     if (!email) {
-      toast({ variant: "destructive", title: "No email", description: "This user has no email address." });
+      toast({
+        variant: "destructive",
+        title: "No email",
+        description: "This user has no email address.",
+      });
       return;
     }
     window.open(`mailto:${email}?subject=Message from E-Moorm Admin`, "_blank");
@@ -181,7 +223,8 @@ export default function AdminUsersPage() {
               User Management
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              {totalUsers} total users · {sellerCount} sellers · {buyerCount} buyers · {adminCount} admins
+              {totalUsers} total users · {sellerCount} sellers · {buyerCount}{" "}
+              buyers · {adminCount} admins
             </p>
           </div>
         </div>
@@ -189,20 +232,47 @@ export default function AdminUsersPage() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
           {[
-            { label: "Total Users", value: totalUsers, icon: Users, color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-            { label: "Sellers", value: sellerCount, icon: UserCheck, color: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-            { label: "Buyers", value: buyerCount, icon: UserX, color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-            { label: "Admins", value: adminCount, icon: Shield, color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10" },
+            {
+              label: "Total Users",
+              value: totalUsers,
+              icon: Users,
+              color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10",
+            },
+            {
+              label: "Sellers",
+              value: sellerCount,
+              icon: UserCheck,
+              color: "text-green-600 bg-green-50 dark:bg-green-500/10",
+            },
+            {
+              label: "Buyers",
+              value: buyerCount,
+              icon: UserX,
+              color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10",
+            },
+            {
+              label: "Admins",
+              value: adminCount,
+              icon: Shield,
+              color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10",
+            },
           ].map((stat) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+              <Card
+                key={stat.label}
+                className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]"
+              >
                 <CardContent className="p-5 md:p-8">
                   <div className={`p-3 rounded-2xl ${stat.color} w-fit mb-4`}>
                     <Icon className="h-5 w-5 md:h-6 md:w-6" />
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium mb-1">{stat.label}</p>
-                  <p className="text-xl md:text-3xl font-normal font-headline tracking-[-0.05em]">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">
+                    {stat.label}
+                  </p>
+                  <p className="text-xl md:text-3xl font-normal font-headline tracking-[-0.05em]">
+                    {stat.value}
+                  </p>
                 </CardContent>
               </Card>
             );
@@ -231,7 +301,7 @@ export default function AdminUsersPage() {
                   "rounded-full px-5 h-11 capitalize text-xs font-bold",
                   roleFilter === role
                     ? "bg-black text-white hover:bg-primary"
-                    : "border-black/[0.06] dark:border-white/[0.06]"
+                    : "border-black/[0.06] dark:border-white/[0.06]",
                 )}
                 onClick={() => setRoleFilter(role)}
               >
@@ -245,7 +315,10 @@ export default function AdminUsersPage() {
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-5 flex items-center gap-4">
+              <div
+                key={i}
+                className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-5 flex items-center gap-4"
+              >
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-1/3 rounded-full" />
@@ -261,7 +334,9 @@ export default function AdminUsersPage() {
               {filteredUsers.length === 0 ? (
                 <div className="text-center py-20">
                   <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No users found</p>
+                  <p className="text-sm text-muted-foreground">
+                    No users found
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
@@ -290,7 +365,11 @@ export default function AdminUsersPage() {
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium truncate">
                               {u.name || "Unnamed"}
-                              {isSelf && <span className="text-xs text-muted-foreground ml-1">(you)</span>}
+                              {isSelf && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  (you)
+                                </span>
+                              )}
                             </p>
                             {isAdminUser && (
                               <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-2 py-0">
@@ -298,7 +377,9 @@ export default function AdminUsersPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{u.email || "No email"}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {u.email || "No email"}
+                          </p>
                         </div>
                         <Badge
                           variant="outline"
@@ -307,18 +388,24 @@ export default function AdminUsersPage() {
                             u.role === "seller"
                               ? "bg-green-50 text-green-600 border-green-200"
                               : u.role === "admin"
-                              ? "bg-orange-50 text-orange-600 border-orange-200"
-                              : "bg-blue-50 text-blue-600 border-blue-200"
+                                ? "bg-orange-50 text-orange-600 border-orange-200"
+                                : "bg-blue-50 text-blue-600 border-blue-200",
                           )}
                         >
                           {u.role || "buyer"}
                         </Badge>
                         <p className="text-xs text-muted-foreground hidden md:block">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
+                          {u.createdAt
+                            ? new Date(u.createdAt).toLocaleDateString()
+                            : "—"}
                         </p>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="rounded-full h-9 w-9 shrink-0">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="rounded-full h-9 w-9 shrink-0"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -335,12 +422,23 @@ export default function AdminUsersPage() {
                             {!isAdminUser && !isSelf && (
                               <DropdownMenuItem
                                 className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                                onClick={() => setRoleTarget({ id: u.id, name: u.name || "this user", currentRole: u.role || "buyer" })}
+                                onClick={() =>
+                                  setRoleTarget({
+                                    id: u.id,
+                                    name: u.name || "this user",
+                                    currentRole: u.role || "buyer",
+                                  })
+                                }
                               >
                                 {u.role === "seller" ? (
-                                  <><ShieldOff className="h-4 w-4" /> Remove Seller Role</>
+                                  <>
+                                    <ShieldOff className="h-4 w-4" /> Remove
+                                    Seller Role
+                                  </>
                                 ) : (
-                                  <><Shield className="h-4 w-4" /> Make Seller</>
+                                  <>
+                                    <Shield className="h-4 w-4" /> Make Seller
+                                  </>
                                 )}
                               </DropdownMenuItem>
                             )}
@@ -349,7 +447,12 @@ export default function AdminUsersPage() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                                  onClick={() => setDeleteTarget({ id: u.id, name: u.name || "this user" })}
+                                  onClick={() =>
+                                    setDeleteTarget({
+                                      id: u.id,
+                                      name: u.name || "this user",
+                                    })
+                                  }
                                 >
                                   <Trash2 className="h-4 w-4" /> Delete User
                                 </DropdownMenuItem>
@@ -367,7 +470,10 @@ export default function AdminUsersPage() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={() => !isDeleting && setDeleteTarget(null)}>
+        <AlertDialog
+          open={!!deleteTarget}
+          onOpenChange={() => !isDeleting && setDeleteTarget(null)}
+        >
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -375,15 +481,22 @@ export default function AdminUsersPage() {
                 Delete User
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone and will permanently remove their account and all related data.
+                Are you sure you want to delete{" "}
+                <strong>{deleteTarget?.name}</strong>? This action cannot be
+                undone and will permanently remove their account and all related
+                data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full" disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full" disabled={isDeleting}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-red-600 hover:bg-red-700"
                 disabled={isDeleting}
-                onClick={() => deleteTarget && handleDeleteUser(deleteTarget.id)}
+                onClick={() =>
+                  deleteTarget && handleDeleteUser(deleteTarget.id)
+                }
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
@@ -392,19 +505,32 @@ export default function AdminUsersPage() {
         </AlertDialog>
 
         {/* Role Change Confirmation Dialog */}
-        <AlertDialog open={!!roleTarget} onOpenChange={() => setRoleTarget(null)}>
+        <AlertDialog
+          open={!!roleTarget}
+          onOpenChange={() => setRoleTarget(null)}
+        >
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle>Change User Role</AlertDialogTitle>
               <AlertDialogDescription>
-                Change <strong>{roleTarget?.name}</strong>&apos;s role from <strong>{roleTarget?.currentRole}</strong> to <strong>{roleTarget?.currentRole === "seller" ? "buyer" : "seller"}</strong>?
+                Change <strong>{roleTarget?.name}</strong>&apos;s role from{" "}
+                <strong>{roleTarget?.currentRole}</strong> to{" "}
+                <strong>
+                  {roleTarget?.currentRole === "seller" ? "buyer" : "seller"}
+                </strong>
+                ?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full"
-                onClick={() => roleTarget && handleToggleRole(roleTarget.id, roleTarget.currentRole)}
+                onClick={() =>
+                  roleTarget &&
+                  handleToggleRole(roleTarget.id, roleTarget.currentRole)
+                }
               >
                 Change Role
               </AlertDialogAction>

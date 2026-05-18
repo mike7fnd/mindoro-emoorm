@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,8 @@ export function ReviewForm({
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Something went wrong",
+        description:
+          error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -109,7 +110,9 @@ export function ReviewForm({
       </div>
 
       <div>
-        <label className="block text-sm font-semibold mb-2">Title (Optional)</label>
+        <label className="block text-sm font-semibold mb-2">
+          Title (Optional)
+        </label>
         <Input
           placeholder="Summarize your review"
           value={title}
@@ -120,7 +123,9 @@ export function ReviewForm({
       </div>
 
       <div>
-        <label className="block text-sm font-semibold mb-2">Your Review *</label>
+        <label className="block text-sm font-semibold mb-2">
+          Your Review *
+        </label>
         <Textarea
           placeholder="Share your experience with this product/seller..."
           value={comment}

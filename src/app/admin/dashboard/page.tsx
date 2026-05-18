@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -27,10 +27,7 @@ import {
   Gavel,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  useStableMemo,
-  useCollection,
-} from "@/supabase";
+import { useStableMemo, useCollection } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -92,7 +89,8 @@ export default function AdminDashboardPage() {
     if (!user || !isAdmin) return null;
     return { table: "users" };
   }, [user, isAdmin]);
-  const { data: allUsers, isLoading: usersLoading } = useCollection(usersConfig);
+  const { data: allUsers, isLoading: usersLoading } =
+    useCollection(usersConfig);
 
   // Aggregate-only order data (anonymous totals, no per-order detail)
   const ordersAggConfig = useStableMemo(() => {
@@ -102,19 +100,22 @@ export default function AdminDashboardPage() {
       columns: "id, totalPrice, createdAt, bookingDate",
     };
   }, [user, isAdmin]);
-  const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersAggConfig);
+  const { data: allOrders, isLoading: ordersLoading } =
+    useCollection(ordersAggConfig);
 
   const productsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "facilities" };
   }, [user, isAdmin]);
-  const { data: allProducts, isLoading: productsLoading } = useCollection(productsConfig);
+  const { data: allProducts, isLoading: productsLoading } =
+    useCollection(productsConfig);
 
   const storesConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "stores" };
   }, [user, isAdmin]);
-  const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
+  const { data: allStores, isLoading: storesLoading } =
+    useCollection(storesConfig);
 
   const reportsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
@@ -132,7 +133,10 @@ export default function AdminDashboardPage() {
     allOrders.forEach((o: any) => {
       const d = new Date(o.createdAt || o.bookingDate);
       if (isNaN(d.getTime())) return;
-      const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
+      const key = d.toLocaleString("default", {
+        month: "short",
+        year: "2-digit",
+      });
       months[key] = (months[key] || 0) + (Number(o.totalPrice) || 0);
     });
     return Object.entries(months).map(([name, revenue]) => ({ name, revenue }));
@@ -140,17 +144,21 @@ export default function AdminDashboardPage() {
 
   if (isAdminLoading || !user || !isAdmin) return null;
 
-  const isLoading = usersLoading || ordersLoading || productsLoading || storesLoading;
+  const isLoading =
+    usersLoading || ordersLoading || productsLoading || storesLoading;
 
   const totalRevenue =
-    allOrders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
+    allOrders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ??
+    0;
   const totalProducts = allProducts?.length ?? 0;
   const totalUsers = allUsers?.length ?? 0;
   const totalSellers = allStores?.length ?? 0;
   const verifiedSellers = allStores?.filter((s: any) => s.verified).length ?? 0;
   const pendingSellerVerifications = totalSellers - verifiedSellers;
 
-  const revenueTrend = allOrders ? computeTrend(allOrders as any[], "totalPrice") : "0%";
+  const revenueTrend = allOrders
+    ? computeTrend(allOrders as any[], "totalPrice")
+    : "0%";
   const usersTrend = allUsers ? computeTrend(allUsers as any[]) : "0%";
   const sellersTrend = allStores ? computeTrend(allStores as any[]) : "0%";
   const productsTrend = allProducts ? computeTrend(allProducts as any[]) : "0%";
@@ -203,13 +211,18 @@ export default function AdminDashboardPage() {
               Admin Dashboard
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              Oversight &amp; moderation · Order details remain private to buyers and sellers
+              Oversight &amp; moderation · Order details remain private to
+              buyers and sellers
             </p>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="rounded-full h-10 w-10">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full h-10 w-10"
+                >
                   <MoreVertical className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -217,29 +230,69 @@ export default function AdminDashboardPage() {
                 align="end"
                 className="w-56 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none"
               >
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/users"><Users className="h-4 w-4" /> Users</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/users">
+                    <Users className="h-4 w-4" /> Users
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/sellers"><Store className="h-4 w-4" /> Sellers</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/sellers">
+                    <Store className="h-4 w-4" /> Sellers
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/products"><Package className="h-4 w-4" /> Products</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/products">
+                    <Package className="h-4 w-4" /> Products
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/reviews"><Star className="h-4 w-4" /> Reviews</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/reviews">
+                    <Star className="h-4 w-4" /> Reviews
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/reports"><FileText className="h-4 w-4" /> Reports</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/reports">
+                    <FileText className="h-4 w-4" /> Reports
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/audit-log"><ShieldCheck className="h-4 w-4" /> Audit Log</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/audit-log">
+                    <ShieldCheck className="h-4 w-4" /> Audit Log
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/analytics">
+                    <BarChart3 className="h-4 w-4" /> Analytics
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/admin/settings"><Settings className="h-4 w-4" /> Settings</Link>
+                <DropdownMenuItem
+                  asChild
+                  className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
+                >
+                  <Link href="/admin/settings">
+                    <Settings className="h-4 w-4" /> Settings
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -250,7 +303,10 @@ export default function AdminDashboardPage() {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-6 md:p-8">
+                <div
+                  key={i}
+                  className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-6 md:p-8"
+                >
                   <Skeleton className="h-12 w-12 rounded-2xl mb-6" />
                   <Skeleton className="h-3 w-20 rounded-full mb-2" />
                   <Skeleton className="h-7 w-16 rounded-full" />
@@ -292,7 +348,7 @@ export default function AdminDashboardPage() {
                             "font-bold rounded-full px-3 py-1 text-[10px] md:text-xs",
                             stat.positive
                               ? "text-green-600 border-green-200 bg-green-50"
-                              : "text-red-600 border-red-200 bg-red-50"
+                              : "text-red-600 border-red-200 bg-red-50",
                           )}
                         >
                           {stat.trend}
@@ -318,28 +374,72 @@ export default function AdminDashboardPage() {
                     <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">
                       Revenue Overview
                     </h2>
-                    <Link href="/admin/analytics" className="text-sm text-primary hover:underline">
+                    <Link
+                      href="/admin/analytics"
+                      className="text-sm text-primary hover:underline"
+                    >
                       View Details
                     </Link>
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Aggregate platform revenue per month. Individual order details are private.
+                    Aggregate platform revenue per month. Individual order
+                    details are private.
                   </p>
                   {chartData.length > 0 ? (
                     <div className="h-[280px] md:h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
                           <defs>
-                            <linearGradient id="adminColorRev" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            <linearGradient
+                              id="adminColorRev"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="5%"
+                                stopColor="hsl(var(--primary))"
+                                stopOpacity={0.1}
+                              />
+                              <stop
+                                offset="95%"
+                                stopColor="hsl(var(--primary))"
+                                stopOpacity={0}
+                              />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888" }} />
-                          <Tooltip contentStyle={{ borderRadius: "15px", border: "none", boxShadow: "0 10px 20px rgba(0,0,0,0.05)" }} />
-                          <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#adminColorRev)" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                            stroke="#f0f0f0"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: "#888" }}
+                          />
+                          <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: "#888" }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              borderRadius: "15px",
+                              border: "none",
+                              boxShadow: "0 10px 20px rgba(0,0,0,0.05)",
+                            }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="revenue"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={3}
+                            fillOpacity={1}
+                            fill="url(#adminColorRev)"
+                          />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -364,12 +464,14 @@ export default function AdminDashboardPage() {
                     </Link>
                     <Link href="/admin/sellers">
                       <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
-                        <Store className="h-5 w-5 text-primary" /> Manage Sellers
+                        <Store className="h-5 w-5 text-primary" /> Manage
+                        Sellers
                       </button>
                     </Link>
                     <Link href="/admin/reports">
                       <button className="w-full flex items-center gap-3 rounded-full h-12 shadow-sm text-sm border-none bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted px-5 transition-all">
-                        <FileText className="h-5 w-5 text-primary" /> Reports & Disputes
+                        <FileText className="h-5 w-5 text-primary" /> Reports &
+                        Disputes
                       </button>
                     </Link>
                     <Link href="/admin/broadcast">
@@ -386,7 +488,10 @@ export default function AdminDashboardPage() {
                           Platform Status
                         </p>
                         <p className="text-sm font-medium leading-tight">
-                          {pendingSellerVerifications} seller{pendingSellerVerifications === 1 ? "" : "s"} pending verification · {openReportsCount} open report{openReportsCount === 1 ? "" : "s"}
+                          {pendingSellerVerifications} seller
+                          {pendingSellerVerifications === 1 ? "" : "s"} pending
+                          verification · {openReportsCount} open report
+                          {openReportsCount === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
@@ -405,21 +510,44 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                   {[
-                    { href: "/admin/products", icon: Package, label: "Products" },
+                    {
+                      href: "/admin/products",
+                      icon: Package,
+                      label: "Products",
+                    },
                     { href: "/admin/reviews", icon: Star, label: "Reviews" },
                     { href: "/admin/bidding", icon: Gavel, label: "Bidding" },
-                    { href: "/admin/reports", icon: FileText, label: "Reports", badge: openReportsCount },
+                    {
+                      href: "/admin/reports",
+                      icon: FileText,
+                      label: "Reports",
+                      badge: openReportsCount,
+                    },
                     { href: "/admin/vouchers", icon: Tag, label: "Vouchers" },
-                    { href: "/admin/banners", icon: ImageIcon, label: "Banners" },
-                    { href: "/admin/audit-log", icon: ShieldCheck, label: "Audit Log" },
-                    { href: "/admin/system-health", icon: Activity, label: "System" },
+                    {
+                      href: "/admin/banners",
+                      icon: ImageIcon,
+                      label: "Banners",
+                    },
+                    {
+                      href: "/admin/audit-log",
+                      icon: ShieldCheck,
+                      label: "Audit Log",
+                    },
+                    {
+                      href: "/admin/system-health",
+                      icon: Activity,
+                      label: "System",
+                    },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
                       <Link href={item.href} key={item.href}>
                         <div className="relative flex flex-col items-center justify-center gap-2 h-24 rounded-2xl bg-[#f8f8f8] dark:bg-white/[0.05] hover:bg-muted transition-all p-3">
                           <Icon className="h-5 w-5 text-primary" />
-                          <span className="text-xs font-medium">{item.label}</span>
+                          <span className="text-xs font-medium">
+                            {item.label}
+                          </span>
                           {item.badge ? (
                             <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0 rounded-full px-1.5 py-0 text-[9px] h-4 min-w-[16px]">
                               {item.badge}

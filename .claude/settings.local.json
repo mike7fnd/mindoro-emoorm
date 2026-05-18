@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\\\\src\\\\components\\\\ui\" /b)",
+      "Bash(findstr dialog *)"
+    ]
+  }
+}

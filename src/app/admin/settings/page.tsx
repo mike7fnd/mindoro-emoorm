@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -50,7 +50,9 @@ export default function AdminSettingsPage() {
 
   // Settings state
   const [platformName, setPlatformName] = useState("E-Moorm");
-  const [platformDescription, setPlatformDescription] = useState("Your local marketplace");
+  const [platformDescription, setPlatformDescription] = useState(
+    "Your local marketplace",
+  );
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [orderNotifications, setOrderNotifications] = useState(true);
@@ -80,13 +82,20 @@ export default function AdminSettingsPage() {
       const s = (profile as any).adminSettings;
       if (s) {
         if (s.platformName) setPlatformName(s.platformName);
-        if (s.platformDescription) setPlatformDescription(s.platformDescription);
-        if (typeof s.maintenanceMode === "boolean") setMaintenanceMode(s.maintenanceMode);
-        if (typeof s.emailNotifications === "boolean") setEmailNotifications(s.emailNotifications);
-        if (typeof s.orderNotifications === "boolean") setOrderNotifications(s.orderNotifications);
-        if (typeof s.newSellerNotifications === "boolean") setNewSellerNotifications(s.newSellerNotifications);
-        if (typeof s.autoApproveProducts === "boolean") setAutoApproveProducts(s.autoApproveProducts);
-        if (typeof s.autoApproveSellers === "boolean") setAutoApproveSellers(s.autoApproveSellers);
+        if (s.platformDescription)
+          setPlatformDescription(s.platformDescription);
+        if (typeof s.maintenanceMode === "boolean")
+          setMaintenanceMode(s.maintenanceMode);
+        if (typeof s.emailNotifications === "boolean")
+          setEmailNotifications(s.emailNotifications);
+        if (typeof s.orderNotifications === "boolean")
+          setOrderNotifications(s.orderNotifications);
+        if (typeof s.newSellerNotifications === "boolean")
+          setNewSellerNotifications(s.newSellerNotifications);
+        if (typeof s.autoApproveProducts === "boolean")
+          setAutoApproveProducts(s.autoApproveProducts);
+        if (typeof s.autoApproveSellers === "boolean")
+          setAutoApproveSellers(s.autoApproveSellers);
         if (s.commissionRate) setCommissionRate(s.commissionRate);
       }
       setSettingsLoaded(true);
@@ -120,9 +129,16 @@ export default function AdminSettingsPage() {
         id: user.uid,
         adminSettings,
       });
-      toast({ title: "Settings saved", description: "Your admin settings have been updated." });
+      toast({
+        title: "Settings saved",
+        description: "Your admin settings have been updated.",
+      });
     } catch (e) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save settings." });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save settings.",
+      });
     } finally {
       setSaving(false);
     }
@@ -145,13 +161,13 @@ export default function AdminSettingsPage() {
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-200",
-        checked ? "bg-primary" : "bg-black/10 dark:bg-white/10"
+        checked ? "bg-primary" : "bg-black/10 dark:bg-white/10",
       )}
     >
       <span
         className={cn(
           "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition-transform duration-200 mt-1",
-          checked ? "translate-x-6 ml-0.5" : "translate-x-1"
+          checked ? "translate-x-6 ml-0.5" : "translate-x-1",
         )}
       />
     </button>
@@ -199,7 +215,9 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <div>
-                <p className="text-lg font-medium">{(profile as any)?.name || user?.displayName || "Admin"}</p>
+                <p className="text-lg font-medium">
+                  {(profile as any)?.name || user?.displayName || "Admin"}
+                </p>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
                 <Badge className="bg-primary/10 text-primary border-0 rounded-full text-[10px] px-3 py-0.5 mt-1">
                   Super Admin
@@ -218,7 +236,9 @@ export default function AdminSettingsPage() {
             </h2>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold tracking-tight text-muted-foreground">Platform Name</label>
+              <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                Platform Name
+              </label>
               <input
                 type="text"
                 value={platformName}
@@ -228,7 +248,9 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold tracking-tight text-muted-foreground">Platform Description</label>
+              <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                Platform Description
+              </label>
               <input
                 type="text"
                 value={platformDescription}
@@ -238,7 +260,9 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold tracking-tight text-muted-foreground">Commission Rate (%)</label>
+              <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                Commission Rate (%)
+              </label>
               <input
                 type="number"
                 value={commissionRate}
@@ -252,9 +276,14 @@ export default function AdminSettingsPage() {
             <div className="flex items-center justify-between py-3 border-t border-black/[0.04] dark:border-white/[0.04]">
               <div>
                 <p className="text-sm font-medium">Maintenance Mode</p>
-                <p className="text-xs text-muted-foreground">Temporarily disable the platform for users</p>
+                <p className="text-xs text-muted-foreground">
+                  Temporarily disable the platform for users
+                </p>
               </div>
-              <ToggleSwitch checked={maintenanceMode} onChange={setMaintenanceMode} />
+              <ToggleSwitch
+                checked={maintenanceMode}
+                onChange={setMaintenanceMode}
+              />
             </div>
           </CardContent>
         </Card>
@@ -268,11 +297,29 @@ export default function AdminSettingsPage() {
             </h2>
 
             {[
-              { label: "Email Notifications", desc: "Receive admin email alerts", state: emailNotifications, setter: setEmailNotifications },
-              { label: "Order Notifications", desc: "Get notified on new orders", state: orderNotifications, setter: setOrderNotifications },
-              { label: "New Seller Alerts", desc: "Get notified when sellers register", state: newSellerNotifications, setter: setNewSellerNotifications },
+              {
+                label: "Email Notifications",
+                desc: "Receive admin email alerts",
+                state: emailNotifications,
+                setter: setEmailNotifications,
+              },
+              {
+                label: "Order Notifications",
+                desc: "Get notified on new orders",
+                state: orderNotifications,
+                setter: setOrderNotifications,
+              },
+              {
+                label: "New Seller Alerts",
+                desc: "Get notified when sellers register",
+                state: newSellerNotifications,
+                setter: setNewSellerNotifications,
+              },
             ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between py-3 border-b border-black/[0.03] dark:border-white/[0.03] last:border-0">
+              <div
+                key={item.label}
+                className="flex items-center justify-between py-3 border-b border-black/[0.03] dark:border-white/[0.03] last:border-0"
+              >
                 <div>
                   <p className="text-sm font-medium">{item.label}</p>
                   <p className="text-xs text-muted-foreground">{item.desc}</p>
@@ -294,17 +341,27 @@ export default function AdminSettingsPage() {
             <div className="flex items-center justify-between py-3 border-b border-black/[0.03] dark:border-white/[0.03]">
               <div>
                 <p className="text-sm font-medium">Auto-Approve Products</p>
-                <p className="text-xs text-muted-foreground">Automatically approve new product listings</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically approve new product listings
+                </p>
               </div>
-              <ToggleSwitch checked={autoApproveProducts} onChange={setAutoApproveProducts} />
+              <ToggleSwitch
+                checked={autoApproveProducts}
+                onChange={setAutoApproveProducts}
+              />
             </div>
 
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="text-sm font-medium">Auto-Approve Sellers</p>
-                <p className="text-xs text-muted-foreground">Automatically approve new seller registrations</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically approve new seller registrations
+                </p>
               </div>
-              <ToggleSwitch checked={autoApproveSellers} onChange={setAutoApproveSellers} />
+              <ToggleSwitch
+                checked={autoApproveSellers}
+                onChange={setAutoApproveSellers}
+              />
             </div>
           </CardContent>
         </Card>
@@ -330,7 +387,8 @@ export default function AdminSettingsPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              Admin access is managed via the database. Set a user&apos;s role to &quot;admin&quot; in the users table.
+              Admin access is managed via the database. Set a user&apos;s role
+              to &quot;admin&quot; in the users table.
             </p>
           </CardContent>
         </Card>

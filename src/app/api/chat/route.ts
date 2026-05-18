@@ -27,11 +27,31 @@ export async function POST(req: NextRequest) {
   try {
     let message = '';
     let language = 'english';
+    let userName: string | undefined;
+    let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
     try {
       const body = await req.json();
       message = body.message || '';
       language = body.language || 'english';
+
+      if (typeof body.userName === 'string') {
+        userName = body.userName.slice(0, 60) || undefined;
+      }
+
+      if (Array.isArray(body.history)) {
+        history = body.history
+          .filter((h: unknown) => {
+            if (!h || typeof h !== 'object') return false;
+            const entry = h as Record<string, unknown>;
+            return ['user', 'assistant'].includes(entry.role as string) && typeof entry.content === 'string';
+          })
+          .slice(-8)
+          .map((h: Record<string, unknown>) => ({
+            role: h.role as 'user' | 'assistant',
+            content: String(h.content).slice(0, 500),
+          }));
+      }
     } catch {
       return NextResponse.json({ reply: "Sorry, I couldn't understand that request." });
     }
@@ -46,11 +66,10 @@ export async function POST(req: NextRequest) {
       context = await getRelevantData(message);
     } catch (e) {
       console.error('[api/chat] getRelevantData failed:', e);
-      // Continue without context rather than failing
     }
 
     // Call HuggingFace Inference API
-    const reply = await askAssistant(message, context, language);
+    const reply = await askAssistant(message, context, language, history, userName);
 
     return NextResponse.json({ reply });
   } catch (err: unknown) {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -58,7 +58,10 @@ export default function AdminProductsPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -94,17 +97,26 @@ export default function AdminProductsPage() {
       (p.sellerName || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && p.status !== "draft" && p.status !== "inactive") ||
+      (statusFilter === "active" &&
+        p.status !== "draft" &&
+        p.status !== "inactive") ||
       (statusFilter === "draft" && p.status === "draft") ||
       (statusFilter === "out-of-stock" && (p.stock === 0 || p.sold === true));
     return matchesSearch && matchesStatus;
   });
 
   const totalProducts = allProducts?.length ?? 0;
-  const activeProducts = allProducts?.filter((p: any) => p.status !== "draft" && p.status !== "inactive").length ?? 0;
-  const draftProducts = allProducts?.filter((p: any) => p.status === "draft").length ?? 0;
+  const activeProducts =
+    allProducts?.filter(
+      (p: any) => p.status !== "draft" && p.status !== "inactive",
+    ).length ?? 0;
+  const draftProducts =
+    allProducts?.filter((p: any) => p.status === "draft").length ?? 0;
 
-  const handleDeleteProduct = async (productId: string, productName: string) => {
+  const handleDeleteProduct = async (
+    productId: string,
+    productName: string,
+  ) => {
     deleteDocumentNonBlocking(supabase, "facilities", productId);
     if (user) {
       await logAdminAction(supabase, {
@@ -116,24 +128,37 @@ export default function AdminProductsPage() {
         targetLabel: productName,
       });
     }
-    toast({ title: "Product removed", description: "The listing has been taken down." });
+    toast({
+      title: "Product removed",
+      description: "The listing has been taken down.",
+    });
     setDeleteTarget(null);
   };
 
-  const handleToggleStatus = async (productId: string, productName: string, currentStatus: string) => {
+  const handleToggleStatus = async (
+    productId: string,
+    productName: string,
+    currentStatus: string,
+  ) => {
     const newStatus = currentStatus === "draft" ? "active" : "draft";
-    updateDocumentNonBlocking(supabase, "facilities", productId, { status: newStatus });
+    updateDocumentNonBlocking(supabase, "facilities", productId, {
+      status: newStatus,
+    });
     if (user) {
       await logAdminAction(supabase, {
         adminId: user.uid,
         adminEmail: user.email ?? undefined,
-        action: newStatus === "draft" ? "product.deactivate" : "product.reactivate",
+        action:
+          newStatus === "draft" ? "product.deactivate" : "product.reactivate",
         targetType: "product",
         targetId: productId,
         targetLabel: productName,
       });
     }
-    toast({ title: "Status updated", description: `Product ${newStatus === "draft" ? "deactivated" : "activated"}.` });
+    toast({
+      title: "Status updated",
+      description: `Product ${newStatus === "draft" ? "deactivated" : "activated"}.`,
+    });
   };
 
   return (
@@ -146,7 +171,8 @@ export default function AdminProductsPage() {
               Product Moderation
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              {totalProducts} total listings · {activeProducts} active · {draftProducts} drafts
+              {totalProducts} total listings · {activeProducts} active ·{" "}
+              {draftProducts} drafts
             </p>
           </div>
         </div>
@@ -178,7 +204,7 @@ export default function AdminProductsPage() {
                   "rounded-full px-5 h-11 text-xs font-bold shrink-0",
                   statusFilter === f.key
                     ? "bg-black text-white hover:bg-primary"
-                    : "border-black/[0.06]"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setStatusFilter(f.key)}
               >
@@ -192,7 +218,10 @@ export default function AdminProductsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-4">
+              <div
+                key={i}
+                className="rounded-[32px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-4"
+              >
                 <Skeleton className="h-48 w-full rounded-2xl mb-4" />
                 <Skeleton className="h-4 w-3/4 rounded-full mb-2" />
                 <Skeleton className="h-3 w-1/2 rounded-full mb-4" />
@@ -215,8 +244,11 @@ export default function AdminProductsPage() {
                 product.images?.[0] ||
                 "https://placehold.co/400x300/f8f8f8/ccc?text=No+Image";
               const sellerStoreId = product.sellerId || product.storeId;
-              const sellerStore = sellerStoreId ? storeMap.get(sellerStoreId) : null;
-              const sellerLabel = sellerStore?.name || product.sellerName || "Unknown seller";
+              const sellerStore = sellerStoreId
+                ? storeMap.get(sellerStoreId)
+                : null;
+              const sellerLabel =
+                sellerStore?.name || product.sellerName || "Unknown seller";
               return (
                 <Card
                   key={product.id}
@@ -237,27 +269,39 @@ export default function AdminProductsPage() {
                           product.status === "draft"
                             ? "bg-orange-50/90 text-orange-600"
                             : product.sold || product.stock === 0
-                            ? "bg-red-50/90 text-red-600"
-                            : "bg-green-50/90 text-green-600"
+                              ? "bg-red-50/90 text-red-600"
+                              : "bg-green-50/90 text-green-600",
                         )}
                       >
-                        {product.status === "draft" ? "Draft" : product.sold || product.stock === 0 ? "Sold Out" : "Active"}
+                        {product.status === "draft"
+                          ? "Draft"
+                          : product.sold || product.stock === 0
+                            ? "Sold Out"
+                            : "Active"}
                       </Badge>
                     </div>
                   </div>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{product.name || "Unnamed"}</p>
+                        <p className="text-sm font-medium truncate">
+                          {product.name || "Unnamed"}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {product.category || product.type || "Uncategorized"} · Stock: {product.stock ?? product.capacity ?? "N/A"}
+                          {product.category || product.type || "Uncategorized"}{" "}
+                          · Stock: {product.stock ?? product.capacity ?? "N/A"}
                         </p>
                         <div
                           className={cn(
                             "flex items-center gap-1.5 mt-2 text-[11px] font-medium",
-                            sellerStore ? "text-muted-foreground hover:text-primary cursor-pointer" : "text-muted-foreground"
+                            sellerStore
+                              ? "text-muted-foreground hover:text-primary cursor-pointer"
+                              : "text-muted-foreground",
                           )}
-                          onClick={() => sellerStoreId && router.push(`/admin/sellers?id=${sellerStoreId}`)}
+                          onClick={() =>
+                            sellerStoreId &&
+                            router.push(`/admin/sellers?id=${sellerStoreId}`)
+                          }
                         >
                           <Store className="h-3 w-3" />
                           <span className="truncate">{sellerLabel}</span>
@@ -270,7 +314,11 @@ export default function AdminProductsPage() {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="rounded-full h-8 w-8 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full h-8 w-8 shrink-0"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -286,18 +334,33 @@ export default function AdminProductsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                            onClick={() => handleToggleStatus(product.id, product.name || "Unnamed", product.status || "active")}
+                            onClick={() =>
+                              handleToggleStatus(
+                                product.id,
+                                product.name || "Unnamed",
+                                product.status || "active",
+                              )
+                            }
                           >
                             {product.status === "draft" ? (
-                              <><ToggleRight className="h-4 w-4" /> Reactivate</>
+                              <>
+                                <ToggleRight className="h-4 w-4" /> Reactivate
+                              </>
                             ) : (
-                              <><ToggleLeft className="h-4 w-4" /> Deactivate</>
+                              <>
+                                <ToggleLeft className="h-4 w-4" /> Deactivate
+                              </>
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                            onClick={() => setDeleteTarget({ id: product.id, name: product.name || "this product" })}
+                            onClick={() =>
+                              setDeleteTarget({
+                                id: product.id,
+                                name: product.name || "this product",
+                              })
+                            }
                           >
                             <Trash2 className="h-4 w-4" /> Take Down
                           </DropdownMenuItem>
@@ -306,12 +369,17 @@ export default function AdminProductsPage() {
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <p className="text-lg font-bold font-headline tracking-[-0.05em]">
-                        ₱{Number(product.price || product.pricePerNight || 0).toLocaleString()}
+                        ₱
+                        {Number(
+                          product.price || product.pricePerNight || 0,
+                        ).toLocaleString()}
                       </p>
                       {product.rating ? (
                         <div className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs text-muted-foreground">{product.rating}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {product.rating}
+                          </span>
                         </div>
                       ) : null}
                     </div>
@@ -323,7 +391,10 @@ export default function AdminProductsPage() {
         )}
 
         {/* Take-Down Confirmation Dialog */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialog
+          open={!!deleteTarget}
+          onOpenChange={() => setDeleteTarget(null)}
+        >
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -331,14 +402,21 @@ export default function AdminProductsPage() {
                 Take Down Listing
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to remove <strong>{deleteTarget?.name}</strong> from the marketplace? This action cannot be undone and the seller will lose this listing.
+                Are you sure you want to remove{" "}
+                <strong>{deleteTarget?.name}</strong> from the marketplace? This
+                action cannot be undone and the seller will lose this listing.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-red-600 hover:bg-red-700"
-                onClick={() => deleteTarget && handleDeleteProduct(deleteTarget.id, deleteTarget.name)}
+                onClick={() =>
+                  deleteTarget &&
+                  handleDeleteProduct(deleteTarget.id, deleteTarget.name)
+                }
               >
                 Take Down
               </AlertDialogAction>

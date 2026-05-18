@@ -1,35 +1,56 @@
-"use client";
+﻿"use client";
 
 import React from "react";
-import { useUser, useCollection, useStableMemo } from "@/supabase";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import {
+  useUser,
+  useCollection,
+  useStableMemo,
+  useSupabase,
+  useSupabaseAuth,
+} from "@/supabase";
 import Image from "next/image";
-import { Trash2, Star, ShoppingCart, Heart } from "lucide-react";
+import { Trash2, ShoppingCart, Heart, ChevronRight } from "lucide-react";
 import { FirstTimeIntro } from "@/components/first-time-intro";
+import { ProfileSidebar } from "@/app/profile/page";
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
-
-const MyWishlistPage = () => {
+export default function MyWishlistPage() {
   const { user, isUserLoading } = useUser();
-  const supabase = require('@/supabase').useSupabase();
+  const { auth } = useSupabaseAuth();
+  const supabase = useSupabase();
+  const router = useRouter();
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      router.push("/login");
+    } catch {}
+  };
 
   const wishlistQuery = useStableMemo(() => {
     if (!user) return null;
-    return { table: "wishlist", filters: [{ column: "userId", op: "eq" as const, value: user.uid }] };
+    return {
+      table: "wishlist",
+      filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
+    };
   }, [user]);
-  const { data: wishlistData, isLoading: wishlistLoading } = useCollection(wishlistQuery);
+  const { data: wishlistData, isLoading: wishlistLoading } =
+    useCollection(wishlistQuery);
 
-  const facilitiesQuery = useStableMemo(() => {
-    return { table: "facilities" };
-  }, []);
+  const facilitiesQuery = useStableMemo(() => ({ table: "facilities" }), []);
   const { data: facilities } = useCollection(facilitiesQuery);
 
   const wishlistProducts = React.useMemo(() => {
     if (!wishlistData || !facilities) return [];
-    return (wishlistData as any[]).map((w: any) => {
-      const product = facilities.find((f: any) => f.id === w.productId);
-      return product ? { ...product, wishlistId: w.id } : null;
-    }).filter(Boolean);
+    return (wishlistData as any[])
+      .map((w: any) => {
+        const product = facilities.find((f: any) => f.id === w.productId);
+        return product ? { ...product, wishlistId: w.id } : null;
+      })
+      .filter(Boolean);
   }, [wishlistData, facilities]);
 
   const removeFromWishlist = async (wishlistId: string) => {
@@ -39,124 +60,191 @@ const MyWishlistPage = () => {
 
   const addToCart = async (productId: string) => {
     if (!user) return;
-    await supabase.from("cart_items").upsert({ userId: user.uid, productId, quantity: 1 }, { onConflict: "userId,productId" });
+    await supabase
+      .from("cart_items")
+      .upsert(
+        { userId: user.uid, productId, quantity: 1 },
+        { onConflict: "userId,productId" },
+      );
   };
 
-  if (isUserLoading) {
+  if (isUserLoading)
     return (
-      <div className="flex min-h-screen flex-col bg-white">
-        <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
-          <div className="p-6 md:p-8">
-            <div className="h-7 w-32 rounded-full mb-2 bg-gray-200 animate-pulse" />
-            <div className="h-4 w-20 rounded-full bg-gray-200 animate-pulse" />
-          </div>
-          <div className="px-6 md:px-8 space-y-4">
+      <div
+        className="flex min-h-screen flex-col"
+        style={{ backgroundColor: "#f2f2f0" }}
+      >
+        <Header />
+        <main className="flex-grow pt-6">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24 space-y-4">
+            <div className="bg-white rounded-[5px] border border-black/[0.06] px-6 py-5">
+              <Skeleton className="h-6 w-28 rounded mb-1.5" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
-                <div className="h-24 w-24 rounded-[20px] shrink-0 bg-gray-200 animate-pulse" />
+              <div
+                key={i}
+                className="bg-white rounded-[5px] border border-black/[0.06] p-4 flex gap-4"
+              >
+                <Skeleton className="h-20 w-20 rounded-[5px] shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-3/4 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="h-3 w-1/2 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="h-5 w-20 rounded-full bg-gray-200 animate-pulse" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
+                  <Skeleton className="h-3 w-1/2 rounded" />
                 </div>
               </div>
             ))}
           </div>
         </main>
+        <Footer />
       </div>
     );
-  }
 
-  if (!user) {
+  if (!user)
     return (
-      <div className="flex min-h-screen flex-col bg-white">
-        <main className="flex-grow container mx-auto px-4 pt-0 md:pt-32 pb-24 max-w-[1480px]">
-          <div className="text-center py-20">
-            <Heart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <h2 className="text-2xl font-headline font-normal tracking-[-0.03em] mb-2">My Wishlist</h2>
-            <p className="text-muted-foreground mb-6">Sign in to view your wishlist.</p>
-            <Link href="/login">
-              <Button className="rounded-full px-8 py-5 bg-primary text-white font-bold h-12">Sign In</Button>
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <main className="flex-grow container mx-auto px-0 md:px-6 pt-0 md:pt-32 pb-40 max-w-[1480px]">
-        <div className="p-6 md:p-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] dark:text-white">
-              My Wishlist
-            </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">{wishlistProducts.length} item{wishlistProducts.length !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
-
-        <div className="px-6 md:px-8">
-        {wishlistLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex gap-4 p-4 rounded-[25px] border border-black/[0.02]">
-                <div className="h-24 w-24 rounded-[20px] shrink-0 bg-gray-200 animate-pulse" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-3/4 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="h-3 w-1/2 rounded-full bg-gray-200 animate-pulse" />
-                  <div className="h-5 w-20 rounded-full bg-gray-200 animate-pulse" />
-                </div>
+      <div
+        className="flex min-h-screen flex-col"
+        style={{ backgroundColor: "#f2f2f0" }}
+      >
+        <Header />
+        <main className="flex-grow pt-6">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24">
+            <div className="bg-white rounded-[5px] border border-black/[0.06] py-20 flex flex-col items-center text-center gap-4">
+              <Heart className="h-14 w-14 text-[#ddd]" strokeWidth={1.5} />
+              <div>
+                <h2 className="text-lg font-semibold text-[#111] mb-1">
+                  My Wishlist
+                </h2>
+                <p className="text-sm text-[#888]">
+                  Sign in to view your wishlist.
+                </p>
               </div>
-            ))}
-          </div>
-        ) : wishlistProducts.length === 0 ? (
-          <div className="text-center py-20">
-            <Heart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <p className="text-muted-foreground mb-4">Your wishlist is empty.</p>
-            <Link href="/">
-              <Button className="rounded-full px-8 py-5 bg-primary text-white font-bold h-12">Browse Products</Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="max-w-3xl">
-            <div className="space-y-4">
-              {wishlistProducts.map((product: any) => (
-                <div key={product.id} className="flex gap-4 p-4 rounded-[25px] bg-[#f8f8f8]">
-                  <Link href={`/book/${product.id}`}>
-                    <div className="h-24 w-24 rounded-[15px] overflow-hidden shrink-0">
-                      <Image src={product.imageUrl || "/placeholder.svg"} alt={product.name} width={96} height={96} className="object-cover h-full w-full" />
-                    </div>
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/book/${product.id}`}>
-                      <h3 className="text-base font-headline font-normal tracking-[-0.03em] line-clamp-1 hover:text-primary transition-colors">{product.name}</h3>
-                    </Link>
-                    <p className="text-primary font-bold text-base mt-1">₱{(product.price || product.pricePerNight || 0).toLocaleString()}</p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <Button onClick={() => addToCart(product.id)} className="rounded-full px-6 py-2 bg-black text-white font-bold text-xs h-8 hover:bg-primary transition-all gap-1">
-                        <ShoppingCart className="h-4 w-4" /> Add to Cart
-                      </Button>
-                      <button onClick={() => removeFromWishlist(product.wishlistId)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <Link href="/login">
+                <button
+                  className="h-10 px-8 rounded-[5px] text-white text-sm font-semibold"
+                  style={{ background: "#29a366" }}
+                >
+                  Sign In
+                </button>
+              </Link>
             </div>
           </div>
-        )}
+        </main>
+        <Footer />
+      </div>
+    );
+
+  return (
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ backgroundColor: "#f2f2f0" }}
+    >
+      <Header />
+      <main className="flex-grow pt-6">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-24 flex gap-5 items-start">
+          <ProfileSidebar onLogout={handleLogout} />
+          <div className="flex-1 min-w-0 space-y-4">
+            <div className="bg-white rounded-[5px] border border-black/[0.06] px-6 py-5">
+              <h1 className="text-lg font-semibold text-[#111]">My Wishlist</h1>
+              <p className="text-sm text-[#888]">
+                {wishlistProducts.length} item
+                {wishlistProducts.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            {wishlistLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-[5px] border border-black/[0.06] p-4 flex gap-4"
+                  >
+                    <Skeleton className="h-20 w-20 rounded-[5px] shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4 rounded" />
+                      <Skeleton className="h-3 w-1/2 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : wishlistProducts.length === 0 ? (
+              <div className="bg-white rounded-[5px] border border-black/[0.06] py-20 flex flex-col items-center text-center gap-4">
+                <Heart className="h-14 w-14 text-[#ddd]" strokeWidth={1.5} />
+                <p className="text-sm text-[#888]">Your wishlist is empty.</p>
+                <Link href="/">
+                  <button
+                    className="h-10 px-8 rounded-[5px] text-white text-sm font-semibold"
+                    style={{ background: "#29a366" }}
+                  >
+                    Browse Products
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="max-w-3xl space-y-3">
+                {wishlistProducts.map((product: any) => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-[5px] border border-black/[0.06] p-4 flex gap-4"
+                  >
+                    <Link href={`/book/${product.id}`}>
+                      <div className="h-20 w-20 rounded-[5px] overflow-hidden shrink-0 border border-black/[0.06]">
+                        <Image
+                          src={product.imageUrl || "/placeholder.svg"}
+                          alt={product.name}
+                          width={80}
+                          height={80}
+                          className="object-cover h-full w-full"
+                        />
+                      </div>
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/book/${product.id}`}>
+                        <h3 className="text-sm font-medium text-[#111] line-clamp-2 hover:text-[#29a366] transition-colors">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      <p
+                        className="text-sm font-semibold mt-1"
+                        style={{ color: "#29a366" }}
+                      >
+                        ₱
+                        {(
+                          product.price ||
+                          product.pricePerNight ||
+                          0
+                        ).toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          onClick={() => addToCart(product.id)}
+                          className="h-8 px-4 rounded-[5px] text-white text-xs font-semibold flex items-center gap-1.5"
+                          style={{ background: "#29a366" }}
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
+                        </button>
+                        <button
+                          onClick={() => removeFromWishlist(product.wishlistId)}
+                          className="p-1.5 text-[#ccc] hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* end flex-1 */}
         </div>
       </main>
       <FirstTimeIntro
         storageKey="wishlist"
         title="Your Wishlist"
-        description="Save products you love and come back to them anytime. Tap the cart icon to quickly add items to your shopping cart."
+        description="Save products you love and come back to them anytime."
         icon={<Heart className="h-7 w-7" />}
       />
+      <Footer />
     </div>
   );
-};
-
-export default MyWishlistPage;
+}

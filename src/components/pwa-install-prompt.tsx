@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
@@ -9,7 +9,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
@@ -22,7 +23,8 @@ export function PWAInstallPrompt() {
     if (window.matchMedia("(display-mode: standalone)").matches) return;
 
     // Detect iOS
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isIOSDevice =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
 
     // Listen for the beforeinstallprompt event (Chrome, Edge, etc.)
@@ -82,13 +84,18 @@ export function PWAInstallPrompt() {
             </h3>
             {isIOS ? (
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Tap the <span className="font-semibold">Share</span> button, then{" "}
-                <span className="font-semibold">&quot;Add to Home Screen&quot;</span> for the best experience.
+                Tap the <span className="font-semibold">Share</span> button,
+                then{" "}
+                <span className="font-semibold">
+                  &quot;Add to Home Screen&quot;
+                </span>{" "}
+                for the best experience.
               </p>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Add E-Moorm to your home screen for quick access and a better experience.
+                  Add E-Moorm to your home screen for quick access and a better
+                  experience.
                 </p>
                 <button
                   onClick={handleInstall}

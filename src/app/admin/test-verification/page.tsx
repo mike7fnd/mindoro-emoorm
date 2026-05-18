@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useSupabase } from "@/supabase";
@@ -9,7 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function TestVerificationPage() {
   const supabase = useSupabase();
   const { user } = useUser();
-  const [tests, setTests] = useState<{ name: string; status: string; details: string }[]>([]);
+  const [tests, setTests] = useState<
+    { name: string; status: string; details: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
 
   const runTests = async () => {
@@ -18,7 +20,9 @@ export default function TestVerificationPage() {
 
     // Test 0: Check authentication status
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         results.push({
           name: "✓ Authenticated",
@@ -92,16 +96,34 @@ export default function TestVerificationPage() {
         const currentStatus = stores[0].verified;
         const newStatus = !currentStatus;
 
-        console.log("[TEST] Attempting update on store:", storeId, "verified:", currentStatus, "→", newStatus);
+        console.log(
+          "[TEST] Attempting update on store:",
+          storeId,
+          "verified:",
+          currentStatus,
+          "→",
+          newStatus,
+        );
 
         // Try to update with .select() to see returned data
-        const { data: updateData, error: updateError, count } = await supabase
+        const {
+          data: updateData,
+          error: updateError,
+          count,
+        } = await supabase
           .from("stores")
-          .update({ verified: newStatus, verified_at: newStatus ? new Date().toISOString() : null })
+          .update({
+            verified: newStatus,
+            verified_at: newStatus ? new Date().toISOString() : null,
+          })
           .eq("id", storeId)
           .select();
 
-        console.log("[TEST] Update response:", { data: updateData, error: updateError, count });
+        console.log("[TEST] Update response:", {
+          data: updateData,
+          error: updateError,
+          count,
+        });
 
         if (updateError) {
           results.push({
@@ -166,13 +188,16 @@ export default function TestVerificationPage() {
 
     // Test 3: Check RLS status
     try {
-      const { data, error }: any = await supabase.rpc("get_rls_status", { table_name: "stores" });
+      const { data, error }: any = await supabase.rpc("get_rls_status", {
+        table_name: "stores",
+      });
 
       if (error) {
         results.push({
           name: "⊘ RLS Status Check",
           status: "SKIPPED",
-          details: "Could not check RLS (function may not exist) - check Supabase dashboard under Authentication > Policies",
+          details:
+            "Could not check RLS (function may not exist) - check Supabase dashboard under Authentication > Policies",
         });
       } else {
         results.push({
@@ -195,8 +220,12 @@ export default function TestVerificationPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-8 pt-32">
-      <h1 className="text-3xl font-bold mb-2">🔍 Verification System Diagnostic</h1>
-      <p className="text-muted-foreground mb-8">Run comprehensive tests to identify why verification isn't persisting</p>
+      <h1 className="text-3xl font-bold mb-2">
+        🔍 Verification System Diagnostic
+      </h1>
+      <p className="text-muted-foreground mb-8">
+        Run comprehensive tests to identify why verification isn't persisting
+      </p>
 
       <Button
         onClick={runTests}
@@ -208,17 +237,27 @@ export default function TestVerificationPage() {
 
       <div className="space-y-4">
         {tests.map((test, i) => (
-          <Card key={i} className="border-l-4" style={{
-            borderLeftColor:
-              test.status === "PASSED" ? "#22c55e" :
-                test.status === "FAILED" ? "#ef4444" :
-                  test.status === "ERROR" ? "#f59e0b" :
-                    test.status === "SKIPPED" ? "#8b5cf6" :
-                      "#0ea5e9"
-          }}>
+          <Card
+            key={i}
+            className="border-l-4"
+            style={{
+              borderLeftColor:
+                test.status === "PASSED"
+                  ? "#22c55e"
+                  : test.status === "FAILED"
+                    ? "#ef4444"
+                    : test.status === "ERROR"
+                      ? "#f59e0b"
+                      : test.status === "SKIPPED"
+                        ? "#8b5cf6"
+                        : "#0ea5e9",
+            }}
+          >
             <CardContent className="p-6">
               <h3 className="font-bold mb-2">{test.name}</h3>
-              <p className="text-sm text-muted-foreground font-mono">{test.details}</p>
+              <p className="text-sm text-muted-foreground font-mono">
+                {test.details}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -229,17 +268,28 @@ export default function TestVerificationPage() {
           <CardContent className="p-6">
             <h3 className="font-bold mb-4 text-lg">📋 Diagnosis & Solutions</h3>
 
-            {tests.some(t => t.name.includes("Not Authenticated")) && (
+            {tests.some((t) => t.name.includes("Not Authenticated")) && (
               <div className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
-                <p className="font-bold text-red-900">❌ Issue: Not logged in</p>
-                <p className="text-sm text-red-800 mt-2">You must be authenticated to update stores. Please log in first.</p>
+                <p className="font-bold text-red-900">
+                  ❌ Issue: Not logged in
+                </p>
+                <p className="text-sm text-red-800 mt-2">
+                  You must be authenticated to update stores. Please log in
+                  first.
+                </p>
               </div>
             )}
 
-            {tests.some(t => t.name.includes("Column") && t.status === "FAILED") && (
+            {tests.some(
+              (t) => t.name.includes("Column") && t.status === "FAILED",
+            ) && (
               <div className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
-                <p className="font-bold text-red-900">❌ Issue: Verified column missing</p>
-                <p className="text-sm text-red-800 mt-2">Run this SQL in Supabase Dashboard → SQL Editor:</p>
+                <p className="font-bold text-red-900">
+                  ❌ Issue: Verified column missing
+                </p>
+                <p className="text-sm text-red-800 mt-2">
+                  Run this SQL in Supabase Dashboard → SQL Editor:
+                </p>
                 <pre className="bg-white p-3 rounded font-mono text-xs overflow-auto mt-2 border border-red-200">
                   {`ALTER TABLE stores
 ADD COLUMN verified BOOLEAN DEFAULT FALSE,
@@ -252,10 +302,15 @@ CREATE INDEX idx_stores_verified ON stores(verified);`}
               </div>
             )}
 
-            {tests.some(t => t.name.includes("No Rows Affected")) && (
+            {tests.some((t) => t.name.includes("No Rows Affected")) && (
               <div className="mb-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                <p className="font-bold text-orange-900">⚠️ Issue: RLS Policy Blocking Updates</p>
-                <p className="text-sm text-orange-800 mt-2">The stores table may have RLS enabled without proper policies. Run this in Supabase:</p>
+                <p className="font-bold text-orange-900">
+                  ⚠️ Issue: RLS Policy Blocking Updates
+                </p>
+                <p className="text-sm text-orange-800 mt-2">
+                  The stores table may have RLS enabled without proper policies.
+                  Run this in Supabase:
+                </p>
                 <pre className="bg-white p-3 rounded font-mono text-xs overflow-auto mt-2 border border-orange-200">
                   {`-- Enable RLS and add admin policy
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
@@ -277,22 +332,43 @@ USING (true);`}
               </div>
             )}
 
-            {tests.some(t => t.status === "PASSED" && t.name.includes("Data Persisted")) && (
+            {tests.some(
+              (t) => t.status === "PASSED" && t.name.includes("Data Persisted"),
+            ) && (
               <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <p className="font-bold text-green-900">✓ Status: System is working correctly!</p>
-                <p className="text-sm text-green-800 mt-2">Verification updates are persisting properly. If you're still seeing issues in the admin panel, check the browser console for logs.</p>
+                <p className="font-bold text-green-900">
+                  ✓ Status: System is working correctly!
+                </p>
+                <p className="text-sm text-green-800 mt-2">
+                  Verification updates are persisting properly. If you're still
+                  seeing issues in the admin panel, check the browser console
+                  for logs.
+                </p>
               </div>
             )}
 
-            {tests.every(t => t.status !== "PASSED") && tests.length > 0 && (
+            {tests.every((t) => t.status !== "PASSED") && tests.length > 0 && (
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="font-bold text-blue-900">💡 Next Steps:</p>
                 <ol className="text-sm text-blue-800 mt-2 space-y-2 list-decimal list-inside">
-                  <li>Open browser DevTools (F12) and check the Console tab for error messages</li>
-                  <li>Look for any messages with "[VERIFY]" prefix in the logs</li>
-                  <li>Verify your SUPABASE_URL and SUPABASE_ANON_KEY in .env.local</li>
-                  <li>Check the Supabase Dashboard to ensure the verified column exists</li>
-                  <li>Verify RLS policies are correctly configured on the stores table</li>
+                  <li>
+                    Open browser DevTools (F12) and check the Console tab for
+                    error messages
+                  </li>
+                  <li>
+                    Look for any messages with "[VERIFY]" prefix in the logs
+                  </li>
+                  <li>
+                    Verify your SUPABASE_URL and SUPABASE_ANON_KEY in .env.local
+                  </li>
+                  <li>
+                    Check the Supabase Dashboard to ensure the verified column
+                    exists
+                  </li>
+                  <li>
+                    Verify RLS policies are correctly configured on the stores
+                    table
+                  </li>
                 </ol>
               </div>
             )}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
@@ -21,7 +21,7 @@ export function ExploreMindoroCarousel() {
       setCanScrollLeft(scrollRef.current.scrollLeft > 0);
       setCanScrollPrev(
         scrollRef.current.scrollLeft + scrollRef.current.clientWidth <
-          scrollRef.current.scrollWidth
+          scrollRef.current.scrollWidth,
       );
     }
   };
@@ -81,7 +81,7 @@ export function ExploreMindoroCarousel() {
           className="overflow-x-auto scrollbar-hide -mx-4 px-4 md:-mx-0 md:px-0"
         >
           <div className="flex gap-4 min-w-max pb-2">
-            {MINDORO_CITIES.map(city => (
+            {MINDORO_CITIES.map((city) => (
               <Link
                 key={city.id}
                 href={`/explore/${city.slug}`}

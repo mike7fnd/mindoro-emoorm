@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /mnt/c/Users/Admin/Documents/BellasParadise-emoorm/public/assets/banners/ 2>&1)",
+      "Read(//mnt/c/Users/Admin/Documents/BellasParadise-emoorm/public/assets/**)",
+      "Bash(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\" && grep -rn '{t\\(\"' src --include=\"*.tsx\" --include=\"*.ts\" | sed 's/.*{t\\(\"\\\\\\([^\"]*\\\\\\)\"\\).*/\\\\1/' | sort -u > /tmp/translation_keys.txt && cat /tmp/translation_keys.txt)",
+      "Read(//tmp/**)",
+      "Bash(cat)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File /tmp/check_unused.ps1)",
+      "Bash(sort -k3)",
+      "Bash(awk -F' -> ' '{key=$1; file=$2; if\\(prev_key != key\\) {if\\(prev_key\\) print \"\"; print key \": \"} printf \"  - %s\\\\n\", file; prev_key=key} END {if\\(prev_key\\) print \"\"}')",
+      "Bash(npx prettier *)"
+    ]
+  }
+}

@@ -1,9 +1,9 @@
-
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { ProfileSidebar } from "@/app/profile/page";
 import { FirstTimeIntro } from "@/components/first-time-intro";
 import Image from "next/image";
 import {
@@ -19,14 +19,15 @@ import {
   Search,
   Languages,
   Trash2,
-  Info
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useUser,
   useSupabase,
   useCollection,
-  useStableMemo
+  useStableMemo,
+  useSupabaseAuth,
 } from "@/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -59,41 +60,48 @@ function formatMessageTime(timestamp: string | null) {
   if (!timestamp) return "";
   const date = new Date(timestamp);
   const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else if (diffDays < 7) {
-    return date.toLocaleDateString([], { weekday: 'short' });
-  } else {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
+  const diffDays = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (diffDays === 0)
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (diffDays < 7) return date.toLocaleDateString([], { weekday: "short" });
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-/** Check whether a conversation ID belongs to the Moormy Bot */
 function isBotConvo(id: string | null | undefined): boolean {
-  return !!id && (id === 'bella-bot' || id.startsWith('bella-bot-'));
+  return !!id && (id === "bella-bot" || id.startsWith("bella-bot-"));
 }
 
 function MessagesContent() {
   const { user, isUserLoading } = useUser();
+  const { auth } = useSupabaseAuth();
   const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const activeConversationId = searchParams.get('id');
+  const activeConversationId = searchParams.get("id");
   const [messageInput, setMessageInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
-  const [botLanguage, setBotLanguage] = useState<'english' | 'tagalog'>('english');
+  const [botLanguage, setBotLanguage] = useState<"english" | "tagalog">(
+    "english",
+  );
   const [chatCleared, setChatCleared] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      router.push("/login");
+    } catch {}
+  };
+
   useEffect(() => {
-    const checkMobile = () => setIsMobileView(window.innerWidth < 1024);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const check = () => setIsMobileView(window.innerWidth < 1024);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   const conversationsQuery = useStableMemo(() => {
@@ -101,18 +109,18 @@ function MessagesContent() {
     return {
       table: "conversations",
       filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
-      order: { column: "updatedAt", ascending: false }
+      order: { column: "updatedAt", ascending: false },
     };
   }, [user]);
 
-  const { data: userConversations } = useCollection<Conversation>(conversationsQuery);
+  const { data: userConversations } =
+    useCollection<Conversation>(conversationsQuery);
 
-  // Per-user bot conversation ID so each user has their own private bot convo
-  const botConvoId = user ? `bella-bot-${user.uid}` : 'bella-bot';
+  const botConvoId = user ? `bella-bot-${user.uid}` : "bella-bot";
 
   const conversations = useMemo(() => {
     const list = userConversations ? [...userConversations] : [];
-    if (!list.find(c => isBotConvo(c.id))) {
+    if (!list.find((c) => isBotConvo(c.id))) {
       list.unshift({
         id: botConvoId,
         name: "Moormy Bot",
@@ -127,21 +135,23 @@ function MessagesContent() {
     if (!user || !activeConversationId) return null;
     return {
       table: "messages",
-      filters: [{ column: "conversationId", op: "eq" as const, value: activeConversationId }],
-      order: { column: "createdAt", ascending: true }
+      filters: [
+        {
+          column: "conversationId",
+          op: "eq" as const,
+          value: activeConversationId,
+        },
+      ],
+      order: { column: "createdAt", ascending: true },
     };
   }, [user, activeConversationId]);
 
   const { data: rawMessages } = useCollection<Message>(messagesQuery);
-
-  // When chatCleared is true, show empty until new messages arrive from DB
   const messages = chatCleared ? [] : rawMessages;
 
-  // Reset chatCleared when new messages arrive after clearing
   useEffect(() => {
-    if (chatCleared && rawMessages && rawMessages.length > 0) {
+    if (chatCleared && rawMessages && rawMessages.length > 0)
       setChatCleared(false);
-    }
   }, [chatCleared, rawMessages]);
 
   useEffect(() => {
@@ -155,93 +165,97 @@ function MessagesContent() {
     const content = messageInput.trim();
     setMessageInput("");
     setChatCleared(false);
-
     const now = new Date().toISOString();
 
     await supabase.from("messages").insert({
       conversationId: activeConversationId,
       senderId: user.uid,
-      recipientId: isBotConvo(activeConversationId) ? 'bella-bot' : 'admin',
+      recipientId: isBotConvo(activeConversationId) ? "bella-bot" : "admin",
       content,
-      createdAt: now
+      createdAt: now,
     });
 
-    await supabase.from("conversations").upsert({
-      id: activeConversationId,
-      userId: user.uid,
-      lastMessage: content,
-      updatedAt: now,
-      name: isBotConvo(activeConversationId) ? "Moormy Bot" : "Customer Support"
-    }, { onConflict: 'id' });
+    await supabase.from("conversations").upsert(
+      {
+        id: activeConversationId,
+        userId: user.uid,
+        lastMessage: content,
+        updatedAt: now,
+        name: isBotConvo(activeConversationId)
+          ? "Moormy Bot"
+          : "Customer Support",
+      },
+      { onConflict: "id" },
+    );
 
     if (isBotConvo(activeConversationId)) {
       setIsBotTyping(true);
-
-      // Timeout: stop typing after 30s even if no response
-      const typingTimeout = setTimeout(() => {
-        setIsBotTyping(false);
-      }, 30000);
-
+      const typingTimeout = setTimeout(() => setIsBotTyping(false), 30000);
       try {
         const controller = new AbortController();
         const fetchTimeout = setTimeout(() => controller.abort(), 25000);
+        const chatHistory = (messages ?? []).slice(-10).map((msg) => ({
+          role: msg.senderId === user.uid ? "user" : "assistant",
+          content: msg.content,
+        }));
 
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: content, language: botLanguage }),
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: content,
+            language: botLanguage,
+            history: chatHistory,
+            userName: user.displayName || undefined,
+          }),
           signal: controller.signal,
         });
         clearTimeout(fetchTimeout);
 
-        let replyText = "Sorry, I'm having trouble right now. Please try again later.";
-
+        let replyText =
+          "Sorry, I'm having trouble right now. Please try again later.";
         if (res.ok) {
           const aiResponse = await res.json();
-          if (aiResponse.reply) {
-            replyText = aiResponse.reply;
-          }
+          if (aiResponse.reply) replyText = aiResponse.reply;
         }
 
         const replyTime = new Date().toISOString();
-
         await supabase.from("messages").insert({
           conversationId: activeConversationId,
-          senderId: 'bella-bot',
+          senderId: "bella-bot",
           recipientId: user.uid,
           content: replyText,
-          createdAt: replyTime
+          createdAt: replyTime,
         });
-
-        await supabase.from("conversations").upsert({
-          id: activeConversationId,
-          lastMessage: replyText,
-          updatedAt: replyTime,
-        }, { onConflict: 'id' });
+        await supabase.from("conversations").upsert(
+          {
+            id: activeConversationId,
+            lastMessage: replyText,
+            updatedAt: replyTime,
+          },
+          { onConflict: "id" },
+        );
       } catch (error) {
-        console.error("AI Error:", error);
-
-        // Send a fallback message so the user isn't left hanging
         const fallbackTime = new Date().toISOString();
-        const fallbackMsg = "Sorry, I'm having trouble responding right now. Please try again in a moment.";
-
+        const fallbackMsg =
+          "Sorry, I'm having trouble responding right now. Please try again in a moment.";
         try {
           await supabase.from("messages").insert({
             conversationId: activeConversationId,
-            senderId: 'bella-bot',
+            senderId: "bella-bot",
             recipientId: user.uid,
             content: fallbackMsg,
-            createdAt: fallbackTime
+            createdAt: fallbackTime,
           });
-
-          await supabase.from("conversations").upsert({
-            id: activeConversationId,
-            lastMessage: fallbackMsg,
-            updatedAt: fallbackTime,
-          }, { onConflict: 'id' });
-        } catch (_) {
-          // silently fail — user will just see typing stop
-        }
+          await supabase.from("conversations").upsert(
+            {
+              id: activeConversationId,
+              lastMessage: fallbackMsg,
+              updatedAt: fallbackTime,
+            },
+            { onConflict: "id" },
+          );
+        } catch (_) {}
       } finally {
         clearTimeout(typingTimeout);
         setIsBotTyping(false);
@@ -249,309 +263,561 @@ function MessagesContent() {
     }
   };
 
-  const activeConversation = conversations?.find(c => c.id === activeConversationId);
-
+  const activeConversation = conversations?.find(
+    (c) => c.id === activeConversationId,
+  );
   const showList = !isMobileView || !activeConversationId;
   const showChat = !isMobileView || activeConversationId;
 
-  if (isUserLoading) return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <Header />
-      <main className="flex-grow container mx-auto p-0 md:p-8 pt-0 md:pt-32 pb-0 max-w-7xl">
-        <div className="flex flex-col lg:flex-row md:h-[80vh] md:rounded-[25px] border border-black/[0.05] overflow-hidden bg-white shadow-2xl">
-          <div className="w-full lg:w-80 border-r border-black/[0.05] p-4 space-y-3">
-            <Skeleton className="h-10 w-full rounded-full mb-4" />
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3">
-                <Skeleton className="h-12 w-12 rounded-full shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-28 rounded-full" />
-                  <Skeleton className="h-3 w-full rounded-full" />
-                </div>
-              </div>
-            ))}
+  // ── Loading ──────────────────────────────────────────────────────────
+  if (isUserLoading)
+    return (
+      <div
+        className="flex min-h-screen flex-col"
+        style={{ backgroundColor: "#f2f2f0" }}
+      >
+        <Header />
+        <main className="flex-grow pt-6">
+          <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-8 flex gap-5 items-start">
+            <div className="hidden md:flex flex-col w-[200px] shrink-0 gap-2.5">
+              <Skeleton className="h-[280px] rounded-[5px]" />
+              <Skeleton className="h-[110px] rounded-[5px]" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-3">
+              <Skeleton className="h-[72px] rounded-[5px]" />
+              <Skeleton
+                className="rounded-[5px]"
+                style={{ height: "calc(100vh - 260px)", minHeight: 480 }}
+              />
+            </div>
           </div>
-          <div className="flex-1 p-6 flex flex-col items-center justify-center">
-            <Skeleton className="h-16 w-16 rounded-full mb-4" />
-            <Skeleton className="h-5 w-48 rounded-full mb-2" />
-            <Skeleton className="h-4 w-64 rounded-full" />
+        </main>
+        <Footer />
+      </div>
+    );
+
+  // ── Mobile active chat: full-screen overlay ─────────────────────────
+  if (isMobileView && activeConversationId) {
+    return (
+      <div className="fixed inset-0 z-[1001] flex flex-col bg-white">
+        {/* Mobile chat header */}
+        <div className="h-14 px-4 border-b border-black/[0.05] flex items-center gap-3 shrink-0 bg-white">
+          <button
+            onClick={() => router.push("/messages")}
+            className="p-1.5 hover:bg-[#f2f2f0] rounded-full"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div
+            className={cn(
+              "h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden",
+              isBotConvo(activeConversationId) ? "bg-black" : "bg-[#29a366]",
+            )}
+          >
+            {isBotConvo(activeConversationId) ? (
+              <Image
+                src="/icons/moormy-bot.jpg"
+                alt="Moormy Bot"
+                width={36}
+                height={36}
+                className="object-cover h-full w-full"
+              />
+            ) : (
+              activeConversation?.name?.[0] || "B"
+            )}
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#111] truncate">
+              {activeConversation?.name}
+            </p>
+            <p className="text-[11px] text-[#29a366]">
+              {isBotConvo(activeConversationId)
+                ? "Shopping Assistant"
+                : "Support online"}
+            </p>
+          </div>
+          {isBotConvo(activeConversationId) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 hover:bg-[#f2f2f0] rounded-full">
+                  <MoreVertical className="h-5 w-5 text-[#999]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-52 rounded-[10px] p-1.5 border border-black/[0.06] bg-white shadow-lg z-[1100]"
+              >
+                <DropdownMenuItem
+                  onClick={() =>
+                    setBotLanguage((p) =>
+                      p === "english" ? "tagalog" : "english",
+                    )
+                  }
+                  className="rounded-[5px] px-3 py-2.5 cursor-pointer gap-2.5"
+                >
+                  <Languages className="h-4 w-4" />
+                  <span className="text-sm">
+                    {botLanguage === "english"
+                      ? "Switch to Tagalog"
+                      : "Switch to English"}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (!user) return;
+                    setChatCleared(true);
+                    await supabase
+                      .from("messages")
+                      .delete()
+                      .eq("conversationId", activeConversationId!);
+                    await supabase
+                      .from("conversations")
+                      .update({ lastMessage: "Chat cleared" })
+                      .eq("id", activeConversationId!);
+                  }}
+                  className="rounded-[5px] px-3 py-2.5 cursor-pointer gap-2.5 text-red-500 focus:text-red-600 focus:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="text-sm">Clear Chat</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
-      </main>
-      <Footer />
-    </div>
-  );
 
-  return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <Header />
-
-      <main className="flex-grow container mx-auto p-0 md:p-8 pt-0 md:pt-32 pb-0 max-w-7xl">
-        <div className={cn(
-          "flex flex-col lg:flex-row md:h-[80vh] md:rounded-[25px] border border-black/[0.05] overflow-hidden bg-white shadow-2xl transition-all",
-          isMobileView && activeConversationId ? "h-[100dvh] border-none rounded-none fixed inset-0 z-[1001]" : "h-screen"
-        )}>
-
-          {showList && (
-            <aside className="w-full lg:w-[380px] flex flex-col border-r border-black/[0.05] bg-white animate-in fade-in duration-300 h-full">
-              <div className="p-6 md:p-8 flex items-center justify-between">
-                <h1 className="text-2xl font-normal font-headline tracking-[-0.05em]">Messages</h1>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none">
-                      <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl">
-                    <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Inbox Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-black/5" />
-                    <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
-                      <Search className="h-4 w-4" />
-                      <span className="text-sm font-medium">Search chats</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
-                      <Archive className="h-4 w-4" />
-                      <span className="text-sm font-medium">Archived</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3">
-                      <Settings className="h-4 w-4" />
-                      <span className="text-sm font-medium">Account Settings</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                <div className="px-6 pb-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      className="w-full bg-[#f2f2f2] rounded-[10px] py-2.5 px-4 text-sm outline-none placeholder:text-muted-foreground/50"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  {conversations?.map((convo) => (
+        {/* Messages */}
+        <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+          {(!messages || messages.length === 0) && !isBotTyping ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
+              {isBotConvo(activeConversationId) ? (
+                <Sparkles className="h-10 w-10 mb-3" />
+              ) : (
+                <MessagesSquare className="h-10 w-10 mb-3 text-[#29a366]" />
+              )}
+              <p className="text-sm">How can we help you today?</p>
+            </div>
+          ) : (
+            <>
+              {messages?.map((msg) => {
+                const isMe = msg.senderId === user?.uid;
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "max-w-[80%] flex flex-col",
+                      isMe ? "self-end items-end" : "self-start items-start",
+                    )}
+                  >
                     <div
-                      key={convo.id}
-                      onClick={() => router.push(`/messages?id=${convo.id}`)}
                       className={cn(
-                        "px-6 py-4 flex items-center gap-4 cursor-pointer transition-all",
-                        activeConversationId === convo.id ? "bg-[#f2f2f2]" : "hover:bg-[#fafafa]"
+                        "px-4 py-2.5 text-sm rounded-[18px]",
+                        isMe
+                          ? "bg-[#29a366] text-white rounded-br-[4px]"
+                          : "bg-[#f2f2f0] text-[#111] rounded-bl-[4px]",
                       )}
                     >
-                      <div className={cn(
-                        "h-14 w-14 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0 overflow-hidden relative",
-                        isBotConvo(convo.id) ? "bg-black" : "bg-primary"
-                      )}>
-                        {isBotConvo(convo.id) ? <Image src="/icons/moormy-bot-v2.jpg" alt="Moormy Bot" width={56} height={56} className="object-cover h-full w-full" /> : (convo.name?.[0] || 'B')}
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h4 className="font-medium truncate text-[15px] flex items-center gap-1.5">
-                            {convo.name}
-                            {isBotConvo(convo.id) && <span className="bg-primary/10 text-primary text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest">AI</span>}
-                          </h4>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {formatMessageTime(convo.updatedAt || null)}
-                          </span>
-                        </div>
-                        <p className="text-[13px] truncate text-muted-foreground opacity-80">
-                          {convo.lastMessage || "Start a chat"}
-                        </p>
-                      </div>
+                      {msg.content}
                     </div>
+                    <span className="text-[9px] text-[#bbb] mt-1 px-1">
+                      {formatMessageTime(msg.createdAt)}
+                    </span>
+                  </div>
+                );
+              })}
+              {isBotTyping && (
+                <div className="self-start flex gap-1 items-center bg-[#f2f2f0] rounded-[18px] rounded-bl-[4px] px-4 py-3">
+                  {[0, 100, 200].map((d) => (
+                    <div
+                      key={d}
+                      className="h-1.5 w-1.5 bg-[#aaa] rounded-full animate-bounce"
+                      style={{ animationDelay: `${d}ms` }}
+                    />
                   ))}
                 </div>
-              </div>
-            </aside>
-          )}
-
-          {showChat && (
-            <section className="flex-1 flex flex-col bg-white animate-in slide-in-from-right-4 duration-300 h-full relative">
-              {activeConversationId ? (
-                <>
-                  <div className="h-[70px] px-6 md:px-8 border-b border-black/[0.05] flex items-center justify-between bg-white shrink-0 z-10">
-                    <div className="flex items-center gap-4">
-                      {isMobileView && (
-                        <button onClick={() => router.push('/messages')} className="mr-2 p-1 hover:bg-muted rounded-full">
-                          <ArrowLeft className="h-6 w-6" />
-                        </button>
-                      )}
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm",
-                        isBotConvo(activeConversationId) ? "bg-black overflow-hidden" : "bg-primary"
-                      )}>
-                        {isBotConvo(activeConversationId) ? <Image src="/icons/moormy-bot.jpg" alt="Moormy Bot" width={40} height={40} className="object-cover h-full w-full" /> : (activeConversation?.name?.[0] || 'B')}
-                      </div>
-                      <div>
-                        <h3 className="text-[15px] font-bold tracking-tight leading-tight">{activeConversation?.name}</h3>
-                        <p className="text-[11px] text-green-500 font-medium">
-                          {isBotConvo(activeConversationId) ? "Shopping Assistant Active" : "Support online"}
-                        </p>
-                      </div>
-                    </div>
-                    {isBotConvo(activeConversationId) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-2 hover:bg-muted/50 rounded-full transition-colors outline-none">
-                            <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-black/5 bg-white backdrop-blur-xl z-[1100]" sideOffset={8}>
-                          <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Bot Options</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-black/5" />
-                          <DropdownMenuItem
-                            onClick={() => setBotLanguage(prev => prev === 'english' ? 'tagalog' : 'english')}
-                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                          >
-                            <Languages className="h-4 w-4" />
-                            <span className="text-sm font-medium">
-                              {botLanguage === 'english' ? 'Switch to Tagalog' : 'Switch to English'}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={async () => {
-                              if (!user) return;
-                              setChatCleared(true);
-                              try {
-                                const { error } = await supabase.from('messages').delete().eq('conversationId', activeConversationId!);
-                                if (error) console.error('[clear-chat] delete error:', error);
-                                await supabase.from('conversations').update({ lastMessage: 'Chat cleared' }).eq('id', activeConversationId!);
-                              } catch (err) {
-                                console.error('[clear-chat] failed:', err);
-                              }
-                            }}
-                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="text-sm font-medium">Clear Chat</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => alert('Moormy Bot — AI shopping assistant for E-Moorm marketplace.\nPowered by Qwen2.5-72B-Instruct.\nAsk me about products, stores, orders, and more!')}
-                            className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                          >
-                            <Info className="h-4 w-4" />
-                            <span className="text-sm font-medium">About Moormy Bot</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-
-                  <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-white flex flex-col gap-4">
-                    {messages?.length === 0 && !isBotTyping ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
-                        {isBotConvo(activeConversationId) ? <Sparkles className="h-12 w-12 mb-4 text-black" /> : <MessagesSquare className="h-12 w-12 mb-4 text-primary" />}
-                        <p className="text-sm font-headline italic">How can we help you today?</p>
-                      </div>
-                    ) : (
-                      <>
-                        {messages?.map((msg) => {
-                          const isMe = msg.senderId === user?.uid;
-                          return (
-                            <div
-                              key={msg.id}
-                              className={cn(
-                                "max-w-[80%] md:max-w-[70%] flex flex-col group relative",
-                                isMe ? "self-end items-end" : "self-start items-start"
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  "px-4 py-2.5 text-sm transition-all relative",
-                                  isMe
-                                    ? "bg-primary text-white rounded-[22px] rounded-br-[4px]"
-                                    : "bg-[#f2f2f2] text-black rounded-[22px] rounded-bl-[4px]"
-                                )}
-                              >
-                                {msg.content.split('\n').map((line: string, i: number) => {
-                                  // Render image URLs as inline images
-                                  if (/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)/i.test(line.trim()) || /supabase\.co\/storage/.test(line.trim())) {
-                                    return <img key={i} src={line.trim()} alt="Shared image" className="max-w-[240px] rounded-xl mt-1 mb-1 border border-white/20" />;
-                                  }
-                                  return <span key={i}>{line}{i < msg.content.split('\n').length - 1 && <br />}</span>;
-                                })}
-                              </div>
-                              <div className="px-2 mt-1">
-                                <span className="text-[9px] text-muted-foreground opacity-50 uppercase tracking-tighter">
-                                  {formatMessageTime(msg.createdAt)}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {isBotTyping && (
-                          <div className="self-start max-w-[80%] md:max-w-[70%] flex flex-col">
-                            <div className="bg-[#f2f2f2] text-black rounded-[22px] rounded-bl-[4px] px-4 py-2.5 text-sm flex gap-1 items-center">
-                              <div className="h-1.5 w-1.5 bg-black/20 rounded-full animate-bounce" />
-                              <div className="h-1.5 w-1.5 bg-black/20 rounded-full animate-bounce delay-100" />
-                              <div className="h-1.5 w-1.5 bg-black/20 rounded-full animate-bounce delay-200" />
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <div ref={messagesEndRef} className="h-4" />
-                  </div>
-
-                  <div className={cn(
-                    "p-4 md:p-6 bg-white shrink-0",
-                    isMobileView && "pb-[max(env(safe-area-inset-bottom),16px)] border-t border-black/[0.05]"
-                  )}>
-                    <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
-                      <div className="flex-1 relative flex items-center">
-                        <div className="absolute left-4 flex gap-2">
-                          <button type="button" className="text-muted-foreground hover:text-black">
-                            <Smile className="h-5 w-5" />
-                          </button>
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Message..."
-                          className="w-full border border-black/[0.1] rounded-full pl-12 pr-12 h-[44px] outline-none focus:border-black/30 transition-all text-sm"
-                          value={messageInput}
-                          onChange={(e) => setMessageInput(e.target.value)}
-                        />
-                        <div className="absolute right-4 flex gap-2">
-                          <button type="button" className="text-muted-foreground hover:text-black">
-                            <ImageIcon className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={!messageInput.trim() || isBotTyping}
-                        className="text-primary font-bold text-[15px] px-3 disabled:opacity-30 hover:text-primary/80 transition-all shrink-0"
-                      >
-                        Send
-                      </button>
-                    </form>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-[#fafafa]">
-                  <div className="h-24 w-24 rounded-full border-2 border-black/10 flex items-center justify-center mb-6">
-                    <MessagesSquare className="h-12 w-12 text-black/20" />
-                  </div>
-                  <h2 className="text-xl font-normal font-headline tracking-tight mb-2">Direct Messages</h2>
-                  <p className="text-sm text-muted-foreground max-w-[280px]">Connect with sellers or our shopping assistant for a great marketplace experience.</p>
-                </div>
               )}
-            </section>
+            </>
           )}
+          <div ref={messagesEndRef} className="h-2" />
+        </div>
+
+        {/* Input */}
+        <div
+          className="px-4 py-3 border-t border-black/[0.05] bg-white"
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom), 12px)" }}
+        >
+          <form
+            onSubmit={handleSendMessage}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              placeholder="Message…"
+              className="flex-1 bg-[#f2f2f0] border border-black/[0.08] rounded-full px-4 h-10 text-sm outline-none focus:border-[#29a366] transition-all"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+            />
+            <button
+              type="submit"
+              disabled={!messageInput.trim() || isBotTyping}
+              className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 transition-opacity"
+              style={{ background: "#29a366" }}
+            >
+              <Send className="h-4 w-4 text-white" />
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop / tablet layout ─────────────────────────────────────────
+  return (
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ backgroundColor: "#f2f2f0" }}
+    >
+      <Header />
+      <main className="flex-grow pt-6">
+        <div className="max-w-[1280px] mx-auto px-4 md:px-8 pb-8 flex gap-5 items-start">
+          <ProfileSidebar onLogout={handleLogout} />
+
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Page header card */}
+            <div className="bg-white rounded-[5px] border border-black/[0.06] px-6 py-5">
+              <h1 className="text-lg font-semibold text-[#111]">Messages</h1>
+              <p className="text-sm text-[#888]">
+                {conversations.length} conversation
+                {conversations.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            {/* Chat card */}
+            <div
+              className="bg-white rounded-[5px] border border-black/[0.06] overflow-hidden flex"
+              style={{ height: "calc(100vh - 260px)", minHeight: 500 }}
+            >
+              {/* Conversations list */}
+              {showList && (
+                <aside className="w-[280px] shrink-0 flex flex-col border-r border-black/[0.05]">
+                  {/* Search */}
+                  <div className="px-4 py-3 border-b border-black/[0.05]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#bbb]" />
+                      <input
+                        type="text"
+                        placeholder="Search conversations…"
+                        className="w-full bg-[#f2f2f0] border border-black/[0.08] rounded-md pl-8 pr-3 py-2 text-xs text-[#111] placeholder:text-[#bbb] outline-none focus:border-[#29a366] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="flex-1 overflow-y-auto">
+                    {conversations.map((convo) => (
+                      <div
+                        key={convo.id}
+                        onClick={() => router.push(`/messages?id=${convo.id}`)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-black/[0.04] transition-colors",
+                          activeConversationId === convo.id
+                            ? "bg-[#f2f2f0]"
+                            : "hover:bg-[#fafafa]",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden",
+                            isBotConvo(convo.id) ? "bg-black" : "bg-[#29a366]",
+                          )}
+                        >
+                          {isBotConvo(convo.id) ? (
+                            <Image
+                              src="/icons/moormy-bot-v2.jpg"
+                              alt="Moormy Bot"
+                              width={40}
+                              height={40}
+                              className="object-cover h-full w-full"
+                            />
+                          ) : (
+                            convo.name?.[0] || "B"
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-1 mb-0.5">
+                            <p className="text-sm font-medium text-[#111] truncate flex items-center gap-1.5">
+                              {convo.name}
+                              {isBotConvo(convo.id) && (
+                                <span className="text-[8px] font-bold text-[#29a366] border border-[#29a366]/30 rounded-full px-1.5 py-0.5 leading-none ">
+                                  AI
+                                </span>
+                              )}
+                            </p>
+                            <span className="text-[10px] text-[#bbb] shrink-0">
+                              {formatMessageTime(convo.updatedAt || null)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#999] truncate">
+                            {convo.lastMessage || "Start a chat"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              )}
+
+              {/* Chat window */}
+              {showChat && (
+                <section className="flex-1 flex flex-col min-w-0">
+                  {activeConversationId ? (
+                    <>
+                      {/* Chat header */}
+                      <div className="h-14 px-5 border-b border-black/[0.05] flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden",
+                              isBotConvo(activeConversationId)
+                                ? "bg-black"
+                                : "bg-[#29a366]",
+                            )}
+                          >
+                            {isBotConvo(activeConversationId) ? (
+                              <Image
+                                src="/icons/moormy-bot.jpg"
+                                alt="Moormy Bot"
+                                width={36}
+                                height={36}
+                                className="object-cover h-full w-full"
+                              />
+                            ) : (
+                              activeConversation?.name?.[0] || "B"
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#111]">
+                              {activeConversation?.name}
+                            </p>
+                            <p className="text-[11px] text-[#29a366]">
+                              {isBotConvo(activeConversationId)
+                                ? "Shopping Assistant Active"
+                                : "Support online"}
+                            </p>
+                          </div>
+                        </div>
+                        {isBotConvo(activeConversationId) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-2 hover:bg-[#f2f2f0] rounded-full transition-colors outline-none">
+                                <MoreVertical className="h-4 w-4 text-[#999]" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-52 rounded-[10px] p-1.5 border border-black/[0.06] bg-white shadow-lg z-[1100]"
+                              sideOffset={8}
+                            >
+                              <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-bold text-[#aaa] ">
+                                Bot Options
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-black/[0.05]" />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setBotLanguage((p) =>
+                                    p === "english" ? "tagalog" : "english",
+                                  )
+                                }
+                                className="rounded-[5px] px-3 py-2.5 cursor-pointer gap-2.5 text-sm"
+                              >
+                                <Languages className="h-4 w-4" />
+                                {botLanguage === "english"
+                                  ? "Switch to Tagalog"
+                                  : "Switch to English"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  if (!user) return;
+                                  setChatCleared(true);
+                                  try {
+                                    await supabase
+                                      .from("messages")
+                                      .delete()
+                                      .eq(
+                                        "conversationId",
+                                        activeConversationId!,
+                                      );
+                                    await supabase
+                                      .from("conversations")
+                                      .update({ lastMessage: "Chat cleared" })
+                                      .eq("id", activeConversationId!);
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="rounded-[5px] px-3 py-2.5 cursor-pointer gap-2.5 text-sm text-red-500 focus:text-red-600 focus:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Clear Chat
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  alert(
+                                    "Moormy Bot — AI shopping assistant.\nPowered by Qwen2.5-72B-Instruct.\nAsk me about products, stores, orders, and more!",
+                                  )
+                                }
+                                className="rounded-[5px] px-3 py-2.5 cursor-pointer gap-2.5 text-sm"
+                              >
+                                <Info className="h-4 w-4" />
+                                About Moormy Bot
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+
+                      {/* Messages */}
+                      <div className="flex-1 p-5 overflow-y-auto flex flex-col gap-3">
+                        {(!messages || messages.length === 0) &&
+                        !isBotTyping ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30">
+                            {isBotConvo(activeConversationId) ? (
+                              <Sparkles className="h-10 w-10 mb-3" />
+                            ) : (
+                              <MessagesSquare className="h-10 w-10 mb-3 text-[#29a366]" />
+                            )}
+                            <p className="text-sm">
+                              How can we help you today?
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            {messages?.map((msg) => {
+                              const isMe = msg.senderId === user?.uid;
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={cn(
+                                    "max-w-[75%] flex flex-col",
+                                    isMe
+                                      ? "self-end items-end"
+                                      : "self-start items-start",
+                                  )}
+                                >
+                                  <div
+                                    className={cn(
+                                      "px-4 py-2.5 text-sm rounded-[18px]",
+                                      isMe
+                                        ? "bg-[#29a366] text-white rounded-br-[4px]"
+                                        : "bg-[#f2f2f0] text-[#111] rounded-bl-[4px]",
+                                    )}
+                                  >
+                                    {msg.content
+                                      .split("\n")
+                                      .map((line: string, i: number) => {
+                                        if (
+                                          /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)/i.test(
+                                            line.trim(),
+                                          ) ||
+                                          /supabase\.co\/storage/.test(
+                                            line.trim(),
+                                          )
+                                        ) {
+                                          return (
+                                            <img
+                                              key={i}
+                                              src={line.trim()}
+                                              alt="Shared image"
+                                              className="max-w-[200px] rounded-[10px] mt-1 mb-1 border border-white/20"
+                                            />
+                                          );
+                                        }
+                                        return (
+                                          <span key={i}>
+                                            {line}
+                                            {i <
+                                              msg.content.split("\n").length -
+                                                1 && <br />}
+                                          </span>
+                                        );
+                                      })}
+                                  </div>
+                                  <span className="text-[9px] text-[#bbb] mt-1 px-1">
+                                    {formatMessageTime(msg.createdAt)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            {isBotTyping && (
+                              <div className="self-start flex gap-1 items-center bg-[#f2f2f0] rounded-[18px] rounded-bl-[4px] px-4 py-3">
+                                {[0, 100, 200].map((d) => (
+                                  <div
+                                    key={d}
+                                    className="h-1.5 w-1.5 bg-[#aaa] rounded-full animate-bounce"
+                                    style={{ animationDelay: `${d}ms` }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <div ref={messagesEndRef} className="h-2" />
+                      </div>
+
+                      {/* Input bar */}
+                      <div className="px-5 py-3 border-t border-black/[0.05] shrink-0">
+                        <form
+                          onSubmit={handleSendMessage}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="text"
+                            placeholder="Message…"
+                            className="flex-1 bg-[#f2f2f0] border border-black/[0.08] rounded-full px-4 h-9 text-sm outline-none focus:border-[#29a366] focus:bg-white transition-all"
+                            value={messageInput}
+                            onChange={(e) => setMessageInput(e.target.value)}
+                          />
+                          <button
+                            type="submit"
+                            disabled={!messageInput.trim() || isBotTyping}
+                            className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 transition-opacity"
+                            style={{ background: "#29a366" }}
+                          >
+                            <Send className="h-4 w-4 text-white" />
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+                      <div className="h-20 w-20 rounded-full bg-[#f2f2f0] border border-black/[0.06] flex items-center justify-center mb-4">
+                        <MessagesSquare
+                          className="h-10 w-10 text-[#ccc]"
+                          strokeWidth={1.5}
+                        />
+                      </div>
+                      <h2 className="text-base font-semibold text-[#111] mb-1">
+                        Select a conversation
+                      </h2>
+                      <p className="text-sm text-[#888] max-w-[240px] leading-relaxed">
+                        Connect with sellers or chat with our AI shopping
+                        assistant.
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
+          </div>
         </div>
       </main>
 
       <FirstTimeIntro
         storageKey="messages"
         title="Messages"
-        description="Chat with sellers, get support, and use Moormy Bot for instant help in English or Tagalog. Your conversations are all here."
+        description="Chat with sellers, get support, and use Moormy Bot for instant help in English or Tagalog."
         icon={<MessagesSquare className="h-7 w-7" />}
       />
-      {!activeConversationId && <Footer />}
+      <Footer />
     </div>
   );
 }

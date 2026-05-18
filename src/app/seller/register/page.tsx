@@ -1,489 +1,844 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Store, Phone, MapPin, FileText, Upload, Tag, CheckCircle2, PartyPopper } from "lucide-react";
-import confetti from "canvas-confetti";
-import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/supabase";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  Store,
+  MapPin,
+  Upload,
+  Tag,
+  CheckCircle2,
+  ChevronRight,
+  Camera,
+  Loader2,
+  User,
+  Phone,
+  FileText,
+} from "lucide-react";
+import {
+  useSupabaseAuth,
+  useSupabase,
+  useStableMemo,
+  useDoc,
+  setDocumentNonBlocking,
+  updateDocumentNonBlocking,
+} from "@/supabase";
 import { uploadImage } from "@/lib/upload-image";
 
+const MUNICIPALITIES = [
+  "Baco",
+  "Bansud",
+  "Bongabong",
+  "Bulalacao",
+  "Calapan City",
+  "Gloria",
+  "Mansalay",
+  "Naujan",
+  "Pinamalayan",
+  "Pola",
+  "Puerto Galera",
+  "Roxas",
+  "San Teodoro",
+  "Socorro",
+  "Victoria",
+];
+
+const CATEGORIES = [
+  "Agriculture",
+  "Vegetables",
+  "Fruits",
+  "Seafood",
+  "Meat & Poultry",
+  "Rice & Grains",
+  "Dairy",
+  "Handicrafts",
+  "Wellness",
+  "Delicacies",
+  "Beverages",
+  "Condiments",
+  "General Store",
+  "Other",
+];
+
+const ID_TYPES = [
+  "National ID",
+  "PhilHealth ID",
+  "SSS ID",
+  "UMID",
+  "Passport",
+  "Driver's License",
+  "PRC ID",
+  "Postal ID",
+  "Voter's ID",
+  "TIN ID",
+  "PWD ID",
+  "Others",
+];
+
+const STEPS = [
+  { label: "Shop Info", icon: Store },
+  { label: "Location", icon: MapPin },
+  { label: "Owner", icon: User },
+  { label: "Verification", icon: FileText },
+];
+
+const inputClass =
+  "w-full bg-[#f9f9f8] border border-black/[0.08] rounded-xl px-4 py-3 text-sm text-[#111] placeholder:text-[#bbb] outline-none focus:border-[#29a366] focus:ring-2 focus:ring-[#29a366]/15 transition-all";
+const labelClass = "block text-xs font-semibold text-[#555] mb-1.5";
+const selectClass = inputClass + " cursor-pointer appearance-none";
+
+function FieldRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export default function ShopRegistrationPage() {
-  const [form, setForm] = useState({
-    storeName: "",
-    description: "",
-    sold: 0,
-    // Shop Address
-    address: "",
-    city: "",
-    barangay: "",
-    // Owner Info
-    ownerName: "",
-    email: "",
-    contact: "",
-    // Valid ID
-    governmentIdType: "",
-    governmentIdFront: "",
-    governmentIdBack: "",
-    // Face Verification
-    selfieImage: "",
-    // Other
-    category: "",
-    logo: "",
-    // Store Profile Image
-    storeProfileImage: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [registered, setRegistered] = useState(false);
   const router = useRouter();
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
 
-  // Store the actual File objects for Supabase upload
+  const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
+
+  const [form, setForm] = useState({
+    storeName: "",
+    description: "",
+    category: "",
+    logo: "",
+    city: "",
+    barangay: "",
+    address: "",
+    ownerName: "",
+    email: "",
+    contact: "",
+    governmentIdType: "",
+    governmentIdFront: "",
+    governmentIdBack: "",
+    selfieImage: "",
+  });
   const [idFiles, setIdFiles] = useState<Record<string, File | null>>({
     governmentIdFront: null,
     governmentIdBack: null,
     selfieImage: null,
   });
 
-  const idFieldsRequiringFile = ['governmentIdFront', 'governmentIdBack', 'selfieImage'];
-
-  // If user already has a store, redirect to dashboard
-  const storeRef = useStableMemo(() => {
-    if (!user) return null;
-    return { table: "stores", id: user.uid };
-  }, [user]);
+  // Redirect if already registered
+  const storeRef = useStableMemo(
+    () => (user ? { table: "stores", id: user.uid } : null),
+    [user],
+  );
   const { data: existingStore } = useDoc(storeRef);
-
   useEffect(() => {
-    if (existingStore) {
-      router.replace("/seller/dashboard");
-    }
+    if (existingStore) router.replace("/seller/dashboard");
   }, [existingStore, router]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
+  // Pre-fill owner name and email from user profile
+  useEffect(() => {
+    if (user?.displayName && !form.ownerName)
+      setForm((p) => ({ ...p, ownerName: user.displayName || "" }));
+    if (user?.email && !form.email)
+      setForm((p) => ({ ...p, email: user.email || "" }));
+  }, [user]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, files } = e.target;
-    if (files && files[0]) {
-      const file = files[0];
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setForm((prev) => ({ ...prev, [name]: ev.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-      // Store File object for ID / selfie fields
-      if (idFieldsRequiringFile.includes(name)) {
-        setIdFiles((prev) => ({ ...prev, [name]: file }));
-      }
+  const handleImageFile = (name: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) =>
+      setForm((p) => ({ ...p, [name]: ev.target?.result as string }));
+    reader.readAsDataURL(file);
+    if (
+      ["governmentIdFront", "governmentIdBack", "selfieImage"].includes(name)
+    ) {
+      setIdFiles((p) => ({ ...p, [name]: file }));
     }
-  }
+  };
 
-  const fireConfetti = useCallback(() => {
-    const duration = 2500;
-    const end = Date.now() + duration;
-
-    const frame = () => {
-      confetti({
-        particleCount: 3,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.7 },
-        colors: ['#ff577f', '#ff884b', '#ffd384', '#fff9b0', '#7c73e6'],
-      });
-      confetti({
-        particleCount: 3,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.7 },
-        colors: ['#ff577f', '#ff884b', '#ffd384', '#fff9b0', '#7c73e6'],
-      });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    frame();
-
-    // Big center burst
-    confetti({
-      particleCount: 120,
-      spread: 100,
-      origin: { y: 0.6 },
-      colors: ['#ff577f', '#ff884b', '#ffd384', '#fff9b0', '#7c73e6'],
-    });
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSubmitting(true);
-
     try {
-      // Upload ID images to Supabase Storage
       const prefix = `seller-ids/${user.uid}`;
-      const [frontUrl, backUrl, selfieUrl] = await Promise.all([
+      const [frontUrl, backUrl, selfieUrl, logoUrl] = await Promise.all([
         idFiles.governmentIdFront
-          ? uploadImage(supabase, 'stores', idFiles.governmentIdFront, `${prefix}/id-front`)
-          : Promise.resolve(''),
+          ? uploadImage(
+              supabase,
+              "stores",
+              idFiles.governmentIdFront,
+              `${prefix}/id-front`,
+            )
+          : Promise.resolve(""),
         idFiles.governmentIdBack
-          ? uploadImage(supabase, 'stores', idFiles.governmentIdBack, `${prefix}/id-back`)
-          : Promise.resolve(''),
+          ? uploadImage(
+              supabase,
+              "stores",
+              idFiles.governmentIdBack,
+              `${prefix}/id-back`,
+            )
+          : Promise.resolve(""),
         idFiles.selfieImage
-          ? uploadImage(supabase, 'stores', idFiles.selfieImage, `${prefix}/selfie`)
-          : Promise.resolve(''),
+          ? uploadImage(
+              supabase,
+              "stores",
+              idFiles.selfieImage,
+              `${prefix}/selfie`,
+            )
+          : Promise.resolve(""),
+        form.logo && !form.logo.startsWith("http")
+          ? uploadImage(
+              supabase,
+              "stores",
+              await (async () => {
+                const r = await fetch(form.logo);
+                return new File([await r.blob()], "logo");
+              })(),
+              `logos/${user.uid}`,
+            )
+          : Promise.resolve(form.logo),
       ]);
 
-      // Save store data to Supabase (stores table)
-      const storeData = {
+      setDocumentNonBlocking(supabase, "stores", {
         id: user.uid,
-        "ownerId": user.uid,
+        ownerId: user.uid,
         name: form.storeName,
         description: form.description,
-        "imageUrl": form.logo || '',
         category: form.category,
-        city: form.address,
+        imageUrl: logoUrl || "",
+        city: form.city,
+        barangay: form.barangay,
         street: form.address,
-        status: 'active',
+        status: "active",
         governmentIdType: form.governmentIdType,
         governmentIdFront: frontUrl,
         governmentIdBack: backUrl,
         selfieImage: selfieUrl,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
-
-      setDocumentNonBlocking(supabase, "stores", storeData);
-
-      // Update user profile: mark as seller
-      updateDocumentNonBlocking(supabase, "users", user.uid, {
-        isSeller: true,
-        role: 'seller',
       });
 
-      setTimeout(() => {
-        setSubmitting(false);
-        setRegistered(true);
-        fireConfetti();
-        setTimeout(() => {
-          router.push("/seller/dashboard");
-        }, 3000);
-      }, 1200);
+      updateDocumentNonBlocking(supabase, "users", user.uid, {
+        isSeller: true,
+        role: "seller",
+      });
+
+      setRegistered(true);
+      localStorage.removeItem("sellerSignupIntent");
+      setTimeout(() => router.push("/seller/dashboard"), 3000);
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error("Registration error:", err);
+    } finally {
       setSubmitting(false);
     }
-  }
+  };
+
+  // Validate current step before advancing
+  const canAdvance = () => {
+    if (step === 0) return form.storeName.trim().length > 0 && form.category;
+    if (step === 1) return !!form.city && form.barangay.trim().length > 0;
+    if (step === 2)
+      return (
+        form.ownerName.trim().length > 0 &&
+        form.email.includes("@") &&
+        form.contact.length >= 10
+      );
+    return true;
+  };
+
+  if (!user) return null;
+
+  // Success screen
+  if (registered)
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ backgroundColor: "#f2f2f0" }}
+      >
+        <div className="bg-white rounded-2xl p-10 w-full max-w-[420px] border border-black/[0.06] text-center">
+          <div className="h-16 w-16 rounded-full bg-[#f0fdf4] flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="h-8 w-8 text-[#29a366]" />
+          </div>
+          <h1 className="text-xl font-bold text-[#111] mb-2">
+            You're all set!
+          </h1>
+          <p className="text-sm text-[#888] mb-6">
+            Your shop has been registered. Taking you to your seller dashboard…
+          </p>
+          <div className="h-1.5 w-full bg-[#f2f2f0] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                background: "#29a366",
+                animation: "progress 3s ease-in-out forwards",
+              }}
+            />
+          </div>
+          <style jsx>{`
+            @keyframes progress {
+              from {
+                width: 0%;
+              }
+              to {
+                width: 100%;
+              }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="flex min-h-screen flex-col bg-white dark:bg-[#050505]">
-      <Header />
-      <main className="flex-grow container mx-auto px-6 md:px-8 pt-8 md:pt-32 pb-24 max-w-2xl">
-        {registered ? (
-          <div className="flex flex-col items-center justify-center text-center py-24 animate-in fade-in zoom-in duration-500">
-            <div className="h-24 w-24 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center mb-6">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-            </div>
-            <PartyPopper className="h-8 w-8 text-primary mb-4 animate-bounce" />
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white mb-2">You&apos;re All Set!</h1>
-            <p className="text-sm text-muted-foreground max-w-sm">Your shop has been registered successfully. Redirecting you to your seller dashboard...</p>
-            <div className="mt-8">
-              <div className="h-1 w-48 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full animate-[progress_3s_ease-in-out_forwards]" style={{ animation: 'progress 3s ease-in-out forwards' }} />
-              </div>
-            </div>
-            <style jsx>{`
-              @keyframes progress {
-                from { width: 0%; }
-                to { width: 100%; }
-              }
-            `}</style>
-          </div>
-        ) : null}
-        {!registered && (
-          <React.Fragment>
-            {/* Back button */}
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-8 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
+    <div className="min-h-screen flex" style={{ backgroundColor: "#f2f2f0" }}>
+      {/* Left sidebar */}
+      <div
+        className="hidden lg:flex flex-col w-[280px] shrink-0 relative overflow-hidden p-8"
+        style={{
+          background: "linear-gradient(160deg, #064e3b 0%, #29a366 100%)",
+        }}
+      >
+        <div className="absolute inset-0 opacity-[0.06]">
+          <Image
+            src="/assets/fruits.jpg"
+            alt=""
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+        <div className="relative z-10 flex-1">
+          <Link href="/sell" className="flex items-center gap-2 mb-10">
+            <Image
+              src="/brand-icon.png"
+              alt="Emoorm"
+              width={32}
+              height={32}
+              className="rounded-xl"
+            />
+            <span className="text-white font-bold text-sm">Emoorm</span>
+          </Link>
+          <h2 className="text-lg font-bold text-white mb-1">
+            Set up your shop
+          </h2>
+          <p className="text-xs text-white/60 mb-8 leading-relaxed">
+            Complete all 4 steps to activate your seller account.
+          </p>
 
-            {/* Header */}
-            <div className="mb-10">
-              <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Register Your Shop</h1>
-              <p className="text-sm text-muted-foreground mt-2">Fill in the details below to set up your seller account and start listing products.</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Shop Profile */}
-              <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Shop Profile</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Shop Name</span>
-                    <input
-                      id="storeName"
-                      name="storeName"
-                      value={form.storeName}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="My Awesome Shop"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Description</span>
-                    <textarea
-                      id="description"
-                      name="description"
-                      value={form.description}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4 resize-none"
-                      placeholder="Tell buyers about your store..."
-                      rows={2}
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Shop Category</span>
-                    <select
-                      name="category"
-                      value={form.category}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
-                      required
-                    >
-                      <option value="">Select your shop type</option>
-                      <option value="Local Seller">Local Seller</option>
-                      <option value="Agriculture">Agriculture</option>
-                      <option value="Wholesale">Wholesale/Bulk</option>
-                      <option value="General">General Store</option>
-                      <option value="Handmade">Handmade/Crafts</option>
-                      <option value="Organic">Organic Products</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-4 px-6 py-5">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Store Profile Image</span>
-                    <input
-                      name="storeProfileImage"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
-                      required
-                    />
-                    {form.storeProfileImage && (
-                      <img src={form.storeProfileImage} alt="Store Profile Preview" className="h-10 rounded-md ml-2" />
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Shop Address */}
-              <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Shop Address</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Municipality</span>
-                    <select
-                      name="city"
-                      value={form.city}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary appearance-none cursor-pointer ml-4"
-                      required
-                    >
-                      <option value="">Select Municipality</option>
-                      <option value="Baco">Baco</option>
-                      <option value="Bansud">Bansud</option>
-                      <option value="Bongabong">Bongabong</option>
-                      <option value="Bulalacao">Bulalacao</option>
-                      <option value="Calapan City">Calapan City</option>
-                      <option value="Gloria">Gloria</option>
-                      <option value="Mansalay">Mansalay</option>
-                      <option value="Naujan">Naujan</option>
-                      <option value="Pinamalayan">Pinamalayan</option>
-                      <option value="Pola">Pola</option>
-                      <option value="Puerto Galera">Puerto Galera</option>
-                      <option value="Roxas">Roxas</option>
-                      <option value="San Teodoro">San Teodoro</option>
-                      <option value="Socorro">Socorro</option>
-                      <option value="Victoria">Victoria</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Barangay</span>
-                    <input
-                      name="barangay"
-                      value={form.barangay}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="Barangay name"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5">
-                    <span className="text-sm text-black/80 dark:text-white/80">Detailed Address</span>
-                    <input
-                      name="address"
-                      value={form.address}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="Street, Building, etc."
-                      required
-                    />
-                  </div>
-                  {/* TODO: Integrate PH address API for barangay autocomplete */}
-                  <div className="px-6 pb-4 text-xs text-muted-foreground">Province: Oriental Mindoro, Region: MIMAROPA (locked)</div>
-                </div>
-              </section>
-
-              {/* Owner Information */}
-              <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Owner Information</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Owner Name</span>
-                    <input
-                      name="ownerName"
-                      value={form.ownerName}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="Juan Dela Cruz"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80">Email</span>
-                    <input
-                      name="email"
-                      type="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30 ml-4"
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-5">
-                    <span className="text-sm text-black/80 dark:text-white/80">Phone Number</span>
-                    <div className="flex items-center gap-1 flex-1 justify-end ml-4">
-                      <span className="text-sm font-bold text-muted-foreground/40 select-none">+63</span>
-                      <input
-                        type="tel"
-                        name="contact"
-                        value={form.contact}
-                        onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 10); handleChange({ target: { name: 'contact', value: v } } as any); }}
-                        className="flex-1 text-right text-sm font-medium bg-transparent outline-none border-none text-primary placeholder:text-muted-foreground/30"
-                        placeholder="9123456789"
-                        maxLength={10}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Valid ID Section */}
-              <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Valid Government ID</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">ID Type</span>
-                    <select
-                      name="governmentIdType"
-                      value={form.governmentIdType}
-                      onChange={handleChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary appearance-none cursor-pointer"
-                      required
-                    >
-                      <option value="">Select Valid PH ID</option>
-                      <option value="PHILHEALTH">PhilHealth ID</option>
-                      <option value="SSS">SSS ID</option>
-                      <option value="UMID">UMID</option>
-                      <option value="PASSPORT">Passport</option>
-                      <option value="DRIVER">Driver's License</option>
-                      <option value="PRC">PRC ID</option>
-                      <option value="POSTAL">Postal ID</option>
-                      <option value="VOTERS">Voter's ID</option>
-                      <option value="NATIONAL">National ID</option>
-                      <option value="TIN">TIN ID</option>
-                      <option value="PWD">PWD ID</option>
-                      <option value="OTHERS">Others</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-4 px-6 py-5 border-b border-black/[0.03] dark:border-white/[0.05]">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Upload ID (Front)</span>
-                    <input
-                      name="governmentIdFront"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
-                      required
-                    />
-                    {form.governmentIdFront && (
-                      <img src={form.governmentIdFront} alt="ID Front Preview" className="h-10 rounded-md ml-2" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 px-6 py-5">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Upload ID (Back)</span>
-                    <input
-                      name="governmentIdBack"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
-                      required
-                    />
-                    {form.governmentIdBack && (
-                      <img src={form.governmentIdBack} alt="ID Back Preview" className="h-10 rounded-md ml-2" />
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Face Verification (Selfie) */}
-              <section>
-                <h2 className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/50 ml-6 mb-3">Face Verification (Selfie)</h2>
-                <div className="bg-white dark:bg-white/[0.03] rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] mb-8">
-                  <div className="flex items-center gap-4 px-6 py-5">
-                    <span className="text-sm text-black/80 dark:text-white/80 shrink-0 w-28">Selfie</span>
-                    <input
-                      name="selfieImage"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="flex-1 text-right text-sm bg-transparent outline-none border-none text-primary"
-                      required
-                    />
-                    {form.selfieImage && (
-                      <img src={form.selfieImage} alt="Selfie Preview" className="h-10 rounded-md ml-2" />
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Submit */}
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full h-14 rounded-full bg-black hover:bg-primary text-white text-base shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+          {/* Step indicators */}
+          <div className="space-y-2">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              const done = i < step;
+              const current = i === step;
+              return (
+                <div
+                  key={s.label}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${current ? "bg-white/15" : ""}`}
                 >
-                  {submitting ? "Setting up your shop..." : "Start Selling"}
-                </Button>
+                  <div
+                    className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${done ? "bg-white/30" : current ? "bg-white/20" : "bg-white/10"}`}
+                  >
+                    {done ? (
+                      <CheckCircle2
+                        className="h-4 w-4 text-white"
+                        strokeWidth={2}
+                      />
+                    ) : (
+                      <Icon
+                        className="h-3.5 w-3.5 text-white/70"
+                        strokeWidth={1.8}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className={`text-sm font-medium ${current ? "text-white" : done ? "text-white/70" : "text-white/40"}`}
+                  >
+                    {s.label}
+                  </span>
+                  {current && (
+                    <ChevronRight className="h-3.5 w-3.5 text-white/40 ml-auto" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <p className="relative z-10 text-[11px] text-white/25">© Emoorm 2026</p>
+      </div>
+
+      {/* Main form panel */}
+      <div className="flex-1 flex flex-col items-center justify-start p-6 md:p-10 overflow-y-auto">
+        <div className="w-full max-w-[520px]">
+          {/* Mobile header */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            <button
+              onClick={() => (step > 0 ? setStep((p) => p - 1) : router.back())}
+              className="p-2 rounded-xl hover:bg-white transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 text-[#555]" />
+            </button>
+            <div>
+              <p className="text-xs text-[#aaa]">
+                Step {step + 1} of {STEPS.length}
+              </p>
+              <p className="text-sm font-semibold text-[#111]">
+                {STEPS[step].label}
+              </p>
+            </div>
+          </div>
+
+          {/* Desktop back */}
+          <div className="hidden lg:flex items-center gap-2 mb-6">
+            <button
+              onClick={() => (step > 0 ? setStep((p) => p - 1) : router.back())}
+              className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#111] transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {step > 0 ? "Back" : "Back to sell page"}
+            </button>
+            <div className="flex-1" />
+            <span className="text-xs text-[#bbb]">
+              Step {step + 1} / {STEPS.length}
+            </span>
+          </div>
+
+          <form
+            onSubmit={
+              step < STEPS.length - 1
+                ? (e) => {
+                    e.preventDefault();
+                    if (canAdvance()) setStep((p) => p + 1);
+                  }
+                : handleSubmit
+            }
+          >
+            {/* ── Step 0: Shop Info ──────────────────────────────── */}
+            {step === 0 && (
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-[#111] mb-1">
+                    Shop information
+                  </h1>
+                  <p className="text-sm text-[#888]">
+                    This is what buyers will see on your store page.
+                  </p>
+                </div>
+
+                {/* Logo upload */}
+                <div className="flex justify-center mb-2">
+                  <div
+                    className="h-20 w-20 rounded-2xl bg-white border-2 border-dashed border-black/[0.12] flex flex-col items-center justify-center cursor-pointer hover:border-[#29a366] transition-colors overflow-hidden relative group"
+                    onClick={() => logoInputRef.current?.click()}
+                  >
+                    {form.logo ? (
+                      <img
+                        src={form.logo}
+                        alt="Logo"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <>
+                        <Camera
+                          className="h-5 w-5 text-[#ccc] mb-1"
+                          strokeWidth={1.5}
+                        />
+                        <span className="text-[10px] text-[#bbb]">
+                          Shop logo
+                        </span>
+                      </>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile("logo", f);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <FieldRow label="Shop name *">
+                  <input
+                    name="storeName"
+                    value={form.storeName}
+                    onChange={handleChange}
+                    placeholder="e.g. Mindoro Fresh Harvest"
+                    className={inputClass}
+                    required
+                  />
+                </FieldRow>
+
+                <FieldRow label="Description *">
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="Tell buyers what you sell and what makes your shop special…"
+                    className={inputClass + " resize-none"}
+                    rows={3}
+                    required
+                  />
+                </FieldRow>
+
+                <FieldRow label="Shop category *">
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    className={selectClass}
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </FieldRow>
               </div>
-            </form>
-          </React.Fragment>
-        )}
-      </main>
-      <Footer />
+            )}
+
+            {/* ── Step 1: Location ───────────────────────────────── */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-[#111] mb-1">
+                    Shop location
+                  </h1>
+                  <p className="text-sm text-[#888]">
+                    Buyers filter by location. Accurate info builds trust.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-xl border border-black/[0.06] px-4 py-3 flex items-center gap-2">
+                  <MapPin
+                    className="h-4 w-4 text-[#29a366] shrink-0"
+                    strokeWidth={1.8}
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-[#111]">
+                      Oriental Mindoro, MIMAROPA
+                    </p>
+                    <p className="text-[11px] text-[#bbb]">
+                      Province is locked to Oriental Mindoro
+                    </p>
+                  </div>
+                </div>
+
+                <FieldRow label="Municipality *">
+                  <select
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    className={selectClass}
+                    required
+                  >
+                    <option value="">Select municipality</option>
+                    {MUNICIPALITIES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </FieldRow>
+
+                <FieldRow label="Barangay *">
+                  <input
+                    name="barangay"
+                    value={form.barangay}
+                    onChange={handleChange}
+                    placeholder="e.g. Barangay San Roque"
+                    className={inputClass}
+                    required
+                  />
+                </FieldRow>
+
+                <FieldRow label="Street / Detailed address">
+                  <input
+                    name="address"
+                    value={form.address}
+                    onChange={handleChange}
+                    placeholder="House no., street, building…"
+                    className={inputClass}
+                  />
+                </FieldRow>
+              </div>
+            )}
+
+            {/* ── Step 2: Owner Info ─────────────────────────────── */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-[#111] mb-1">
+                    Owner information
+                  </h1>
+                  <p className="text-sm text-[#888]">
+                    Your personal details for account verification.
+                  </p>
+                </div>
+
+                <FieldRow label="Full name *">
+                  <input
+                    name="ownerName"
+                    value={form.ownerName}
+                    onChange={handleChange}
+                    placeholder="Juan Dela Cruz"
+                    className={inputClass}
+                    required
+                  />
+                </FieldRow>
+
+                <FieldRow label="Email address *">
+                  <input
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="you@example.com"
+                    className={inputClass}
+                    required
+                  />
+                </FieldRow>
+
+                <FieldRow label="Phone number *">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-[#f9f9f8] border border-black/[0.08] rounded-xl px-3 py-3 text-sm font-semibold text-[#555] shrink-0">
+                      +63
+                    </div>
+                    <input
+                      type="tel"
+                      name="contact"
+                      value={form.contact}
+                      onChange={handleChange}
+                      placeholder="9123456789"
+                      className={inputClass}
+                      maxLength={10}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).value = (
+                          e.target as HTMLInputElement
+                        ).value
+                          .replace(/\D/g, "")
+                          .slice(0, 10);
+                      }}
+                      required
+                    />
+                  </div>
+                </FieldRow>
+              </div>
+            )}
+
+            {/* ── Step 3: Verification ───────────────────────────── */}
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-[#111] mb-1">
+                    Identity verification
+                  </h1>
+                  <p className="text-sm text-[#888]">
+                    Required to activate your seller account and build buyer
+                    trust.
+                  </p>
+                </div>
+
+                <FieldRow label="Government ID type *">
+                  <select
+                    name="governmentIdType"
+                    value={form.governmentIdType}
+                    onChange={handleChange}
+                    className={selectClass}
+                    required
+                  >
+                    <option value="">Select valid PH ID</option>
+                    {ID_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </FieldRow>
+
+                {/* ID Front */}
+                <div>
+                  <label className={labelClass}>ID photo — Front *</label>
+                  <div
+                    className="w-full h-32 rounded-xl border-2 border-dashed border-black/[0.10] bg-[#f9f9f8] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#29a366] transition-colors overflow-hidden relative"
+                    onClick={() => frontInputRef.current?.click()}
+                  >
+                    {form.governmentIdFront ? (
+                      <img
+                        src={form.governmentIdFront}
+                        alt="ID front"
+                        className="h-full w-full object-contain p-2"
+                      />
+                    ) : (
+                      <>
+                        <Upload
+                          className="h-5 w-5 text-[#ccc]"
+                          strokeWidth={1.5}
+                        />
+                        <span className="text-xs text-[#bbb]">
+                          Click to upload front of ID
+                        </span>
+                      </>
+                    )}
+                    <input
+                      ref={frontInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      required
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile("governmentIdFront", f);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* ID Back */}
+                <div>
+                  <label className={labelClass}>ID photo — Back *</label>
+                  <div
+                    className="w-full h-32 rounded-xl border-2 border-dashed border-black/[0.10] bg-[#f9f9f8] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#29a366] transition-colors overflow-hidden relative"
+                    onClick={() => backInputRef.current?.click()}
+                  >
+                    {form.governmentIdBack ? (
+                      <img
+                        src={form.governmentIdBack}
+                        alt="ID back"
+                        className="h-full w-full object-contain p-2"
+                      />
+                    ) : (
+                      <>
+                        <Upload
+                          className="h-5 w-5 text-[#ccc]"
+                          strokeWidth={1.5}
+                        />
+                        <span className="text-xs text-[#bbb]">
+                          Click to upload back of ID
+                        </span>
+                      </>
+                    )}
+                    <input
+                      ref={backInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      required
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile("governmentIdBack", f);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Selfie */}
+                <div>
+                  <label className={labelClass}>Selfie with ID *</label>
+                  <div
+                    className="w-full h-32 rounded-xl border-2 border-dashed border-black/[0.10] bg-[#f9f9f8] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#29a366] transition-colors overflow-hidden relative"
+                    onClick={() => selfieInputRef.current?.click()}
+                  >
+                    {form.selfieImage ? (
+                      <img
+                        src={form.selfieImage}
+                        alt="Selfie"
+                        className="h-full w-full object-contain p-2"
+                      />
+                    ) : (
+                      <>
+                        <Camera
+                          className="h-5 w-5 text-[#ccc]"
+                          strokeWidth={1.5}
+                        />
+                        <span className="text-xs text-[#bbb]">
+                          Upload a selfie holding your ID
+                        </span>
+                      </>
+                    )}
+                    <input
+                      ref={selfieInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      required
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile("selfieImage", f);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3">
+                  <p className="text-xs text-[#166534] leading-relaxed">
+                    Your ID is stored securely and only used for verification.
+                    It will not be shared with buyers.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation buttons */}
+            <div className="flex gap-3 mt-8">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStep((p) => p - 1)}
+                  className="h-12 px-6 rounded-xl border border-black/[0.10] text-sm font-semibold text-[#555] hover:bg-white transition-colors"
+                >
+                  Back
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={
+                  submitting || (step < STEPS.length - 1 && !canAdvance())
+                }
+                className="flex-1 h-12 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: "#29a366" }}
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {step < STEPS.length - 1
+                  ? "Continue"
+                  : submitting
+                    ? "Setting up your shop…"
+                    : "Activate My Shop"}
+                {!submitting && step < STEPS.length - 1 && (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

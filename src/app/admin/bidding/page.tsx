@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,10 @@ export default function AdminBiddingPage() {
   const { isAdmin, isAdminLoading } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
-  const [endTarget, setEndTarget] = useState<{ id: string; name: string } | null>(null);
+  const [endTarget, setEndTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdminLoading && !isAdmin) {
@@ -125,7 +128,10 @@ export default function AdminBiddingPage() {
         reason: "Auction force-ended by admin",
       });
     }
-    toast({ title: "Auction ended", description: `${name} has been closed early.` });
+    toast({
+      title: "Auction ended",
+      description: `${name} has been closed early.`,
+    });
     setEndTarget(null);
   };
 
@@ -142,7 +148,10 @@ export default function AdminBiddingPage() {
         reason: "Auction listing removed",
       });
     }
-    toast({ title: "Auction removed", description: `${name} has been taken down.` });
+    toast({
+      title: "Auction removed",
+      description: `${name} has been taken down.`,
+    });
   };
 
   const bidCountFor = (productId: string) =>
@@ -156,27 +165,55 @@ export default function AdminBiddingPage() {
             Auction Oversight
           </h1>
           <p className="text-sm text-muted-foreground font-normal">
-            {totalAuctions} auctions · {liveAuctions} live · {endedAuctions} ended · {totalBids} total bids
+            {totalAuctions} auctions · {liveAuctions} live · {endedAuctions}{" "}
+            ended · {totalBids} total bids
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Live Auctions", value: liveAuctions, icon: TrendingUp, color: "text-green-600 bg-green-50" },
-            { label: "Ended", value: endedAuctions, icon: CheckCircle2, color: "text-muted-foreground bg-muted" },
-            { label: "Total Bids", value: totalBids, icon: Gavel, color: "text-blue-600 bg-blue-50" },
-            { label: "All-Time", value: totalAuctions, icon: Clock, color: "text-orange-600 bg-orange-50" },
+            {
+              label: "Live Auctions",
+              value: liveAuctions,
+              icon: TrendingUp,
+              color: "text-green-600 bg-green-50",
+            },
+            {
+              label: "Ended",
+              value: endedAuctions,
+              icon: CheckCircle2,
+              color: "text-muted-foreground bg-muted",
+            },
+            {
+              label: "Total Bids",
+              value: totalBids,
+              icon: Gavel,
+              color: "text-blue-600 bg-blue-50",
+            },
+            {
+              label: "All-Time",
+              value: totalAuctions,
+              icon: Clock,
+              color: "text-orange-600 bg-orange-50",
+            },
           ].map((s) => {
             const Icon = s.icon;
             return (
-              <Card key={s.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+              <Card
+                key={s.label}
+                className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]"
+              >
                 <CardContent className="p-5">
                   <div className={`p-2.5 rounded-2xl ${s.color} w-fit mb-3`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
-                  <p className="text-2xl font-normal font-headline tracking-[-0.05em]">{s.value}</p>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {s.label}
+                  </p>
+                  <p className="text-2xl font-normal font-headline tracking-[-0.05em]">
+                    {s.value}
+                  </p>
                 </CardContent>
               </Card>
             );
@@ -207,7 +244,9 @@ export default function AdminBiddingPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-5 h-11 text-xs font-bold shrink-0",
-                  statusFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  statusFilter === f.key
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setStatusFilter(f.key)}
               >
@@ -259,31 +298,53 @@ export default function AdminBiddingPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-bold truncate">{auction.name || "Unnamed"}</p>
+                          <p className="text-sm font-bold truncate">
+                            {auction.name || "Unnamed"}
+                          </p>
                           <Badge
                             className={cn(
                               "rounded-full px-2 py-0.5 text-[10px] font-bold border-0 shrink-0",
-                              live ? "bg-green-50 text-green-600" : "bg-muted text-muted-foreground"
+                              live
+                                ? "bg-green-50 text-green-600"
+                                : "bg-muted text-muted-foreground",
                             )}
                           >
                             {live ? "LIVE" : "ENDED"}
                           </Badge>
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span>Current bid: <span className="font-bold text-foreground">₱{Number(auction.currentBid || 0).toLocaleString()}</span></span>
-                          <span>Starting: ₱{Number(auction.startingBid || 0).toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><Gavel className="h-3 w-3" /> {bidCount} bids</span>
+                          <span>
+                            Current bid:{" "}
+                            <span className="font-bold text-foreground">
+                              ₱
+                              {Number(auction.currentBid || 0).toLocaleString()}
+                            </span>
+                          </span>
+                          <span>
+                            Starting: ₱
+                            {Number(auction.startingBid || 0).toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Gavel className="h-3 w-3" /> {bidCount} bids
+                          </span>
                           {auction.auctionEndDate && (
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {live ? "ends" : "ended"} {new Date(auction.auctionEndDate).toLocaleDateString()}
+                              {live ? "ends" : "ended"}{" "}
+                              {new Date(
+                                auction.auctionEndDate,
+                              ).toLocaleDateString()}
                             </span>
                           )}
                         </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="rounded-full h-8 w-8 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full h-8 w-8 shrink-0"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -300,7 +361,12 @@ export default function AdminBiddingPage() {
                           {live && (
                             <DropdownMenuItem
                               className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                              onClick={() => setEndTarget({ id: auction.id, name: auction.name || "this auction" })}
+                              onClick={() =>
+                                setEndTarget({
+                                  id: auction.id,
+                                  name: auction.name || "this auction",
+                                })
+                              }
                             >
                               <Clock className="h-4 w-4" /> Force End
                             </DropdownMenuItem>
@@ -308,7 +374,12 @@ export default function AdminBiddingPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                            onClick={() => handleDelete(auction.id, auction.name || "this auction")}
+                            onClick={() =>
+                              handleDelete(
+                                auction.id,
+                                auction.name || "this auction",
+                              )
+                            }
                           >
                             <Trash2 className="h-4 w-4" /> Take Down
                           </DropdownMenuItem>
@@ -331,14 +402,19 @@ export default function AdminBiddingPage() {
                 Force End Auction
               </AlertDialogTitle>
               <AlertDialogDescription>
-                End <strong>{endTarget?.name}</strong> immediately. The current highest bidder wins. This cannot be undone.
+                End <strong>{endTarget?.name}</strong> immediately. The current
+                highest bidder wins. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-orange-600 hover:bg-orange-700"
-                onClick={() => endTarget && handleEnd(endTarget.id, endTarget.name)}
+                onClick={() =>
+                  endTarget && handleEnd(endTarget.id, endTarget.name)
+                }
               >
                 End Auction
               </AlertDialogAction>

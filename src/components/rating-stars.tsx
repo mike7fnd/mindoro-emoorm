@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+﻿import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RatingStarsProps {
@@ -32,7 +32,7 @@ export function RatingStars({
             disabled={!interactive}
             className={cn(
               "transition-colors",
-              interactive && "cursor-pointer hover:scale-110"
+              interactive && "cursor-pointer hover:scale-110",
             )}
           >
             <Star
@@ -40,7 +40,7 @@ export function RatingStars({
                 sizeClass,
                 star <= rating
                   ? "fill-yellow-400 text-yellow-400"
-                  : "text-gray-300"
+                  : "text-gray-300",
               )}
             />
           </button>

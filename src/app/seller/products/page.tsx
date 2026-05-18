@@ -1,68 +1,146 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Search,
-  MoreHorizontal,
   Trash2,
   Eye,
   EyeOff,
   Package,
   Star,
-  Filter,
   ImageIcon,
-  Loader2,
   Pencil,
   Copy,
   Share2,
   Gavel,
+  ArrowUpDown,
+  SlidersHorizontal,
+  X,
+  Heart,
+  MessageSquare,
+  ChevronDown,
+  Info,
+  CheckSquare,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSupabaseAuth, useSupabase, useStableMemo, useDoc, useCollection, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/supabase";
+import {
+  useSupabaseAuth,
+  useSupabase,
+  useStableMemo,
+  useCollection,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+} from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const statusStyle: Record<string, string> = {
-  Available: "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400",
-  active: "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400",
-  Draft: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400",
-  draft: "bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-400",
-  "Out of Stock": "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-  out_of_stock: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
-};
+const CATEGORIES = [
+  "All Categories",
+  "Vegetables",
+  "Fruits",
+  "Seafood",
+  "Meat",
+  "Snacks",
+  "Rice & Grains",
+  "Handicrafts",
+  "Wellness",
+  "Delicacies",
+  "Beverages",
+  "Condiments",
+];
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "price_hi", label: "Price: High → Low" },
+  { value: "price_lo", label: "Price: Low → High" },
+  { value: "sales", label: "Most Sold" },
+  { value: "stock_lo", label: "Low Stock" },
+  { value: "name", label: "Name A–Z" },
+];
+
+const STATUS_TABS = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "draft", label: "Draft" },
+  { value: "out", label: "Out of Stock" },
+];
+
+function getStatus(p: any) {
+  if (p.stock === 0) return "Out of Stock";
+  if (p.status === "Draft" || p.status === "draft") return "Draft";
+  return "Available";
+}
+
+function ContentScore({ product }: { product: any }) {
+  const score = useMemo(() => {
+    let s = 0;
+    if (product.name?.length > 5) s += 20;
+    if (product.description?.length > 20) s += 20;
+    if (product.imageUrl) s += 20;
+    if (product.price > 0) s += 20;
+    if (product.category) s += 20;
+    return s;
+  }, [product]);
+
+  if (score >= 100)
+    return (
+      <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+        <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+        Excellent
+      </span>
+    );
+  if (score >= 60)
+    return (
+      <span className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
+        <span className="h-2 w-2 rounded-full bg-yellow-400 inline-block" />
+        Good
+      </span>
+    );
+  return (
+    <span className="flex items-center gap-1 text-xs text-orange-500 font-medium">
+      <span className="h-2 w-2 rounded-full bg-orange-400 inline-block" />
+      To be Improved
+    </span>
+  );
+}
+
+function Toggle({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+      style={{ background: active ? "#29a366" : "#d1d5db" }}
+    >
+      <span
+        className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition duration-200 ease-in-out"
+        style={{ transform: active ? "translateX(20px)" : "translateX(0)" }}
+      />
+    </button>
+  );
+}
 
 export default function SellerProductsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [category, setCategory] = useState("All Categories");
+  const [sort, setSort] = useState("newest");
+  const [type, setType] = useState("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const router = useRouter();
-
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
-  // Fetch store data
-  const storeRef = useStableMemo(() => {
-    if (!user) return null;
-    return { table: "stores", id: user.uid };
-  }, [user]);
-  const { data: store } = useDoc(storeRef);
-
-  // Fetch products (facilities) for this seller
-  const productsConfig = useStableMemo(() => {
+  const config = useStableMemo(() => {
     if (!user) return null;
     return {
       table: "facilities",
@@ -70,250 +148,597 @@ export default function SellerProductsPage() {
       order: { column: "createdAt", ascending: false },
     };
   }, [user]);
-  const { data: products, isLoading } = useCollection(productsConfig);
+  const { data: products, isLoading } = useCollection(config);
+  const all = (products ?? []) as any[];
 
-  const allProducts = products ?? [];
+  const counts = useMemo(
+    () => ({
+      all: all.length,
+      active: all.filter((p) => getStatus(p) === "Available").length,
+      draft: all.filter((p) => getStatus(p) === "Draft").length,
+      out: all.filter((p) => getStatus(p) === "Out of Stock").length,
+    }),
+    [all],
+  );
 
-  const getProductStatus = (p: any) => {
-    if (p.stock === 0) return "Out of Stock";
-    if (p.status === "Draft" || p.status === "draft") return "Draft";
-    return "Available";
+  const filtered = useMemo(() => {
+    let list = [...all];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q),
+      );
+    }
+    if (tab === "active")
+      list = list.filter((p) => getStatus(p) === "Available");
+    if (tab === "draft") list = list.filter((p) => getStatus(p) === "Draft");
+    if (tab === "out")
+      list = list.filter((p) => getStatus(p) === "Out of Stock");
+    if (category !== "All Categories")
+      list = list.filter((p) => p.category === category);
+    if (type === "auction") list = list.filter((p) => !!p.isAuction);
+    if (type === "regular") list = list.filter((p) => !p.isAuction);
+    switch (sort) {
+      case "oldest":
+        list.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+        break;
+      case "price_hi":
+        list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+        break;
+      case "price_lo":
+        list.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+        break;
+      case "sales":
+        list.sort(
+          (a, b) =>
+            (b.totalSales ?? b.sold ?? 0) - (a.totalSales ?? a.sold ?? 0),
+        );
+        break;
+      case "stock_lo":
+        list.sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+        break;
+      case "name":
+        list.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+        break;
+      default:
+        list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    }
+    return list;
+  }, [all, search, tab, category, type, sort]);
+
+  const allSelected =
+    filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map((p: any) => p.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
   };
 
-  const filteredProducts = allProducts.filter((p: any) => {
-    const matchSearch = p.name?.toLowerCase().includes(search.toLowerCase());
-    const status = getProductStatus(p);
-    if (tab === "all") return matchSearch;
-    if (tab === "active") return matchSearch && status === "Available";
-    if (tab === "draft") return matchSearch && status === "Draft";
-    if (tab === "out") return matchSearch && status === "Out of Stock";
-    return matchSearch;
-  });
-
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this product?")) return;
     deleteDocumentNonBlocking(supabase, "facilities", id);
     window.location.reload();
   };
-
-  const handleDuplicateProduct = async (product: any) => {
+  const handleDuplicate = async (product: any) => {
     const { id, createdAt, updatedAt, totalSales, rating, ...rest } = product;
-    const newProduct = {
-      ...rest,
-      name: `${product.name} (Copy)`,
-      status: "Draft",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      totalSales: 0,
-    };
-    await supabase.from("facilities").insert(newProduct);
+    await supabase
+      .from("facilities")
+      .insert({
+        ...rest,
+        name: `${product.name} (Copy)`,
+        status: "Draft",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        totalSales: 0,
+      });
     window.location.reload();
   };
-
-  const handleShareProduct = (product: any) => {
+  const handleShare = (product: any) => {
     const url = `${window.location.origin}/book/${product.id}`;
-    if (navigator.share) {
-      navigator.share({ title: product.name, url });
-    } else {
+    if (navigator.share) navigator.share({ title: product.name, url });
+    else {
       navigator.clipboard.writeText(url);
-      alert("Product link copied to clipboard!");
+      alert("Link copied!");
     }
   };
-
-  const handleToggleStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "Available" || currentStatus === "active" ? "Draft" : "Available";
-    updateDocumentNonBlocking(supabase, "facilities", id, { status: newStatus, updatedAt: new Date().toISOString() });
+  const handleToggleActive = async (id: string, status: string) => {
+    const next =
+      status === "Available" || status === "active" ? "Draft" : "Available";
+    updateDocumentNonBlocking(supabase, "facilities", id, {
+      status: next,
+      updatedAt: new Date().toISOString(),
+    });
     window.location.reload();
   };
-
-  const activeCount = allProducts.filter((p: any) => getProductStatus(p) === "Available").length;
-  const draftCount = allProducts.filter((p: any) => getProductStatus(p) === "Draft").length;
-  const outCount = allProducts.filter((p: any) => getProductStatus(p) === "Out of Stock").length;
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
 
   return (
     <SellerLayout>
-      <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
+      <div
+        className="max-w-[1200px] mx-auto px-4 md:px-6 pt-6 pb-10 space-y-4"
+        onClick={() => setOpenMenu(null)}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-black/[0.06] px-6 py-5 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">My Products</h1>
-            <p className="text-sm text-muted-foreground font-normal">{allProducts.length} total products</p>
+            <h1 className="text-lg font-semibold text-[#111]">My Products</h1>
+            <p className="text-sm text-[#888]">{all.length} total products</p>
           </div>
-          <Link href="/seller/products/add" className="hidden md:block">
-            <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2">
+          <Link href="/seller/products/add">
+            <button
+              className="flex items-center gap-2 h-9 px-5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              style={{ background: "#29a366" }}
+            >
               <Plus className="h-4 w-4" /> Add Product
-            </Button>
+            </button>
           </Link>
         </div>
 
-        {/* Search & Filter */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9 rounded-full bg-white dark:bg-white/5 border-black/[0.06] dark:border-white/[0.06]"
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-black/[0.06] p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#bbb]" />
+              <input
+                type="text"
+                placeholder="Search by name or category…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-[#f2f2f0] border border-black/[0.08] rounded-xl pl-9 pr-9 py-2 text-sm text-[#111] placeholder:text-[#bbb] outline-none focus:border-[#29a366] focus:bg-white transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#555]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {/* Sort */}
+            <div className="relative">
+              <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#bbb] pointer-events-none" />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="appearance-none bg-[#f2f2f0] border border-black/[0.08] rounded-xl pl-8 pr-7 py-2 text-sm text-[#555] outline-none focus:border-[#29a366] transition-all cursor-pointer"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <Button variant="outline" size="icon" className="rounded-full shrink-0 border-black/[0.06] dark:border-white/[0.06]">
-            <Filter className="h-4 w-4" />
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status tabs */}
+            {STATUS_TABS.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTab(t.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                style={
+                  tab === t.value
+                    ? { background: "#29a366", color: "#fff" }
+                    : { background: "#f2f2f0", color: "#555" }
+                }
+              >
+                {t.label} ({counts[t.value as keyof typeof counts]})
+              </button>
+            ))}
+
+            <div className="h-4 w-px bg-black/[0.08]" />
+
+            {/* Category */}
+            <div className="relative">
+              <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#bbb] pointer-events-none" />
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="appearance-none bg-[#f2f2f0] border border-black/[0.08] rounded-xl pl-8 pr-6 py-1.5 text-xs font-semibold text-[#555] outline-none focus:border-[#29a366] transition-all cursor-pointer"
+                style={
+                  category !== "All Categories"
+                    ? {
+                        borderColor: "#29a366",
+                        background: "#f0fdf4",
+                        color: "#16a34a",
+                      }
+                    : {}
+                }
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Type */}
+            {[
+              { v: "all", l: "All" },
+              { v: "regular", l: "Regular" },
+              { v: "auction", l: "Auction" },
+            ].map((o) => (
+              <button
+                key={o.v}
+                onClick={() => setType(o.v)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                style={
+                  type === o.v
+                    ? { background: "#111", color: "#fff" }
+                    : { background: "#f2f2f0", color: "#555" }
+                }
+              >
+                {o.l}
+              </button>
+            ))}
+
+            {(category !== "All Categories" ||
+              type !== "all" ||
+              sort !== "newest") && (
+              <button
+                onClick={() => {
+                  setCategory("All Categories");
+                  setType("all");
+                  setSort("newest");
+                }}
+                className="text-xs text-[#aaa] hover:text-red-500 underline transition-colors"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={tab} onValueChange={setTab} className="flex justify-center">
-          <TabsList className="bg-black/[0.03] dark:bg-white/[0.03] rounded-full p-1 h-auto">
-            <TabsTrigger value="all" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-4">
-              All ({allProducts.length})
-            </TabsTrigger>
-            <TabsTrigger value="active" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-4">
-              Active ({activeCount})
-            </TabsTrigger>
-            <TabsTrigger value="draft" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-4">
-              Draft ({draftCount})
-            </TabsTrigger>
-            <TabsTrigger value="out" className="rounded-full text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm px-4">
-              Out of Stock ({outCount})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Bulk action bar */}
+        {selected.size > 0 && (
+          <div className="bg-[#111] text-white rounded-xl px-5 py-3 flex items-center gap-4 text-sm">
+            <CheckSquare className="h-4 w-4 text-[#29a366]" />
+            <span className="font-medium">{selected.size} selected</span>
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${selected.size} products?`)) {
+                  selected.forEach((id) =>
+                    deleteDocumentNonBlocking(supabase, "facilities", id),
+                  );
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-xs font-semibold"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="ml-auto text-[#888] hover:text-white transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
+        <p className="text-xs text-[#aaa] px-1">
+          Showing {filtered.length} of {all.length} products
+        </p>
+
+        {/* Table */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white overflow-hidden">
-                <Skeleton className="aspect-square w-full" />
-                <div className="p-5 space-y-3">
-                  <Skeleton className="h-4 w-3/4 rounded-full" />
-                  <Skeleton className="h-3 w-1/2 rounded-full" />
-                  <Skeleton className="h-5 w-20 rounded-full" />
+          <div className="bg-white rounded-xl border border-black/[0.06] divide-y divide-black/[0.04]">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-4">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-14 w-14 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48 rounded" />
+                  <Skeleton className="h-3 w-32 rounded" />
                 </div>
+                <Skeleton className="h-4 w-16 rounded" />
+                <Skeleton className="h-4 w-12 rounded" />
+                <Skeleton className="h-6 w-11 rounded-full" />
+                <Skeleton className="h-4 w-24 rounded" />
+                <Skeleton className="h-4 w-12 rounded" />
               </div>
             ))}
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-xl border border-black/[0.06] py-16 flex flex-col items-center gap-3">
+            <Package className="h-10 w-10 text-[#ddd]" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-[#888]">No products found</p>
+            <p className="text-xs text-[#bbb]">
+              Try adjusting your filters or search
+            </p>
+          </div>
         ) : (
-          <>
-            {/* Product Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {filteredProducts.map((product: any) => {
-                const status = getProductStatus(product);
+          <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+            {/* Column headers */}
+            <div
+              className="grid items-center border-b border-black/[0.06] bg-[#fafafa] px-4 py-3"
+              style={{
+                gridTemplateColumns: "40px 1fr 120px 90px 80px 130px 80px",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                className="h-4 w-4 rounded border-gray-300 accent-[#29a366] cursor-pointer"
+              />
+              <span className="text-[11px] font-bold text-[#aaa] ">
+                Product Info
+              </span>
+              <span className="text-[11px] font-bold text-[#aaa] ">Price</span>
+              <span className="text-[11px] font-bold text-[#aaa] flex items-center gap-1">
+                Stock <Info className="h-3 w-3" />
+              </span>
+              <span className="text-[11px] font-bold text-[#aaa] ">Active</span>
+              <span className="text-[11px] font-bold text-[#aaa] flex items-center gap-1">
+                Content Score
+              </span>
+              <div />
+            </div>
+
+            <div className="divide-y divide-black/[0.04]">
+              {filtered.map((product: any) => {
+                const status = getStatus(product);
+                const isActive = status === "Available";
+                const isOpen = openMenu === product.id;
+                const sales = product.totalSales ?? product.sold ?? 0;
+                const views = product.views ?? 0;
+                const rating = product.rating ?? 0;
+
                 return (
-                  <Card key={product.id} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden group">
-                    <div className="aspect-square bg-black/[0.03] dark:bg-white/[0.03] relative flex items-center justify-center overflow-hidden">
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
-                      )}
-                      <div className="absolute top-3 right-3 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="secondary"
-                              size="icon"
-                              className="h-8 w-8 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur-sm shadow-md"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52 rounded-[20px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-none bg-white/30 backdrop-blur-xl dark:bg-black/30">
-                            <DropdownMenuLabel className="px-4 py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">Product Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
-                            <DropdownMenuItem
-                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                              onClick={() => router.push(`/seller/products/add?edit=${product.id}`)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              <span className="text-sm font-medium">Edit Product</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                              onClick={() => handleDuplicateProduct(product)}
-                            >
-                              <Copy className="h-4 w-4" />
-                              <span className="text-sm font-medium">Duplicate</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                              onClick={() => handleToggleStatus(product.id, status)}
-                            >
-                              {status === "Available" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              <span className="text-sm font-medium">{status === "Available" ? "Hide Product" : "Publish"}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors gap-3"
-                              onClick={() => handleShareProduct(product)}
-                            >
-                              <Share2 className="h-4 w-4" />
-                              <span className="text-sm font-medium">Share Link</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-black/5 dark:bg-white/10" />
-                            <DropdownMenuItem
-                              className="rounded-xl px-4 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600 transition-colors gap-3 text-red-600"
-                              onClick={() => handleDeleteProduct(product.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="text-sm font-bold">Delete Product</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  <div
+                    key={product.id}
+                    className="grid items-center px-4 py-4 hover:bg-[#fafafa] transition-colors relative"
+                    style={{
+                      gridTemplateColumns:
+                        "40px 1fr 120px 90px 80px 130px 80px",
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={selected.has(product.id)}
+                      onChange={() => toggleOne(product.id)}
+                      className="h-4 w-4 rounded border-gray-300 accent-[#29a366] cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+
+                    {/* Product Info */}
+                    <div className="flex items-start gap-3 min-w-0 pr-4">
+                      <div className="h-[60px] w-[60px] rounded-xl bg-[#f2f2f0] overflow-hidden shrink-0 flex items-center justify-center border border-black/[0.06]">
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="h-5 w-5 text-[#ccc]" />
+                        )}
                       </div>
-                      <Badge className={`absolute top-3 left-3 rounded-full text-[10px] border-0 capitalize ${statusStyle[status] || statusStyle.Available}`}>
-                        {status}
-                      </Badge>
-                      {product.isAuction && (
-                        <Badge className="absolute bottom-3 left-3 rounded-full text-[10px] border-0 bg-primary/90 text-white flex items-center gap-1">
-                          <Gavel className="h-3 w-3" /> Auction
-                        </Badge>
-                      )}
-                    </div>
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-sm md:text-base truncate">{product.name}</h3>
-                          <div className="flex items-center gap-1 mt-1.5">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs text-muted-foreground">{product.rating || 5.0}</span>
-                          </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[#111] line-clamp-1 leading-snug">
+                          {product.name}
+                        </p>
+                        {/* Product ID */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[11px] text-[#aaa]">
+                            ID: {String(product.id).slice(0, 12)}…
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(product.id)}
+                            className="text-[#ccc] hover:text-[#29a366] transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
                         </div>
-                        <div className="text-right shrink-0">
-                          {product.isAuction ? (
-                            <>
-                              <span className="text-xs text-muted-foreground">{product.bidCount || 0} bids</span>
-                              <p className="font-headline text-lg text-primary">₱{Number(product.currentBid || product.startingBid || 0).toLocaleString()}</p>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs text-muted-foreground">{product.totalSales || 0} sold</span>
-                              <p className="font-headline text-lg">₱{Number(product.price || 0).toLocaleString()}</p>
-                            </>
+                        {/* Category / SKU */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[11px] text-[#aaa]">
+                            {product.category || "No category"}
+                          </span>
+                          {product.isAuction && (
+                            <span
+                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg text-white flex items-center gap-0.5 shrink-0"
+                              style={{ background: "#29a366" }}
+                            >
+                              <Gavel className="h-2.5 w-2.5" /> Auction
+                            </span>
                           )}
                         </div>
+                        {/* Stats row */}
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="flex items-center gap-0.5 text-[11px] text-[#bbb]">
+                            <Heart className="h-3 w-3" /> {sales}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-[11px] text-[#bbb]">
+                            <MessageSquare className="h-3 w-3" />{" "}
+                            {product.reviewCount ?? 0}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-[11px] text-[#bbb]">
+                            <Eye className="h-3 w-3" /> {views}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-[11px] text-[#bbb]">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />{" "}
+                            {Number(rating).toFixed(1)}
+                          </span>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+
+                    {/* Price */}
+                    <div>
+                      {product.isAuction ? (
+                        <div>
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="text-sm font-semibold"
+                              style={{ color: "#29a366" }}
+                            >
+                              ₱
+                              {Number(
+                                product.currentBid || product.startingBid || 0,
+                              ).toLocaleString()}
+                            </span>
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/seller/products/add?edit=${product.id}`,
+                                )
+                              }
+                              className="text-[#bbb] hover:text-[#29a366]"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-[#bbb] mt-0.5">
+                            {product.bidCount || 0} bids
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-semibold text-[#111]">
+                            ₱{Number(product.price || 0).toLocaleString()}
+                          </span>
+                          <button
+                            onClick={() =>
+                              router.push(
+                                `/seller/products/add?edit=${product.id}`,
+                              )
+                            }
+                            className="text-[#bbb] hover:text-[#29a366] transition-colors"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stock */}
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`text-sm font-medium ${(product.stock ?? 0) <= 5 && (product.stock ?? 0) > 0 ? "text-orange-500" : (product.stock ?? 0) === 0 ? "text-red-500" : "text-[#333]"}`}
+                      >
+                        {product.stock ?? "—"}
+                      </span>
+                      <button
+                        onClick={() =>
+                          router.push(`/seller/products/add?edit=${product.id}`)
+                        }
+                        className="text-[#bbb] hover:text-[#29a366] transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    {/* Active toggle */}
+                    <div>
+                      <Toggle
+                        active={isActive}
+                        onToggle={() => handleToggleActive(product.id, status)}
+                      />
+                    </div>
+
+                    {/* Content Score */}
+                    <div className="flex items-center gap-1">
+                      <ContentScore product={product} />
+                      <Info className="h-3 w-3 text-[#ccc]" />
+                    </div>
+
+                    {/* Actions */}
+                    <div
+                      className="flex items-center gap-1 justify-end relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() =>
+                          router.push(`/seller/products/add?edit=${product.id}`)
+                        }
+                        className="text-xs font-semibold text-[#29a366] hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setOpenMenu(isOpen ? null : product.id)}
+                        className="flex items-center gap-0.5 text-xs font-semibold text-[#555] hover:text-[#111] transition-colors"
+                      >
+                        More{" "}
+                        <ChevronDown
+                          className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {isOpen && (
+                        <div className="absolute right-0 top-7 w-44 bg-white rounded-xl border border-black/[0.08] shadow-lg z-30 overflow-hidden">
+                          <button
+                            onClick={() => {
+                              handleDuplicate(product);
+                              setOpenMenu(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#333] hover:bg-[#f2f2f0] transition-colors"
+                          >
+                            <Copy className="h-3.5 w-3.5 text-[#999]" />{" "}
+                            Duplicate
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleShare(product);
+                              setOpenMenu(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#333] hover:bg-[#f2f2f0] transition-colors"
+                          >
+                            <Share2 className="h-3.5 w-3.5 text-[#999]" /> Share
+                            Link
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleToggleActive(product.id, status);
+                              setOpenMenu(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#333] hover:bg-[#f2f2f0] transition-colors"
+                          >
+                            {isActive ? (
+                              <EyeOff className="h-3.5 w-3.5 text-[#999]" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5 text-[#999]" />
+                            )}
+                            {isActive ? "Deactivate" : "Activate"}
+                          </button>
+                          <div className="border-t border-black/[0.04]" />
+                          <button
+                            onClick={() => {
+                              handleDelete(product.id);
+                              setOpenMenu(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-16">
-                <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No products found</p>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
-
-      {/* Floating Add Button */}
-      <Link href="/seller/products/add" className="fixed bottom-[7.5rem] right-5 z-[1001] md:hidden">
-        <Button size="icon" className="h-14 w-14 rounded-full bg-black hover:bg-primary transition-all shadow-[0_8px_30px_rgba(0,0,0,0.25)] active:scale-90">
-          <Plus className="h-6 w-6" />
-        </Button>
-      </Link>
     </SellerLayout>
   );
 }

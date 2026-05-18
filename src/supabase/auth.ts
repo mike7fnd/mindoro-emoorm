@@ -37,3 +37,16 @@ export async function initiateGoogleSignIn(supabase: SupabaseClient) {
   });
   if (error) throw error;
 }
+
+/** Send OTP to a phone number (works for both sign-in and sign-up). */
+export async function initiatePhoneOtp(supabase: SupabaseClient, phone: string) {
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) throw error;
+}
+
+/** Verify the SMS OTP code. */
+export async function verifyPhoneOtp(supabase: SupabaseClient, phone: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
+  if (error) throw error;
+  return { user: data.user };
+}

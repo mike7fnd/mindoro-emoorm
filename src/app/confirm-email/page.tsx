@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -13,12 +13,20 @@ export default function ConfirmEmailPage() {
             <Mail className="h-10 w-10 text-primary" />
           </div>
         </div>
-        <h2 className="text-2xl font-headline tracking-[-0.05em] mb-2">Check your email</h2>
-        <p className="text-sm text-muted-foreground mb-2">We sent a confirmation link to your email address.</p>
-        <p className="text-xs text-muted-foreground mb-8">
-          Click the link in the email to verify your account, then come back to sign in.
+        <h2 className="text-2xl font-headline tracking-[-0.05em] mb-2">
+          Check your email
+        </h2>
+        <p className="text-sm text-muted-foreground mb-2">
+          We sent a confirmation link to your email address.
         </p>
-        <Link href="/login" className="inline-block text-sm text-primary font-bold hover:underline">
+        <p className="text-xs text-muted-foreground mb-8">
+          Click the link in the email to verify your account, then come back to
+          sign in.
+        </p>
+        <Link
+          href="/login"
+          className="inline-block text-sm text-primary font-bold hover:underline"
+        >
           Go to Sign In
         </Link>
       </div>

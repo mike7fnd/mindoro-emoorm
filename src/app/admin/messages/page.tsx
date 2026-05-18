@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -7,19 +7,8 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  MessageCircle,
-  Search,
-  Send,
-  ArrowLeft,
-  User,
-} from "lucide-react";
-import {
-  useUser,
-  useSupabase,
-  useStableMemo,
-  useCollection,
-} from "@/supabase";
+import { MessageCircle, Search, Send, ArrowLeft, User } from "lucide-react";
+import { useUser, useSupabase, useStableMemo, useCollection } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -30,9 +19,9 @@ function AdminMessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAdmin, isAdminLoading } = useIsAdmin();
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(
-    searchParams.get("conversation") || null
-  );
+  const [selectedConversation, setSelectedConversation] = useState<
+    string | null
+  >(searchParams.get("conversation") || null);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
@@ -52,14 +41,21 @@ function AdminMessagesContent() {
       order: { column: "lastMessageAt", ascending: false },
     };
   }, [user, isAdmin]);
-  const { data: conversations, isLoading: convsLoading } = useCollection(convConfig);
+  const { data: conversations, isLoading: convsLoading } =
+    useCollection(convConfig);
 
   // Fetch messages for selected conversation
   const msgConfig = useStableMemo(() => {
     if (!selectedConversation) return null;
     return {
       table: "messages",
-      filters: [{ column: "conversationId", op: "eq" as const, value: selectedConversation }],
+      filters: [
+        {
+          column: "conversationId",
+          op: "eq" as const,
+          value: selectedConversation,
+        },
+      ],
       order: { column: "createdAt", ascending: true },
     };
   }, [selectedConversation]);
@@ -74,12 +70,19 @@ function AdminMessagesContent() {
 
   const getUserName = (userId: string) => {
     const u = allUsers?.find((u: any) => u.id === userId);
-    return (u as any)?.name || (u as any)?.email?.split("@")[0] || userId?.slice(0, 8);
+    return (
+      (u as any)?.name ||
+      (u as any)?.email?.split("@")[0] ||
+      userId?.slice(0, 8)
+    );
   };
 
   const getUserAvatar = (userId: string) => {
     const u = allUsers?.find((u: any) => u.id === userId);
-    return (u as any)?.profilePictureUrl || "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
+    return (
+      (u as any)?.profilePictureUrl ||
+      "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg"
+    );
   };
 
   useEffect(() => {
@@ -98,7 +101,10 @@ function AdminMessagesContent() {
       });
       await supabase
         .from("conversations")
-        .update({ lastMessage: newMessage.trim(), lastMessageAt: new Date().toISOString() })
+        .update({
+          lastMessage: newMessage.trim(),
+          lastMessageAt: new Date().toISOString(),
+        })
         .eq("id", selectedConversation);
       setNewMessage("");
     } catch (err) {
@@ -134,7 +140,7 @@ function AdminMessagesContent() {
             <div
               className={cn(
                 "w-full md:w-[360px] border-r border-black/[0.04] dark:border-white/[0.04] flex flex-col",
-                selectedConversation ? "hidden md:flex" : "flex"
+                selectedConversation ? "hidden md:flex" : "flex",
               )}
             >
               <div className="p-4 border-b border-black/[0.04] dark:border-white/[0.04]">
@@ -165,18 +171,22 @@ function AdminMessagesContent() {
                 ) : filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center p-8">
                     <MessageCircle className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">No conversations</p>
+                    <p className="text-sm text-muted-foreground">
+                      No conversations
+                    </p>
                   </div>
                 ) : (
                   filteredConversations.map((conv: any) => {
-                    const otherParticipant = conv.participants?.find((p: string) => p !== user.uid) || "";
+                    const otherParticipant =
+                      conv.participants?.find((p: string) => p !== user.uid) ||
+                      "";
                     return (
                       <button
                         key={conv.id}
                         onClick={() => setSelectedConversation(conv.id)}
                         className={cn(
                           "w-full flex items-center gap-3 p-4 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors text-left border-b border-black/[0.02] dark:border-white/[0.02]",
-                          selectedConversation === conv.id && "bg-primary/5"
+                          selectedConversation === conv.id && "bg-primary/5",
                         )}
                       >
                         <div className="h-11 w-11 rounded-full overflow-hidden border border-black/[0.06] shrink-0">
@@ -196,7 +206,9 @@ function AdminMessagesContent() {
                             </p>
                             <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
                               {conv.lastMessageAt
-                                ? new Date(conv.lastMessageAt).toLocaleDateString()
+                                ? new Date(
+                                    conv.lastMessageAt,
+                                  ).toLocaleDateString()
                                 : ""}
                             </span>
                           </div>
@@ -215,14 +227,16 @@ function AdminMessagesContent() {
             <div
               className={cn(
                 "flex-1 flex flex-col",
-                !selectedConversation ? "hidden md:flex" : "flex"
+                !selectedConversation ? "hidden md:flex" : "flex",
               )}
             >
               {!selectedConversation ? (
                 <div className="flex-1 flex items-center justify-center text-center p-8">
                   <div>
                     <MessageCircle className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">Select a conversation to start messaging</p>
+                    <p className="text-sm text-muted-foreground">
+                      Select a conversation to start messaging
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -240,7 +254,11 @@ function AdminMessagesContent() {
                     <div className="h-9 w-9 rounded-full overflow-hidden border border-black/[0.06]">
                       <Image
                         src={getUserAvatar(
-                          conversations?.find((c: any) => c.id === selectedConversation)?.participants?.find((p: string) => p !== user.uid) || ""
+                          conversations
+                            ?.find((c: any) => c.id === selectedConversation)
+                            ?.participants?.find(
+                              (p: string) => p !== user.uid,
+                            ) || "",
                         )}
                         alt="Avatar"
                         width={36}
@@ -251,7 +269,10 @@ function AdminMessagesContent() {
                     </div>
                     <p className="text-sm font-medium">
                       {getUserName(
-                        conversations?.find((c: any) => c.id === selectedConversation)?.participants?.find((p: string) => p !== user.uid) || ""
+                        conversations
+                          ?.find((c: any) => c.id === selectedConversation)
+                          ?.participants?.find((p: string) => p !== user.uid) ||
+                          "",
                       )}
                     </p>
                   </div>
@@ -261,8 +282,19 @@ function AdminMessagesContent() {
                     {msgsLoading ? (
                       <div className="space-y-3 p-4">
                         {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className={cn("flex", i % 2 === 0 ? "justify-start" : "justify-end")}>
-                            <Skeleton className={cn("h-10 rounded-2xl", i % 2 === 0 ? "w-2/3" : "w-1/2")} />
+                          <div
+                            key={i}
+                            className={cn(
+                              "flex",
+                              i % 2 === 0 ? "justify-start" : "justify-end",
+                            )}
+                          >
+                            <Skeleton
+                              className={cn(
+                                "h-10 rounded-2xl",
+                                i % 2 === 0 ? "w-2/3" : "w-1/2",
+                              )}
+                            />
                           </div>
                         ))}
                       </div>
@@ -271,21 +303,38 @@ function AdminMessagesContent() {
                         {(messages ?? []).map((msg: any) => {
                           const isMe = msg.senderId === user.uid;
                           return (
-                            <div key={msg.id} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+                            <div
+                              key={msg.id}
+                              className={cn(
+                                "flex",
+                                isMe ? "justify-end" : "justify-start",
+                              )}
+                            >
                               <div
                                 className={cn(
                                   "max-w-[75%] px-4 py-2.5 rounded-2xl text-sm",
                                   isMe
                                     ? "bg-primary text-white rounded-br-md"
-                                    : "bg-[#f3f3f3] dark:bg-white/[0.05] text-black dark:text-white rounded-bl-md"
+                                    : "bg-[#f3f3f3] dark:bg-white/[0.05] text-black dark:text-white rounded-bl-md",
                                 )}
                               >
                                 {msg.text}
-                                <p className={cn(
-                                  "text-[10px] mt-1",
-                                  isMe ? "text-white/60" : "text-muted-foreground"
-                                )}>
-                                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                                <p
+                                  className={cn(
+                                    "text-[10px] mt-1",
+                                    isMe
+                                      ? "text-white/60"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {msg.createdAt
+                                    ? new Date(
+                                        msg.createdAt,
+                                      ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : ""}
                                 </p>
                               </div>
                             </div>
@@ -304,7 +353,11 @@ function AdminMessagesContent() {
                         placeholder="Type a message..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" &&
+                          !e.shiftKey &&
+                          handleSendMessage()
+                        }
                         className="flex-1 bg-[#f8f8f8] dark:bg-white/[0.05] border-none rounded-full px-5 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                       />
                       <Button

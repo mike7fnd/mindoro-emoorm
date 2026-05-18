@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import Link from "next/link";
 import { Home, SearchX } from "lucide-react";
 
@@ -11,12 +11,17 @@ export default function NotFound() {
             <SearchX className="h-14 w-14 text-muted-foreground/40" />
           </div>
 
-          <h1 className="text-[7rem] leading-none font-headline tracking-tighter text-black/10 dark:text-white/10 select-none">404</h1>
+          <h1 className="text-[7rem] leading-none font-headline tracking-tighter text-black/10 dark:text-white/10 select-none">
+            404
+          </h1>
 
-          <h2 className="text-xl md:text-2xl font-headline tracking-tight text-black dark:text-white -mt-4 mb-3">Page not found</h2>
+          <h2 className="text-xl md:text-2xl font-headline tracking-tight text-black dark:text-white -mt-4 mb-3">
+            Page not found
+          </h2>
 
           <p className="text-sm text-muted-foreground leading-relaxed mb-10">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you back on track.
+            The page you&apos;re looking for doesn&apos;t exist or has been
+            moved. Let&apos;s get you back on track.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">

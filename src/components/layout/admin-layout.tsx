@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -43,7 +43,8 @@ export function AdminHeader() {
   const { user } = useSupabaseAuth();
 
   const isActive = (path: string) => {
-    if (path === "/admin/dashboard" && pathname === "/admin/dashboard") return true;
+    if (path === "/admin/dashboard" && pathname === "/admin/dashboard")
+      return true;
     if (path !== "/admin/dashboard" && pathname.startsWith(path)) return true;
     return false;
   };
@@ -64,7 +65,10 @@ export function AdminHeader() {
       <div className="site-nav" style={{ display: undefined }}>
         <div className="nav-side left-side">
           <div className="brand">
-            <Link href="/admin/dashboard" className="logo flex items-center gap-2">
+            <Link
+              href="/admin/dashboard"
+              className="logo flex items-center gap-2"
+            >
               <Shield className="h-4 w-4 text-primary" />
               Admin Panel
             </Link>
@@ -95,7 +99,7 @@ export function AdminHeader() {
               <div
                 className={cn(
                   "icon-btn",
-                  pathname.startsWith("/admin/messages") && "text-primary"
+                  pathname.startsWith("/admin/messages") && "text-primary",
                 )}
                 aria-label="Messages"
               >
@@ -141,7 +145,8 @@ export function AdminBottomNav() {
     "https://i.pinimg.com/736x/d2/98/4e/d2984ec4b65a8568eab3dc2b640fc58e.jpg";
 
   const isActive = (path: string) => {
-    if (path === "/admin/dashboard" && pathname === "/admin/dashboard") return true;
+    if (path === "/admin/dashboard" && pathname === "/admin/dashboard")
+      return true;
     if (path !== "/admin/dashboard" && pathname.startsWith(path)) return true;
     return false;
   };
@@ -172,7 +177,7 @@ export function AdminBottomNav() {
           href="/admin/settings"
           className={cn(
             "mobile-nav-item",
-            pathname.startsWith("/admin/settings") && "active"
+            pathname.startsWith("/admin/settings") && "active",
           )}
         >
           <div
@@ -180,7 +185,7 @@ export function AdminBottomNav() {
               "h-8 w-8 rounded-full overflow-hidden border-2 transition-all",
               pathname.startsWith("/admin/settings")
                 ? "border-primary scale-110 shadow-lg"
-                : "border-muted"
+                : "border-muted",
             )}
           >
             <Image

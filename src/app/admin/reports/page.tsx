@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -100,19 +100,23 @@ export default function AdminReportsPage() {
       (r.description || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (r.targetId || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || r.priority === priorityFilter;
+    const matchesPriority =
+      priorityFilter === "all" || r.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
   const total = reports?.length ?? 0;
   const open = reports?.filter((r: any) => r.status === "open").length ?? 0;
-  const investigating = reports?.filter((r: any) => r.status === "investigating").length ?? 0;
-  const highPriority = reports?.filter((r: any) => r.priority === "high" && r.status === "open").length ?? 0;
+  const investigating =
+    reports?.filter((r: any) => r.status === "investigating").length ?? 0;
+  const highPriority =
+    reports?.filter((r: any) => r.priority === "high" && r.status === "open")
+      .length ?? 0;
 
   const handleStatusChange = async (
     report: any,
     newStatus: "investigating" | "resolved" | "rejected",
-    note?: string
+    note?: string,
   ) => {
     const updates: any = {
       status: newStatus,
@@ -134,12 +138,17 @@ export default function AdminReportsPage() {
         action: newStatus === "rejected" ? "report.reject" : "report.resolve",
         targetType: "report",
         targetId: report.id,
-        targetLabel: report.targetLabel || `${report.targetType}:${report.targetId?.slice(0, 8)}`,
+        targetLabel:
+          report.targetLabel ||
+          `${report.targetType}:${report.targetId?.slice(0, 8)}`,
         reason: note,
         metadata: { newStatus, originalCategory: report.category },
       });
     }
-    toast({ title: `Report ${newStatus}`, description: "The report has been updated." });
+    toast({
+      title: `Report ${newStatus}`,
+      description: "The report has been updated.",
+    });
     setSelected(null);
     setResolution("");
   };
@@ -152,27 +161,55 @@ export default function AdminReportsPage() {
             Reports & Disputes
           </h1>
           <p className="text-sm text-muted-foreground font-normal">
-            {total} total · {open} open · {investigating} investigating · {highPriority} high-priority
+            {total} total · {open} open · {investigating} investigating ·{" "}
+            {highPriority} high-priority
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Open", value: open, icon: Clock, color: "text-orange-600 bg-orange-50" },
-            { label: "Investigating", value: investigating, icon: ShieldAlert, color: "text-blue-600 bg-blue-50" },
-            { label: "High Priority", value: highPriority, icon: AlertTriangle, color: "text-red-600 bg-red-50" },
-            { label: "All-Time", value: total, icon: FileText, color: "text-purple-600 bg-purple-50" },
+            {
+              label: "Open",
+              value: open,
+              icon: Clock,
+              color: "text-orange-600 bg-orange-50",
+            },
+            {
+              label: "Investigating",
+              value: investigating,
+              icon: ShieldAlert,
+              color: "text-blue-600 bg-blue-50",
+            },
+            {
+              label: "High Priority",
+              value: highPriority,
+              icon: AlertTriangle,
+              color: "text-red-600 bg-red-50",
+            },
+            {
+              label: "All-Time",
+              value: total,
+              icon: FileText,
+              color: "text-purple-600 bg-purple-50",
+            },
           ].map((s) => {
             const Icon = s.icon;
             return (
-              <Card key={s.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
+              <Card
+                key={s.label}
+                className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]"
+              >
                 <CardContent className="p-5">
                   <div className={`p-2.5 rounded-2xl ${s.color} w-fit mb-3`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
-                  <p className="text-2xl font-normal font-headline tracking-[-0.05em]">{s.value}</p>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {s.label}
+                  </p>
+                  <p className="text-2xl font-normal font-headline tracking-[-0.05em]">
+                    {s.value}
+                  </p>
                 </CardContent>
               </Card>
             );
@@ -205,7 +242,9 @@ export default function AdminReportsPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-4 h-11 text-xs font-bold shrink-0",
-                  statusFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  statusFilter === f.key
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setStatusFilter(f.key)}
               >
@@ -221,7 +260,9 @@ export default function AdminReportsPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-4 h-11 text-xs font-bold shrink-0 capitalize",
-                  priorityFilter === p ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  priorityFilter === p
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setPriorityFilter(p)}
               >
@@ -265,16 +306,32 @@ export default function AdminReportsPage() {
                           <p className="text-sm font-bold truncate">
                             {report.category || "Untitled report"}
                           </p>
-                          <Badge variant="outline" className={cn("rounded-full text-[10px] px-2 py-0", PRIORITY_TONE[report.priority] || PRIORITY_TONE.medium)}>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-full text-[10px] px-2 py-0",
+                              PRIORITY_TONE[report.priority] ||
+                                PRIORITY_TONE.medium,
+                            )}
+                          >
                             {report.priority || "medium"}
                           </Badge>
-                          <Badge variant="outline" className={cn("rounded-full text-[10px] px-2 py-0 capitalize", STATUS_TONE[report.status] || STATUS_TONE.open)}>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-full text-[10px] px-2 py-0 capitalize",
+                              STATUS_TONE[report.status] || STATUS_TONE.open,
+                            )}
+                          >
                             {report.status || "open"}
                           </Badge>
                         </div>
                         {report.targetLabel && (
                           <p className="text-xs text-muted-foreground truncate">
-                            against {report.targetType}: <span className="font-medium">{report.targetLabel}</span>
+                            against {report.targetType}:{" "}
+                            <span className="font-medium">
+                              {report.targetLabel}
+                            </span>
                           </p>
                         )}
                         {report.description && (
@@ -283,7 +340,11 @@ export default function AdminReportsPage() {
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-2">
-                          Reported {report.createdAt ? new Date(report.createdAt).toLocaleString() : "—"} by {report.reporterRole || "user"}
+                          Reported{" "}
+                          {report.createdAt
+                            ? new Date(report.createdAt).toLocaleString()
+                            : "—"}{" "}
+                          by {report.reporterRole || "user"}
                         </p>
                       </div>
                     </div>
@@ -295,50 +356,87 @@ export default function AdminReportsPage() {
         )}
 
         {/* Detail Dialog */}
-        <Dialog open={!!selected} onOpenChange={() => { setSelected(null); setResolution(""); }}>
+        <Dialog
+          open={!!selected}
+          onOpenChange={() => {
+            setSelected(null);
+            setResolution("");
+          }}
+        >
           <DialogContent className="sm:max-w-[600px] rounded-3xl max-h-[90vh] overflow-y-auto">
             {selected && (
               <>
                 <DialogHeader>
                   <DialogTitle className="font-headline tracking-[-0.03em] flex items-center gap-2">
                     {selected.category}
-                    <Badge variant="outline" className={cn("rounded-full text-[10px] ml-2", PRIORITY_TONE[selected.priority] || PRIORITY_TONE.medium)}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-full text-[10px] ml-2",
+                        PRIORITY_TONE[selected.priority] ||
+                          PRIORITY_TONE.medium,
+                      )}
+                    >
                       {selected.priority || "medium"}
                     </Badge>
                   </DialogTitle>
                   <DialogDescription>
-                    Report against {selected.targetType}: <strong>{selected.targetLabel || selected.targetId}</strong>
+                    Report against {selected.targetType}:{" "}
+                    <strong>{selected.targetLabel || selected.targetId}</strong>
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
                   <div>
-                    <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Reporter</p>
-                    <p className="text-sm">{selected.reporterRole} · <span className="font-mono text-xs">{selected.reporterId?.slice(0, 12)}</span></p>
+                    <p className="text-[10px] font-bold tracking-tight text-muted-foreground mb-1">
+                      Reporter
+                    </p>
+                    <p className="text-sm">
+                      {selected.reporterRole} ·{" "}
+                      <span className="font-mono text-xs">
+                        {selected.reporterId?.slice(0, 12)}
+                      </span>
+                    </p>
                   </div>
 
                   {selected.description && (
                     <div>
-                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Description</p>
-                      <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-2xl p-4">{selected.description}</p>
+                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground mb-1">
+                        Description
+                      </p>
+                      <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-2xl p-4">
+                        {selected.description}
+                      </p>
                     </div>
                   )}
 
-                  {Array.isArray(selected.evidence) && selected.evidence.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Evidence</p>
-                      <ul className="text-xs space-y-1">
-                        {selected.evidence.map((e: any, i: number) => (
-                          <li key={i} className="font-mono text-muted-foreground">{typeof e === "string" ? e : JSON.stringify(e)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {Array.isArray(selected.evidence) &&
+                    selected.evidence.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold tracking-tight text-muted-foreground mb-1">
+                          Evidence
+                        </p>
+                        <ul className="text-xs space-y-1">
+                          {selected.evidence.map((e: any, i: number) => (
+                            <li
+                              key={i}
+                              className="font-mono text-muted-foreground"
+                            >
+                              {typeof e === "string" ? e : JSON.stringify(e)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                   {selected.resolution && (
                     <div>
-                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase mb-1">Previous Resolution</p>
-                      <p className="text-sm bg-green-50 text-green-800 rounded-2xl p-4">{selected.resolution}</p>
+                      <p className="text-[10px] font-bold tracking-tight text-muted-foreground mb-1">
+                        Previous Resolution
+                      </p>
+                      <p className="text-sm bg-green-50 text-green-800 rounded-2xl p-4">
+                        {selected.resolution}
+                      </p>
                     </div>
                   )}
 
@@ -348,11 +446,12 @@ export default function AdminReportsPage() {
                       size="sm"
                       className="rounded-full gap-2"
                       onClick={() => {
-                        const route = selected.targetType === "product"
-                          ? `/book/${selected.targetId}`
-                          : selected.targetType === "seller"
-                          ? `/stores/${selected.targetId}`
-                          : null;
+                        const route =
+                          selected.targetType === "product"
+                            ? `/book/${selected.targetId}`
+                            : selected.targetType === "seller"
+                              ? `/stores/${selected.targetId}`
+                              : null;
                         if (route) window.open(route, "_blank");
                       }}
                     >
@@ -360,9 +459,12 @@ export default function AdminReportsPage() {
                     </Button>
                   )}
 
-                  {(selected.status === "open" || selected.status === "investigating") && (
+                  {(selected.status === "open" ||
+                    selected.status === "investigating") && (
                     <div className="space-y-2 pt-2 border-t">
-                      <label className="text-xs font-bold tracking-tight text-muted-foreground">Resolution / Notes</label>
+                      <label className="text-xs font-bold tracking-tight text-muted-foreground">
+                        Resolution / Notes
+                      </label>
                       <textarea
                         value={resolution}
                         onChange={(e) => setResolution(e.target.value)}
@@ -379,23 +481,30 @@ export default function AdminReportsPage() {
                     <Button
                       variant="outline"
                       className="rounded-full gap-2"
-                      onClick={() => handleStatusChange(selected, "investigating")}
+                      onClick={() =>
+                        handleStatusChange(selected, "investigating")
+                      }
                     >
                       <ShieldAlert className="h-4 w-4" /> Take Up
                     </Button>
                   )}
-                  {(selected.status === "open" || selected.status === "investigating") && (
+                  {(selected.status === "open" ||
+                    selected.status === "investigating") && (
                     <>
                       <Button
                         variant="outline"
                         className="rounded-full gap-2 text-muted-foreground"
-                        onClick={() => handleStatusChange(selected, "rejected", resolution)}
+                        onClick={() =>
+                          handleStatusChange(selected, "rejected", resolution)
+                        }
                       >
                         <XCircle className="h-4 w-4" /> Reject
                       </Button>
                       <Button
                         className="rounded-full gap-2 ml-auto bg-green-600 hover:bg-green-700"
-                        onClick={() => handleStatusChange(selected, "resolved", resolution)}
+                        onClick={() =>
+                          handleStatusChange(selected, "resolved", resolution)
+                        }
                       >
                         <CheckCircle2 className="h-4 w-4" /> Resolve
                       </Button>

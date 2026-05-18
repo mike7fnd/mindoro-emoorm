@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,10 @@ export default function AdminReviewsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; preview: string } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: string;
+    preview: string;
+  } | null>(null);
   const [removeReason, setRemoveReason] = useState("");
 
   useEffect(() => {
@@ -92,16 +95,22 @@ export default function AdminReviewsPage() {
       (r.comment || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (r.title || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || r.reviewType === typeFilter;
-    const matchesRating = ratingFilter === "all" || String(r.rating) === ratingFilter;
+    const matchesRating =
+      ratingFilter === "all" || String(r.rating) === ratingFilter;
     return matchesSearch && matchesType && matchesRating;
   });
 
   const total = reviews?.length ?? 0;
-  const productReviews = reviews?.filter((r: any) => r.reviewType === "product").length ?? 0;
-  const sellerReviews = reviews?.filter((r: any) => r.reviewType === "seller").length ?? 0;
+  const productReviews =
+    reviews?.filter((r: any) => r.reviewType === "product").length ?? 0;
+  const sellerReviews =
+    reviews?.filter((r: any) => r.reviewType === "seller").length ?? 0;
   const avgRating =
     reviews && reviews.length
-      ? (reviews.reduce((s: number, r: any) => s + Number(r.rating || 0), 0) / reviews.length).toFixed(1)
+      ? (
+          reviews.reduce((s: number, r: any) => s + Number(r.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1)
       : "0.0";
 
   const handleRemove = async (reviewId: string, preview: string) => {
@@ -117,7 +126,10 @@ export default function AdminReviewsPage() {
         reason: removeReason || "No reason provided",
       });
     }
-    toast({ title: "Review removed", description: "The review has been deleted." });
+    toast({
+      title: "Review removed",
+      description: "The review has been deleted.",
+    });
     setRemoveTarget(null);
     setRemoveReason("");
   };
@@ -130,7 +142,8 @@ export default function AdminReviewsPage() {
             Reviews Moderation
           </h1>
           <p className="text-sm text-muted-foreground font-normal">
-            {total} reviews · {productReviews} products · {sellerReviews} sellers · avg ★ {avgRating}
+            {total} reviews · {productReviews} products · {sellerReviews}{" "}
+            sellers · avg ★ {avgRating}
           </p>
         </div>
 
@@ -158,7 +171,9 @@ export default function AdminReviewsPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-5 h-11 text-xs font-bold shrink-0",
-                  typeFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  typeFilter === f.key
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setTypeFilter(f.key)}
               >
@@ -174,7 +189,9 @@ export default function AdminReviewsPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-4 h-11 text-xs font-bold shrink-0",
-                  ratingFilter === r ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  ratingFilter === r
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setRatingFilter(r)}
               >
@@ -209,7 +226,7 @@ export default function AdminReviewsPage() {
                   key={review.id}
                   className={cn(
                     "shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden",
-                    isLowRating ? "border-red-100" : "border-black/[0.02]"
+                    isLowRating ? "border-red-100" : "border-black/[0.02]",
                   )}
                 >
                   <CardContent className="p-6">
@@ -221,10 +238,14 @@ export default function AdminReviewsPage() {
                               "rounded-full px-3 py-1 text-[10px] font-bold",
                               review.reviewType === "product"
                                 ? "bg-blue-50 text-blue-600 border-0"
-                                : "bg-purple-50 text-purple-600 border-0"
+                                : "bg-purple-50 text-purple-600 border-0",
                             )}
                           >
-                            {review.reviewType === "product" ? <Package className="h-3 w-3 mr-1 inline" /> : <Store className="h-3 w-3 mr-1 inline" />}
+                            {review.reviewType === "product" ? (
+                              <Package className="h-3 w-3 mr-1 inline" />
+                            ) : (
+                              <Store className="h-3 w-3 mr-1 inline" />
+                            )}
                             {review.reviewType}
                           </Badge>
                           <div className="flex items-center gap-0.5">
@@ -235,44 +256,61 @@ export default function AdminReviewsPage() {
                                   "h-4 w-4",
                                   i < Number(review.rating || 0)
                                     ? "fill-yellow-400 text-yellow-400"
-                                    : "text-muted-foreground/30"
+                                    : "text-muted-foreground/30",
                                 )}
                               />
                             ))}
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            by {author?.name || author?.email || review.userId?.slice(0, 8) || "anonymous"}
+                            by{" "}
+                            {author?.name ||
+                              author?.email ||
+                              review.userId?.slice(0, 8) ||
+                              "anonymous"}
                           </span>
                           {review.createdAt && (
                             <span className="text-xs text-muted-foreground">
-                              · {new Date(review.createdAt).toLocaleDateString()}
+                              ·{" "}
+                              {new Date(review.createdAt).toLocaleDateString()}
                             </span>
                           )}
                         </div>
                         {review.title && (
-                          <p className="text-sm font-bold mb-1">{review.title}</p>
+                          <p className="text-sm font-bold mb-1">
+                            {review.title}
+                          </p>
                         )}
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {preview}
                         </p>
                         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <ThumbsUp className="h-3 w-3" /> {review.helpful ?? 0}
+                            <ThumbsUp className="h-3 w-3" />{" "}
+                            {review.helpful ?? 0}
                           </span>
                           <span className="flex items-center gap-1">
-                            <ThumbsDown className="h-3 w-3" /> {review.unhelpful ?? 0}
+                            <ThumbsDown className="h-3 w-3" />{" "}
+                            {review.unhelpful ?? 0}
                           </span>
                           {review.facilityId && (
-                            <span className="font-mono">product: {review.facilityId.slice(0, 10)}</span>
+                            <span className="font-mono">
+                              product: {review.facilityId.slice(0, 10)}
+                            </span>
                           )}
                           {review.storeId && (
-                            <span className="font-mono">store: {review.storeId.slice(0, 10)}</span>
+                            <span className="font-mono">
+                              store: {review.storeId.slice(0, 10)}
+                            </span>
                           )}
                         </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="rounded-full h-8 w-8 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full h-8 w-8 shrink-0"
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -283,7 +321,9 @@ export default function AdminReviewsPage() {
                           {review.facilityId && (
                             <DropdownMenuItem
                               className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                              onClick={() => router.push(`/book/${review.facilityId}`)}
+                              onClick={() =>
+                                router.push(`/book/${review.facilityId}`)
+                              }
                             >
                               <Eye className="h-4 w-4" /> View Product
                             </DropdownMenuItem>
@@ -291,7 +331,9 @@ export default function AdminReviewsPage() {
                           {review.storeId && (
                             <DropdownMenuItem
                               className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer"
-                              onClick={() => router.push(`/stores/${review.storeId}`)}
+                              onClick={() =>
+                                router.push(`/stores/${review.storeId}`)
+                              }
                             >
                               <Eye className="h-4 w-4" /> View Store
                             </DropdownMenuItem>
@@ -299,7 +341,9 @@ export default function AdminReviewsPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer text-red-600"
-                            onClick={() => setRemoveTarget({ id: review.id, preview })}
+                            onClick={() =>
+                              setRemoveTarget({ id: review.id, preview })
+                            }
                           >
                             <Trash2 className="h-4 w-4" /> Remove Review
                           </DropdownMenuItem>
@@ -314,7 +358,13 @@ export default function AdminReviewsPage() {
         )}
 
         {/* Remove Confirmation */}
-        <AlertDialog open={!!removeTarget} onOpenChange={() => { setRemoveTarget(null); setRemoveReason(""); }}>
+        <AlertDialog
+          open={!!removeTarget}
+          onOpenChange={() => {
+            setRemoveTarget(null);
+            setRemoveReason("");
+          }}
+        >
           <AlertDialogContent className="rounded-3xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
@@ -343,10 +393,15 @@ export default function AdminReviewsPage() {
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-full">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="rounded-full bg-red-600 hover:bg-red-700"
-                onClick={() => removeTarget && handleRemove(removeTarget.id, removeTarget.preview)}
+                onClick={() =>
+                  removeTarget &&
+                  handleRemove(removeTarget.id, removeTarget.preview)
+                }
               >
                 Remove
               </AlertDialogAction>

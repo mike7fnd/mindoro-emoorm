@@ -1,10 +1,7 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DollarSign,
   Package,
@@ -18,46 +15,46 @@ import {
   AlertCircle,
   Truck,
   Loader2,
-  MoreVertical,
   BarChart3,
   Settings,
   User,
   ClipboardList,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { useSupabaseAuth, useStableMemo, useDoc, useCollection } from "@/supabase";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  useSupabaseAuth,
+  useStableMemo,
+  useDoc,
+  useCollection,
+} from "@/supabase";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const statusConfig: Record<string, { icon: React.ElementType; className: string }> = {
-  "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
-  "To Ship": { icon: AlertCircle, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-  "To Receive": { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-  "Completed": { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-  "Cancelled": { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10" },
-  pending: { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10" },
-  processing: { icon: AlertCircle, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-  shipped: { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-  completed: { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-  cancelled: { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10" },
+const statusConfig: Record<
+  string,
+  { icon: React.ElementType; color: string; bg: string }
+> = {
+  "To Pay": { icon: Clock, color: "#ca8a04", bg: "#fefce8" },
+  "To Ship": { icon: AlertCircle, color: "#2563eb", bg: "#eff6ff" },
+  "To Receive": { icon: Truck, color: "#7c3aed", bg: "#f5f3ff" },
+  Completed: { icon: CheckCircle2, color: "#16a34a", bg: "#f0fdf4" },
+  Cancelled: { icon: XCircle, color: "#dc2626", bg: "#fef2f2" },
+  pending: { icon: Clock, color: "#ca8a04", bg: "#fefce8" },
+  processing: { icon: AlertCircle, color: "#2563eb", bg: "#eff6ff" },
+  shipped: { icon: Truck, color: "#7c3aed", bg: "#f5f3ff" },
+  completed: { icon: CheckCircle2, color: "#16a34a", bg: "#f0fdf4" },
+  cancelled: { icon: XCircle, color: "#dc2626", bg: "#fef2f2" },
 };
 
 export default function SellerDashboardPage() {
   const { user } = useSupabaseAuth();
 
-  // Fetch store data
   const storeRef = useStableMemo(() => {
     if (!user) return null;
     return { table: "stores", id: user.uid };
   }, [user]);
   const { data: store } = useDoc(storeRef);
 
-  // Fetch products (facilities) for this seller
   const productsConfig = useStableMemo(() => {
     if (!user) return null;
     return {
@@ -66,9 +63,9 @@ export default function SellerDashboardPage() {
       order: { column: "createdAt", ascending: false },
     };
   }, [user]);
-  const { data: products, isLoading: productsLoading } = useCollection(productsConfig);
+  const { data: products, isLoading: productsLoading } =
+    useCollection(productsConfig);
 
-  // Fetch orders (bookings) for this store
   const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
@@ -77,239 +74,291 @@ export default function SellerDashboardPage() {
       order: { column: "createdAt", ascending: false },
     };
   }, [user]);
-  const { data: orders, isLoading: ordersLoading } = useCollection(ordersConfig);
+  const { data: orders, isLoading: ordersLoading } =
+    useCollection(ordersConfig);
 
-  // Compute stats
-  const totalSales = orders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
+  const totalSales =
+    orders?.reduce((sum, o: any) => sum + (Number(o.totalPrice) || 0), 0) ?? 0;
   const totalOrders = orders?.length ?? 0;
   const totalProducts = products?.length ?? 0;
-  const completedOrders = orders?.filter((o: any) => o.status === "Completed" || o.status === "completed").length ?? 0;
+  const completedOrders =
+    orders?.filter(
+      (o: any) => o.status === "Completed" || o.status === "completed",
+    ).length ?? 0;
 
   const stats = [
-    { label: "Total Sales", value: `₱${totalSales.toLocaleString()}`, icon: DollarSign, color: "text-green-600 bg-green-50 dark:bg-green-500/10" },
-    { label: "Orders", value: String(totalOrders), icon: ShoppingCart, color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10" },
-    { label: "Products", value: String(totalProducts), icon: Package, color: "text-purple-600 bg-purple-50 dark:bg-purple-500/10" },
-    { label: "Completed", value: String(completedOrders), icon: CheckCircle2, color: "text-orange-600 bg-orange-50 dark:bg-orange-500/10" },
+    {
+      label: "Total Sales",
+      value: `₱${totalSales.toLocaleString()}`,
+      icon: DollarSign,
+      color: "#29a366",
+      bg: "#f0faf5",
+    },
+    {
+      label: "Orders",
+      value: String(totalOrders),
+      icon: ShoppingCart,
+      color: "#2563eb",
+      bg: "#eff6ff",
+    },
+    {
+      label: "Products",
+      value: String(totalProducts),
+      icon: Package,
+      color: "#7c3aed",
+      bg: "#f5f3ff",
+    },
+    {
+      label: "Completed",
+      value: String(completedOrders),
+      icon: CheckCircle2,
+      color: "#ea580c",
+      bg: "#fff7ed",
+    },
   ];
 
-  // Recent orders (latest 5)
   const recentOrders = (orders ?? []).slice(0, 5);
-
-  // Top products by rating
   const topProducts = (products ?? [])
     .sort((a: any, b: any) => (Number(b.rating) || 0) - (Number(a.rating) || 0))
     .slice(0, 3);
 
   const isLoading = productsLoading || ordersLoading;
 
+  const quickLinks = [
+    { href: "/seller/products", icon: Package, label: "Manage Products" },
+    { href: "/seller/orders", icon: ClipboardList, label: "View Orders" },
+    { href: "/seller/analytics", icon: BarChart3, label: "Analytics" },
+    { href: "/seller/profile", icon: User, label: "Shop Profile" },
+    { href: "/seller/settings", icon: Settings, label: "Settings" },
+  ];
+
   return (
     <SellerLayout>
-      <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-8 md:space-y-10">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 pt-6 pb-8 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-black/[0.06] px-6 py-5 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Seller Dashboard</h1>
-            <p className="text-sm text-muted-foreground font-normal">
-              {store ? `Overview of ${(store as any).name}` : "Overview of your shop performance"}
+            <h1 className="text-lg font-semibold text-[#111]">
+              Seller Dashboard
+            </h1>
+            <p className="text-sm text-[#888]">
+              {store
+                ? `Overview of ${(store as any).name}`
+                : "Overview of your shop"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/seller/products/add" className="hidden md:block">
-              <Button className="bg-black hover:bg-primary transition-colors rounded-full px-8 h-12 shadow-sm gap-2">
-                <Plus className="h-4 w-4" /> Add Product
-              </Button>
-            </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="rounded-full h-10 w-10">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/30 backdrop-blur-xl border-none">
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/seller/products"><Package className="h-4 w-4" /> Products</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/seller/orders"><ClipboardList className="h-4 w-4" /> Orders</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/seller/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/seller/profile"><User className="h-4 w-4" /> Shop Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl gap-3 px-3 py-2.5 cursor-pointer">
-                  <Link href="/seller/settings"><Settings className="h-4 w-4" /> Shop Settings</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <Link href="/seller/products/add">
+            <button
+              className="hidden md:flex items-center gap-2 h-9 px-5 rounded-xl text-white text-sm font-semibold"
+              style={{ background: "#29a366" }}
+            >
+              <Plus className="h-4 w-4" /> Add Product
+            </button>
+          </Link>
         </div>
 
         {isLoading ? (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-6 md:p-8">
-                  <Skeleton className="h-12 w-12 rounded-2xl mb-6" />
-                  <Skeleton className="h-3 w-20 rounded-full mb-2" />
-                  <Skeleton className="h-7 w-16 rounded-full" />
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border border-black/[0.06] p-5"
+                >
+                  <Skeleton className="h-9 w-9 rounded-xl mb-4" />
+                  <Skeleton className="h-3 w-20 rounded mb-2" />
+                  <Skeleton className="h-6 w-16 rounded" />
                 </div>
               ))}
             </div>
-            <div className="mt-8 rounded-[32px] border border-black/[0.02] bg-white p-6">
-              <Skeleton className="h-5 w-36 rounded-full mb-4" />
+            <div className="bg-white rounded-xl border border-black/[0.06] p-5">
+              <Skeleton className="h-4 w-32 rounded mb-4" />
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 py-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4 rounded-full" />
-                    <Skeleton className="h-3 w-1/2 rounded-full" />
+                <div
+                  key={i}
+                  className="flex items-center gap-3 py-3 border-b border-black/[0.04] last:border-0"
+                >
+                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-40 rounded" />
+                    <Skeleton className="h-3 w-24 rounded" />
                   </div>
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-5 w-16 rounded" />
                 </div>
               ))}
             </div>
           </>
         ) : (
           <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <Card key={stat.label} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-                    <CardContent className="p-6 md:p-8">
-                      <div className="flex justify-between items-start mb-6">
-                        <div className={`p-3 rounded-2xl ${stat.color}`}>
-                          <Icon className="h-6 w-6 md:h-7 md:w-7" />
-                        </div>
-                      </div>
-                      <p className="text-xs md:text-sm text-muted-foreground font-medium mb-1 tracking-tight">{stat.label}</p>
-                      <p className="text-xl md:text-3xl font-normal font-headline tracking-[-0.05em]">{stat.value}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            {/* Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {stats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-white rounded-xl border border-black/[0.06] p-5"
+                >
+                  <p className="text-xs text-[#888] mb-1">{stat.label}</p>
+                  <p className="text-xl font-bold text-[#111]">{stat.value}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="flex flex-col lg:flex-row gap-4">
               {/* Recent Orders */}
-              <div className="lg:col-span-2">
-                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-                  <CardContent className="p-6 md:p-8">
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Recent Orders</h2>
-                      <Link href="/seller/orders" className="text-sm text-primary hover:underline">View All</Link>
-                    </div>
-                    {recentOrders.length === 0 ? (
-                      <div className="text-center py-10">
-                        <ShoppingCart className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No orders yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {recentOrders.map((order: any) => {
-                          const status = order.status || "pending";
-                          const StatusIcon = statusConfig[status]?.icon || Clock;
-                          const statusClass = statusConfig[status]?.className || "";
-                          return (
-                            <div key={order.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={`p-2 rounded-xl ${statusClass}`}>
-                                  <StatusIcon className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate">Order #{order.id?.slice(0, 8)}</p>
-                                  <p className="text-xs text-muted-foreground">Qty: {order.quantity || 1} · {new Date(order.createdAt).toLocaleDateString()}</p>
-                                </div>
-                              </div>
-                              <div className="text-right ml-3">
-                                <p className="text-sm font-medium">₱{Number(order.totalPrice || 0).toLocaleString()}</p>
-                                <Badge variant="outline" className="text-[10px] capitalize rounded-full border-0 bg-black/[0.03] dark:bg-white/[0.03] mt-0.5">
-                                  {status}
-                                </Badge>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              <div className="flex-1 min-w-0 bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.05]">
+                  <p className="text-sm font-semibold text-[#111]">
+                    Recent Orders
+                  </p>
+                  <Link
+                    href="/seller/orders"
+                    className="text-xs font-semibold"
+                    style={{ color: "#29a366" }}
+                  >
+                    View All
+                  </Link>
+                </div>
+                {recentOrders.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center text-center gap-2">
+                    <ShoppingCart
+                      className="h-8 w-8 text-[#ddd]"
+                      strokeWidth={1.5}
+                    />
+                    <p className="text-sm text-[#888]">No orders yet</p>
+                  </div>
+                ) : (
+                  <div>
+                    {recentOrders.map((order: any) => {
+                      const status = order.status || "pending";
+                      const cfg = statusConfig[status] || statusConfig.pending;
+                      const Icon = cfg.icon;
+                      return (
+                        <div
+                          key={order.id}
+                          className="flex items-center gap-3 px-5 py-3.5 border-b border-black/[0.04] last:border-0 hover:bg-[#f9f9f8] transition-colors"
+                        >
+                          <div
+                            className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: cfg.bg }}
+                          >
+                            <Icon
+                              className="h-4 w-4"
+                              style={{ color: cfg.color }}
+                              strokeWidth={1.8}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#111] truncate">
+                              Order #{order.id?.slice(0, 8)}
+                            </p>
+                            <p className="text-xs text-[#888]">
+                              Qty: {order.quantity || 1} ·{" "}
+                              {new Date(order.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-[#111]">
+                              ₱{Number(order.totalPrice || 0).toLocaleString()}
+                            </p>
+                            <span
+                              className="text-[10px] capitalize px-2 py-0.5 rounded font-medium"
+                              style={{ color: cfg.color, background: cfg.bg }}
+                            >
+                              {status}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Top Products */}
-              <div>
-                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
-                  <CardContent className="p-6 md:p-8">
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">Top Products</h2>
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              {/* Right column */}
+              <div className="w-full lg:w-[280px] shrink-0 space-y-4">
+                {/* Top Products */}
+                <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.05]">
+                    <p className="text-sm font-semibold text-[#111]">
+                      Top Products
+                    </p>
+                    <TrendingUp
+                      className="h-4 w-4 text-[#bbb]"
+                      strokeWidth={1.8}
+                    />
+                  </div>
+                  {topProducts.length === 0 ? (
+                    <div className="py-10 flex flex-col items-center gap-2">
+                      <Package
+                        className="h-8 w-8 text-[#ddd]"
+                        strokeWidth={1.5}
+                      />
+                      <p className="text-sm text-[#888]">No products yet</p>
                     </div>
-                    {topProducts.length === 0 ? (
-                      <div className="text-center py-10">
-                        <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">No products yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {topProducts.map((product: any, i: number) => (
-                          <div key={product.id} className="flex items-start gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium shrink-0">
-                              {i + 1}
-                            </span>
-                            <div className="flex-grow min-w-0">
-                              <p className="text-sm font-medium truncate">{product.name}</p>
-                              <p className="text-xs text-muted-foreground">₱{Number(product.price || 0).toLocaleString()} · Stock: {product.stock || 0}</p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                <span className="text-xs text-muted-foreground">{product.rating || 0}</span>
-                              </div>
+                  ) : (
+                    <div className="p-5 space-y-4">
+                      {topProducts.map((product: any, i: number) => (
+                        <div
+                          key={product.id}
+                          className="flex items-start gap-3"
+                        >
+                          <span
+                            className="flex items-center justify-center w-6 h-6 rounded text-xs font-bold text-white shrink-0"
+                            style={{ background: "#29a366" }}
+                          >
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#111] truncate">
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-[#888]">
+                              ₱{Number(product.price || 0).toLocaleString()} ·
+                              Stock: {product.stock || 0}
+                            </p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span className="text-xs text-[#888]">
+                                {product.rating || 0}
+                              </span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Quick Actions */}
-                <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] mt-6">
-                  <CardContent className="p-6 md:p-8">
-                    <h2 className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em] mb-4">Quick Actions</h2>
-                    <div className="space-y-2">
-                      <Link href="/seller/products">
-                        <Button variant="outline" className="w-full justify-start rounded-xl gap-2 h-11 border-black/[0.06] dark:border-white/[0.06]">
-                          <Package className="h-4 w-4" /> Manage Products
-                        </Button>
-                      </Link>
-                      <Link href="/seller/orders">
-                        <Button variant="outline" className="w-full justify-start rounded-xl gap-2 h-11 border-black/[0.06] dark:border-white/[0.06]">
-                          <ShoppingCart className="h-4 w-4" /> View Orders
-                        </Button>
-                      </Link>
-                      <Link href="/seller/analytics">
-                        <Button variant="outline" className="w-full justify-start rounded-xl gap-2 h-11 border-black/[0.06] dark:border-white/[0.06]">
-                          <TrendingUp className="h-4 w-4" /> Analytics
-                        </Button>
-                      </Link>
+                        </div>
+                      ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+                </div>
+
+                {/* Quick Links */}
+                <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+                  <p className="text-xs font-semibold text-[#555] px-5 pt-4 pb-3">
+                    Quick Actions
+                  </p>
+                  {quickLinks.map((link) => {
+                    const Icon = link.icon;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="flex items-center justify-between px-5 py-3 text-sm text-[#444] hover:bg-[#f2f2f0] hover:text-[#29a366] transition-colors border-t border-black/[0.04]"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Icon
+                            className="h-4 w-4 text-[#bbb]"
+                            strokeWidth={1.8}
+                          />
+                          {link.label}
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-[#bbb]" />
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </>
         )}
       </div>
-
-      {/* Floating Add Button */}
-      <Link href="/seller/products/add" className="fixed bottom-[7.5rem] right-5 z-[1001] md:hidden">
-        <Button size="icon" className="h-14 w-14 rounded-full bg-black hover:bg-primary transition-all shadow-[0_8px_30px_rgba(0,0,0,0.25)] active:scale-90">
-          <Plus className="h-6 w-6" />
-        </Button>
-      </Link>
     </SellerLayout>
   );
 }

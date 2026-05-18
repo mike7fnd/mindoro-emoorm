@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,11 +22,7 @@ import {
   Megaphone,
   Bot,
 } from "lucide-react";
-import {
-  useUser,
-  useStableMemo,
-  useCollection,
-} from "@/supabase";
+import { useUser, useStableMemo, useCollection } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -69,13 +65,27 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 function actionTone(action: string): string {
-  if (action.includes("delete") || action.includes("takedown") || action.includes("remove") || action.includes("suspend")) {
+  if (
+    action.includes("delete") ||
+    action.includes("takedown") ||
+    action.includes("remove") ||
+    action.includes("suspend")
+  ) {
     return "text-red-600 bg-red-50";
   }
-  if (action.includes("verify") || action.includes("create") || action.includes("approve") || action.includes("resolve")) {
+  if (
+    action.includes("verify") ||
+    action.includes("create") ||
+    action.includes("approve") ||
+    action.includes("resolve")
+  ) {
     return "text-green-600 bg-green-50";
   }
-  if (action.includes("reject") || action.includes("unverify") || action.includes("deactivate")) {
+  if (
+    action.includes("reject") ||
+    action.includes("unverify") ||
+    action.includes("deactivate")
+  ) {
     return "text-orange-600 bg-orange-50";
   }
   return "text-blue-600 bg-blue-50";
@@ -112,20 +122,32 @@ export default function AdminAuditLogPage() {
       (e.targetLabel || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.reason || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.action || "").toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesAction = actionFilter === "all" || (e.action || "").startsWith(actionFilter);
+    const matchesAction =
+      actionFilter === "all" || (e.action || "").startsWith(actionFilter);
     return matchesSearch && matchesAction;
   });
 
   const total = entries?.length ?? 0;
   const today = (entries ?? []).filter(
-    (e: any) => new Date(e.createdAt).toDateString() === new Date().toDateString()
+    (e: any) =>
+      new Date(e.createdAt).toDateString() === new Date().toDateString(),
   ).length;
 
   const handleExport = () => {
     if (!entries || entries.length === 0) return;
-    const headers = ["createdAt", "adminEmail", "action", "targetType", "targetId", "targetLabel", "reason"];
+    const headers = [
+      "createdAt",
+      "adminEmail",
+      "action",
+      "targetType",
+      "targetId",
+      "targetLabel",
+      "reason",
+    ];
     const rows = entries.map((e: any) =>
-      headers.map((h) => `"${String(e[h] ?? "").replace(/"/g, '""')}"`).join(",")
+      headers
+        .map((h) => `"${String(e[h] ?? "").replace(/"/g, '""')}"`)
+        .join(","),
     );
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -146,7 +168,8 @@ export default function AdminAuditLogPage() {
               Audit Log
             </h1>
             <p className="text-sm text-muted-foreground font-normal">
-              {total} actions recorded · {today} today · Every admin action is permanent and traceable
+              {total} actions recorded · {today} today · Every admin action is
+              permanent and traceable
             </p>
           </div>
           <Button
@@ -186,7 +209,9 @@ export default function AdminAuditLogPage() {
                 size="sm"
                 className={cn(
                   "rounded-full px-5 h-11 text-xs font-bold shrink-0",
-                  actionFilter === f.key ? "bg-black text-white hover:bg-primary" : "border-black/[0.06]"
+                  actionFilter === f.key
+                    ? "bg-black text-white hover:bg-primary"
+                    : "border-black/[0.06]",
                 )}
                 onClick={() => setActionFilter(f.key)}
               >
@@ -207,7 +232,9 @@ export default function AdminAuditLogPage() {
           <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
             <CardContent className="py-20 text-center">
               <ShieldCheck className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No audit entries yet</p>
+              <p className="text-sm text-muted-foreground">
+                No audit entries yet
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -219,7 +246,10 @@ export default function AdminAuditLogPage() {
                   const tone = actionTone(e.action || "");
                   const label = ACTION_LABELS[e.action] || e.action;
                   return (
-                    <div key={e.id} className="flex items-start gap-4 p-5 md:px-8 hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors">
+                    <div
+                      key={e.id}
+                      className="flex items-start gap-4 p-5 md:px-8 hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors"
+                    >
                       <div className={`p-2.5 rounded-2xl ${tone} shrink-0`}>
                         <Icon className="h-4 w-4" />
                       </div>
@@ -227,20 +257,36 @@ export default function AdminAuditLogPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-bold">{label}</p>
                           {e.targetLabel && (
-                            <span className="text-sm text-muted-foreground">· {e.targetLabel}</span>
+                            <span className="text-sm text-muted-foreground">
+                              · {e.targetLabel}
+                            </span>
                           )}
-                          <Badge variant="outline" className="rounded-full text-[10px] px-2 py-0 ml-auto">
+                          <Badge
+                            variant="outline"
+                            className="rounded-full text-[10px] px-2 py-0 ml-auto"
+                          >
                             {e.targetType || "system"}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                          <span>by {e.adminEmail || e.adminId?.slice(0, 8) || "unknown"}</span>
+                          <span>
+                            by{" "}
+                            {e.adminEmail ||
+                              e.adminId?.slice(0, 8) ||
+                              "unknown"}
+                          </span>
                           <span>·</span>
-                          <span>{e.createdAt ? new Date(e.createdAt).toLocaleString() : "—"}</span>
+                          <span>
+                            {e.createdAt
+                              ? new Date(e.createdAt).toLocaleString()
+                              : "—"}
+                          </span>
                           {e.targetId && (
                             <>
                               <span>·</span>
-                              <span className="font-mono">{e.targetId.slice(0, 12)}</span>
+                              <span className="font-mono">
+                                {e.targetId.slice(0, 12)}
+                              </span>
                             </>
                           )}
                         </div>

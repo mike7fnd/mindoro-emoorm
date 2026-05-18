@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -16,11 +16,7 @@ import {
   DollarSign,
   Store,
 } from "lucide-react";
-import {
-  useUser,
-  useStableMemo,
-  useCollection,
-} from "@/supabase";
+import { useUser, useStableMemo, useCollection } from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResponsiveContainer,
@@ -62,25 +58,29 @@ export default function AdminAnalyticsPage() {
     if (!user || !isAdmin) return null;
     return { table: "bookings" };
   }, [user, isAdmin]);
-  const { data: allOrders, isLoading: ordersLoading } = useCollection(ordersConfig);
+  const { data: allOrders, isLoading: ordersLoading } =
+    useCollection(ordersConfig);
 
   const usersConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "users" };
   }, [user, isAdmin]);
-  const { data: allUsers, isLoading: usersLoading } = useCollection(usersConfig);
+  const { data: allUsers, isLoading: usersLoading } =
+    useCollection(usersConfig);
 
   const productsConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "facilities" };
   }, [user, isAdmin]);
-  const { data: allProducts, isLoading: productsLoading } = useCollection(productsConfig);
+  const { data: allProducts, isLoading: productsLoading } =
+    useCollection(productsConfig);
 
   const storesConfig = useStableMemo(() => {
     if (!user || !isAdmin) return null;
     return { table: "stores" };
   }, [user, isAdmin]);
-  const { data: allStores, isLoading: storesLoading } = useCollection(storesConfig);
+  const { data: allStores, isLoading: storesLoading } =
+    useCollection(storesConfig);
 
   // Compute monthly revenue data
   const monthlyRevenue = useStableMemo(() => {
@@ -96,8 +96,24 @@ export default function AdminAnalyticsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => {
         const [year, month] = key.split("-");
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return { name: `${monthNames[parseInt(month) - 1]} ${year}`, revenue: value };
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        return {
+          name: `${monthNames[parseInt(month) - 1]} ${year}`,
+          revenue: value,
+        };
       });
   }, [allOrders]);
 
@@ -135,7 +151,8 @@ export default function AdminAnalyticsPage() {
     (allOrders as any[]).forEach((o) => {
       const sid = o.sellerId || o.storeId;
       if (!sid) return;
-      storeRevenue[sid] = (storeRevenue[sid] || 0) + (Number(o.totalPrice) || 0);
+      storeRevenue[sid] =
+        (storeRevenue[sid] || 0) + (Number(o.totalPrice) || 0);
       storeOrders[sid] = (storeOrders[sid] || 0) + 1;
     });
     return Object.entries(storeRevenue)
@@ -143,12 +160,19 @@ export default function AdminAnalyticsPage() {
       .slice(0, 5)
       .map(([id, revenue]) => {
         const store = (allStores as any[]).find((s) => s.id === id);
-        return { name: store?.storeName || store?.name || id.slice(0, 8), revenue, orders: storeOrders[id] || 0 };
+        return {
+          name: store?.storeName || store?.name || id.slice(0, 8),
+          revenue,
+          orders: storeOrders[id] || 0,
+        };
       });
   }, [allOrders, allStores]);
 
   // Compute trend stats with real data
-  const totalRevenue = (allOrders ?? []).reduce((s: number, o: any) => s + (Number(o.totalPrice) || 0), 0);
+  const totalRevenue = (allOrders ?? []).reduce(
+    (s: number, o: any) => s + (Number(o.totalPrice) || 0),
+    0,
+  );
   const totalUsers = allUsers?.length ?? 0;
   const totalOrders = allOrders?.length ?? 0;
   const totalProducts = allProducts?.length ?? 0;
@@ -163,7 +187,9 @@ export default function AdminAnalyticsPage() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       map[key] = (map[key] || 0) + 1;
     });
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v);
   }, [allOrders]);
 
   const monthlyRevenueValues = monthlyRevenue.map((m) => m.revenue);
@@ -177,25 +203,34 @@ export default function AdminAnalyticsPage() {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       map[key] = (map[key] || 0) + 1;
     });
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => v);
   }, [allUsers]);
 
   const revenueTrend = computeTrend(
     monthlyRevenueValues,
-    monthlyRevenueValues.length > 0 ? monthlyRevenueValues[monthlyRevenueValues.length - 1] : 0
+    monthlyRevenueValues.length > 0
+      ? monthlyRevenueValues[monthlyRevenueValues.length - 1]
+      : 0,
   );
   const orderTrend = computeTrend(
     monthlyOrderCounts,
-    monthlyOrderCounts.length > 0 ? monthlyOrderCounts[monthlyOrderCounts.length - 1] : 0
+    monthlyOrderCounts.length > 0
+      ? monthlyOrderCounts[monthlyOrderCounts.length - 1]
+      : 0,
   );
   const userTrend = computeTrend(
     monthlyUserCounts,
-    monthlyUserCounts.length > 0 ? monthlyUserCounts[monthlyUserCounts.length - 1] : 0
+    monthlyUserCounts.length > 0
+      ? monthlyUserCounts[monthlyUserCounts.length - 1]
+      : 0,
   );
 
   if (isAdminLoading || !isAdmin) return null;
 
-  const isLoading = ordersLoading || usersLoading || productsLoading || storesLoading;
+  const isLoading =
+    ordersLoading || usersLoading || productsLoading || storesLoading;
 
   const statsCards = [
     {
@@ -245,7 +280,10 @@ export default function AdminAnalyticsPage() {
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-[24px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-5">
+              <div
+                key={i}
+                className="rounded-[24px] border border-black/[0.02] bg-white dark:bg-white/[0.03] p-5"
+              >
                 <Skeleton className="h-10 w-10 rounded-full mb-3" />
                 <Skeleton className="h-3 w-16 rounded-full mb-2" />
                 <Skeleton className="h-7 w-20 rounded-full" />
@@ -256,25 +294,39 @@ export default function AdminAnalyticsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {statsCards.map((card) => {
               const Icon = card.icon;
-              const isPositive = card.trend.startsWith("+") || card.trend === "0";
+              const isPositive =
+                card.trend.startsWith("+") || card.trend === "0";
               return (
-                <Card key={card.title} className="shadow-[0_12px_40px_rgba(0,0,0,0.03)] border border-black/[0.02] rounded-[24px] bg-white dark:bg-white/[0.03]">
+                <Card
+                  key={card.title}
+                  className="shadow-[0_12px_40px_rgba(0,0,0,0.03)] border border-black/[0.02] rounded-[24px] bg-white dark:bg-white/[0.03]"
+                >
                   <CardContent className="p-5">
-                    <div className={`inline-flex p-2.5 rounded-2xl ${card.color} mb-3`}>
+                    <div
+                      className={`inline-flex p-2.5 rounded-2xl ${card.color} mb-3`}
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium mb-0.5">{card.title}</p>
-                    <p className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">{card.value}</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-0.5">
+                      {card.title}
+                    </p>
+                    <p className="text-xl md:text-2xl font-normal font-headline tracking-[-0.05em]">
+                      {card.value}
+                    </p>
                     <div className="flex items-center gap-1 mt-1.5">
                       {isPositive ? (
                         <TrendingUp className="h-3 w-3 text-green-500" />
                       ) : (
                         <TrendingDown className="h-3 w-3 text-red-500" />
                       )}
-                      <span className={`text-xs font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+                      <span
+                        className={`text-xs font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}
+                      >
                         {card.trend}%
                       </span>
-                      <span className="text-xs text-muted-foreground ml-0.5">vs last month</span>
+                      <span className="text-xs text-muted-foreground ml-0.5">
+                        vs last month
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -286,7 +338,9 @@ export default function AdminAnalyticsPage() {
         {/* Revenue Chart */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8">
-            <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">Revenue Trends</h3>
+            <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">
+              Revenue Trends
+            </h3>
             {isLoading ? (
               <Skeleton className="h-[260px] w-full rounded-xl" />
             ) : monthlyRevenue.length === 0 ? (
@@ -296,7 +350,10 @@ export default function AdminAnalyticsPage() {
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={monthlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(0,0,0,0.05)"
+                  />
                   <XAxis
                     dataKey="name"
                     tick={{ fontSize: 11, fill: "#94a3b8" }}
@@ -307,13 +364,29 @@ export default function AdminAnalyticsPage() {
                     tick={{ fontSize: 11, fill: "#94a3b8" }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                    tickFormatter={(v) =>
+                      `₱${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                    }
                   />
                   <Tooltip
-                    formatter={(v: any) => [`₱${Number(v).toLocaleString()}`, "Revenue"]}
-                    contentStyle={{ borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)", fontSize: "12px" }}
+                    formatter={(v: any) => [
+                      `₱${Number(v).toLocaleString()}`,
+                      "Revenue",
+                    ]}
+                    contentStyle={{
+                      borderRadius: "16px",
+                      border: "1px solid rgba(0,0,0,0.05)",
+                      fontSize: "12px",
+                    }}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#22c55e" fill="#22c55e" fillOpacity={0.1} strokeWidth={2} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#22c55e"
+                    fill="#22c55e"
+                    fillOpacity={0.1}
+                    strokeWidth={2}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -324,7 +397,9 @@ export default function AdminAnalyticsPage() {
           {/* Category Breakdown */}
           <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
             <CardContent className="p-6 md:p-8">
-              <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">Product Categories</h3>
+              <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">
+                Product Categories
+              </h3>
               {isLoading ? (
                 <Skeleton className="h-[220px] w-full rounded-xl" />
               ) : categoryData.length === 0 ? (
@@ -334,10 +409,29 @@ export default function AdminAnalyticsPage() {
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={categoryData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)", fontSize: "12px" }} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(0,0,0,0.05)"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 10, fill: "#94a3b8" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#94a3b8" }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "16px",
+                        border: "1px solid rgba(0,0,0,0.05)",
+                        fontSize: "12px",
+                      }}
+                    />
                     <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -348,7 +442,9 @@ export default function AdminAnalyticsPage() {
           {/* Order Status Pie */}
           <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
             <CardContent className="p-6 md:p-8">
-              <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">Order Status</h3>
+              <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">
+                Order Status
+              </h3>
               {isLoading ? (
                 <Skeleton className="h-[220px] w-full rounded-xl" />
               ) : statusData.length === 0 ? (
@@ -359,20 +455,48 @@ export default function AdminAnalyticsPage() {
                 <div className="flex items-center gap-6">
                   <ResponsiveContainer width="50%" height={220}>
                     <PieChart>
-                      <Pie data={statusData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        labelLine={false}
+                      >
                         {statusData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid rgba(0,0,0,0.05)", fontSize: "12px" }} />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "16px",
+                          border: "1px solid rgba(0,0,0,0.05)",
+                          fontSize: "12px",
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="space-y-2">
                     {statusData.map((entry, idx) => (
-                      <div key={entry.name} className="flex items-center gap-2 text-xs">
-                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                        <span className="text-muted-foreground">{entry.name}</span>
-                        <span className="font-medium ml-auto">{entry.value}</span>
+                      <div
+                        key={entry.name}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: COLORS[idx % COLORS.length],
+                          }}
+                        />
+                        <span className="text-muted-foreground">
+                          {entry.name}
+                        </span>
+                        <span className="font-medium ml-auto">
+                          {entry.value}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -385,7 +509,9 @@ export default function AdminAnalyticsPage() {
         {/* Top Sellers */}
         <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03]">
           <CardContent className="p-6 md:p-8">
-            <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">Top Sellers</h3>
+            <h3 className="text-lg font-medium font-headline tracking-[-0.02em] mb-6">
+              Top Sellers
+            </h3>
             {isLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -402,7 +528,10 @@ export default function AdminAnalyticsPage() {
             ) : (
               <div className="space-y-3">
                 {topSellers.map((seller, idx) => (
-                  <div key={seller.name} className="flex items-center justify-between py-2 border-b border-black/[0.03] last:border-0">
+                  <div
+                    key={seller.name}
+                    className="flex items-center justify-between py-2 border-b border-black/[0.03] last:border-0"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-xs font-bold">
                         {idx + 1}
@@ -410,8 +539,12 @@ export default function AdminAnalyticsPage() {
                       <span className="text-sm font-medium">{seller.name}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground">{seller.orders} orders</span>
-                      <span className="font-medium">₱{seller.revenue.toLocaleString()}</span>
+                      <span className="text-muted-foreground">
+                        {seller.orders} orders
+                      </span>
+                      <span className="font-medium">
+                        ₱{seller.revenue.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 ))}

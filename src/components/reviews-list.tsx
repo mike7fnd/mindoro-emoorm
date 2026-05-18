@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useUser, useSupabase } from "@/supabase";
@@ -90,9 +90,12 @@ export function ReviewsList({
     if (!confirm("Are you sure you want to delete this review?")) return;
 
     try {
-      const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.uid}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/reviews/${reviewId}?userId=${user?.uid}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) throw new Error("Failed to delete review");
 
@@ -142,7 +145,9 @@ export function ReviewsList({
         <div className="bg-gray-50 p-6 rounded-lg">
           <div className="flex items-start gap-6">
             <div className="text-center">
-              <div className="text-4xl font-bold">{averageRating.toFixed(1)}</div>
+              <div className="text-4xl font-bold">
+                {averageRating.toFixed(1)}
+              </div>
               <RatingStars
                 rating={Math.round(averageRating * 2) / 2}
                 size="sm"
@@ -178,7 +183,7 @@ export function ReviewsList({
                     <AvatarFallback>
                       {getInitials(
                         review.users?.firstName,
-                        review.users?.lastName
+                        review.users?.lastName,
                       )}
                     </AvatarFallback>
                   </Avatar>

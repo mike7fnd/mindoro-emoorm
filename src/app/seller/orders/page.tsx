@@ -1,21 +1,16 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { SellerLayout } from "@/components/layout/seller-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Search,
-  Filter,
   Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Truck,
   Package,
-  ChevronRight,
+  ChevronDown,
   ShoppingCart,
   Loader2,
   ScanLine,
@@ -25,22 +20,71 @@ import {
   MapPin,
   ExternalLink,
 } from "lucide-react";
-import { useSupabaseAuth, useSupabase, useStableMemo, useCollection, updateDocumentNonBlocking } from "@/supabase";
+import {
+  useSupabaseAuth,
+  useSupabase,
+  useStableMemo,
+  useCollection,
+  updateDocumentNonBlocking,
+} from "@/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 
-const statusConfig: Record<string, { icon: React.ElementType; className: string; label: string }> = {
-  "To Pay": { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "To Pay" },
-  "To Ship": { icon: Package, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400", label: "To Ship" },
-  "To Receive": { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400", label: "To Receive" },
-  "To Pickup": { icon: Package, className: "text-orange-600 bg-orange-50 dark:bg-orange-500/10 dark:text-orange-400", label: "To Pickup" },
-  "Completed": { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400", label: "Completed" },
-  "Cancelled": { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400", label: "Cancelled" },
-  pending: { icon: Clock, className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 dark:text-yellow-400", label: "Pending" },
-  processing: { icon: AlertCircle, className: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400", label: "Processing" },
-  shipped: { icon: Truck, className: "text-purple-600 bg-purple-50 dark:bg-purple-500/10 dark:text-purple-400", label: "Shipped" },
-  completed: { icon: CheckCircle2, className: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400", label: "Completed" },
-  cancelled: { icon: XCircle, className: "text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400", label: "Cancelled" },
+const statusConfig: Record<
+  string,
+  { icon: React.ElementType; color: string; bg: string; label: string }
+> = {
+  "To Pay": { icon: Clock, color: "#ca8a04", bg: "#fefce8", label: "To Pay" },
+  "To Ship": {
+    icon: Package,
+    color: "#2563eb",
+    bg: "#eff6ff",
+    label: "To Ship",
+  },
+  "To Receive": {
+    icon: Truck,
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+    label: "To Receive",
+  },
+  "To Pickup": {
+    icon: Package,
+    color: "#ea580c",
+    bg: "#fff7ed",
+    label: "To Pickup",
+  },
+  Completed: {
+    icon: CheckCircle2,
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    label: "Completed",
+  },
+  Cancelled: {
+    icon: XCircle,
+    color: "#dc2626",
+    bg: "#fef2f2",
+    label: "Cancelled",
+  },
+  pending: { icon: Clock, color: "#ca8a04", bg: "#fefce8", label: "Pending" },
+  processing: {
+    icon: AlertCircle,
+    color: "#2563eb",
+    bg: "#eff6ff",
+    label: "Processing",
+  },
+  shipped: { icon: Truck, color: "#7c3aed", bg: "#f5f3ff", label: "Shipped" },
+  completed: {
+    icon: CheckCircle2,
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    label: "Completed",
+  },
+  cancelled: {
+    icon: XCircle,
+    color: "#dc2626",
+    bg: "#fef2f2",
+    label: "Cancelled",
+  },
 };
 
 export default function SellerOrdersPage() {
@@ -51,11 +95,9 @@ export default function SellerOrdersPage() {
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrScannerRef = useRef<any>(null);
   const router = useRouter();
-
   const { user } = useSupabaseAuth();
   const supabase = useSupabase();
 
-  // QR Scanner logic
   const startScanner = useCallback(async () => {
     if (html5QrScannerRef.current) return;
     try {
@@ -66,24 +108,18 @@ export default function SellerOrdersPage() {
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText: string) => {
-          // Stop scanner and navigate
           scanner.stop().then(() => {
             html5QrScannerRef.current = null;
             setShowScanner(false);
-            // The QR contains a URL like https://domain.com/orders/ORDER_ID
-            // Extract the path and navigate
             try {
               const url = new URL(decodedText);
               router.push(url.pathname);
             } catch {
-              // If not a full URL, try as a path
-              if (decodedText.includes("/orders/")) {
-                router.push(decodedText);
-              }
+              if (decodedText.includes("/orders/")) router.push(decodedText);
             }
           });
         },
-        () => { } // ignore scan errors (no QR found yet)
+        () => {},
       );
     } catch (err) {
       console.error("Scanner error:", err);
@@ -92,28 +128,29 @@ export default function SellerOrdersPage() {
 
   const stopScanner = useCallback(() => {
     if (html5QrScannerRef.current) {
-      html5QrScannerRef.current.stop().then(() => {
-        html5QrScannerRef.current = null;
-      }).catch(() => { });
+      html5QrScannerRef.current
+        .stop()
+        .then(() => {
+          html5QrScannerRef.current = null;
+        })
+        .catch(() => {});
     }
     setShowScanner(false);
   }, []);
 
   useEffect(() => {
     if (showScanner) {
-      // Small delay to let DOM render the #qr-reader div
       const t = setTimeout(() => startScanner(), 300);
       return () => clearTimeout(t);
     }
     return () => {
       if (html5QrScannerRef.current) {
-        html5QrScannerRef.current.stop().catch(() => { });
+        html5QrScannerRef.current.stop().catch(() => {});
         html5QrScannerRef.current = null;
       }
     };
   }, [showScanner, startScanner]);
 
-  // Fetch orders (bookings) for this store
   const ordersConfig = useStableMemo(() => {
     if (!user) return null;
     return {
@@ -124,40 +161,35 @@ export default function SellerOrdersPage() {
   }, [user]);
   const { data: orders, isLoading } = useCollection(ordersConfig);
 
-  // Fetch all products (facilities) to show product info per order
-  const productsConfig = useStableMemo(() => {
-    return { table: "facilities" };
-  }, []);
+  const productsConfig = useStableMemo(() => ({ table: "facilities" }), []);
   const { data: productsData } = useCollection<any>(productsConfig);
 
-  // Fetch all buyer users to show buyer name per order
-  const usersConfig = useStableMemo(() => {
-    return { table: "users" };
-  }, []);
+  const usersConfig = useStableMemo(() => ({ table: "users" }), []);
   const { data: usersData } = useCollection<any>(usersConfig);
 
-  // Helpers
-  const getProduct = (facilityId: string) => productsData?.find((p: any) => p.id === facilityId);
-  const getBuyer = (userId: string) => usersData?.find((u: any) => u.id === userId);
+  const getProduct = (facilityId: string) =>
+    productsData?.find((p: any) => p.id === facilityId);
+  const getBuyer = (userId: string) =>
+    usersData?.find((u: any) => u.id === userId);
 
   const allOrders = orders ?? [];
-
   const filteredOrders = allOrders.filter((o: any) => {
     const product = getProduct(o.facilityId);
     const buyer = getBuyer(o.userId);
-    const searchLower = search.toLowerCase();
+    const q = search.toLowerCase();
     const matchSearch =
-      (o.id || "").toLowerCase().includes(searchLower) ||
-      (o.shippingAddress || "").toLowerCase().includes(searchLower) ||
-      (product?.name || "").toLowerCase().includes(searchLower) ||
-      (buyer?.displayName || buyer?.name || "").toLowerCase().includes(searchLower);
+      (o.id || "").toLowerCase().includes(q) ||
+      (o.shippingAddress || "").toLowerCase().includes(q) ||
+      (product?.name || "").toLowerCase().includes(q) ||
+      (buyer?.displayName || buyer?.name || "").toLowerCase().includes(q);
     if (tab === "all") return matchSearch;
-    if (tab === "Completed") return matchSearch && ((o.status || "").toLowerCase() === "completed");
+    if (tab === "Completed")
+      return matchSearch && (o.status || "").toLowerCase() === "completed";
     return matchSearch && (o.status || "") === tab;
   });
 
-  const getCount = (status: string) => allOrders.filter((o: any) => (o.status || "") === status).length;
-
+  const getCount = (status: string) =>
+    allOrders.filter((o: any) => (o.status || "") === status).length;
   const counts = {
     all: allOrders.length,
     "To Pay": getCount("To Pay"),
@@ -169,124 +201,172 @@ export default function SellerOrdersPage() {
   };
 
   const [updating, setUpdating] = useState<string | null>(null);
-
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
-    await updateDocumentNonBlocking(supabase, "bookings", orderId, { status: newStatus });
-    // Optimistically update local state by re-fetching after a short delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    await updateDocumentNonBlocking(supabase, "bookings", orderId, {
+      status: newStatus,
+    });
+    setTimeout(() => window.location.reload(), 500);
   };
+
+  const statusTabs = [
+    { value: "all", label: "All", count: counts.all },
+    { value: "To Pay", label: "To Pay", count: counts["To Pay"] },
+    { value: "To Ship", label: "To Ship", count: counts["To Ship"] },
+    { value: "To Receive", label: "To Receive", count: counts["To Receive"] },
+    { value: "To Pickup", label: "To Pickup", count: counts["To Pickup"] },
+    { value: "Completed", label: "Completed", count: counts.Completed },
+    { value: "Cancelled", label: "Cancelled", count: counts.Cancelled },
+  ];
+
+  const statCards = [
+    {
+      label: "To Pay",
+      count: counts["To Pay"],
+      color: "#ca8a04",
+      bg: "#fefce8",
+    },
+    {
+      label: "To Ship",
+      count: counts["To Ship"],
+      color: "#2563eb",
+      bg: "#eff6ff",
+    },
+    {
+      label: "To Receive",
+      count: counts["To Receive"],
+      color: "#7c3aed",
+      bg: "#f5f3ff",
+    },
+    {
+      label: "To Pickup",
+      count: counts["To Pickup"],
+      color: "#ea580c",
+      bg: "#fff7ed",
+    },
+    {
+      label: "Completed",
+      count: counts.Completed,
+      color: "#16a34a",
+      bg: "#f0fdf4",
+    },
+  ];
 
   return (
     <SellerLayout>
-      <div className="max-w-7xl mx-auto p-6 md:p-8 w-full pt-6 md:pt-32 pb-24 space-y-6">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 pt-6 pb-8 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-black/[0.06] px-6 py-5 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-normal font-headline tracking-[-0.05em] text-black dark:text-white">Shop Orders</h1>
-            <p className="text-sm text-muted-foreground font-normal">{counts["To Pay"] + counts["To Ship"]} orders need attention</p>
+            <h1 className="text-lg font-semibold text-[#111]">Shop Orders</h1>
+            <p className="text-sm text-[#888]">
+              {counts["To Pay"] + counts["To Ship"]} orders need attention
+            </p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
+          <button
             onClick={() => setShowScanner(true)}
-            className="rounded-full h-11 w-11 border-black/[0.06] shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all"
+            className="h-9 w-9 rounded-xl border border-black/[0.08] bg-[#f2f2f0] flex items-center justify-center hover:bg-[#29a366] hover:text-white hover:border-[#29a366] transition-all"
             title="Scan COD QR"
           >
-            <ScanLine className="h-5 w-5" />
-          </Button>
+            <ScanLine className="h-4 w-4" />
+          </button>
         </div>
 
         {/* QR Scanner Modal */}
         {showScanner && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-[28px] p-6 w-full max-w-md relative shadow-2xl">
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl border border-black/[0.06] p-6 w-full max-w-md relative shadow-xl">
               <button
-                className="absolute top-4 right-4 text-muted-foreground hover:text-black z-10 bg-white rounded-full p-1"
+                className="absolute top-4 right-4 text-[#888] hover:text-[#111] z-10"
                 onClick={stopScanner}
               >
                 <X className="h-5 w-5" />
               </button>
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                  <ScanLine className="h-6 w-6" />
+                <div
+                  className="h-9 w-9 rounded-xl flex items-center justify-center"
+                  style={{ background: "#f0faf5" }}
+                >
+                  <ScanLine className="h-5 w-5" style={{ color: "#29a366" }} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-headline font-normal tracking-[-0.03em]">Scan COD QR</h2>
-                  <p className="text-xs text-muted-foreground">Point your camera at the buyer&apos;s QR code</p>
+                  <h2 className="text-base font-semibold text-[#111]">
+                    Scan COD QR
+                  </h2>
+                  <p className="text-xs text-[#888]">
+                    Point your camera at the buyer's QR code
+                  </p>
                 </div>
               </div>
-              <div className="bg-black rounded-2xl overflow-hidden">
-                <div id="qr-reader" ref={scannerRef} style={{ width: "100%" }} />
+              <div className="bg-black rounded-xl overflow-hidden">
+                <div
+                  id="qr-reader"
+                  ref={scannerRef}
+                  style={{ width: "100%" }}
+                />
               </div>
-              <p className="text-xs text-muted-foreground text-center mt-3">The QR code will redirect you to the order details where you can confirm payment.</p>
+              <p className="text-xs text-[#aaa] text-center mt-3">
+                The QR will redirect to the order details.
+              </p>
             </div>
           </div>
         )}
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-          {[
-            { label: "To Pay", count: counts["To Pay"], color: "text-yellow-600" },
-            { label: "To Ship", count: counts["To Ship"], color: "text-blue-600" },
-            { label: "To Receive", count: counts["To Receive"], color: "text-purple-600" },
-            { label: "To Pickup", count: counts["To Pickup"], color: "text-orange-600" },
-            { label: "Completed", count: counts.Completed, color: "text-green-600" },
-          ].map((s) => (
-            <Card
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {statCards.map((s) => (
+            <button
               key={s.label}
-              className={`shadow-[0_20px_50px_rgba(0,0,0,0.04)] border rounded-[32px] bg-white dark:bg-white/[0.03] cursor-pointer transition-all hover:scale-[1.02] ${tab === s.label ? "border-primary ring-2 ring-primary/20" : "border-black/[0.02]"
-                }`}
               onClick={() => setTab(tab === s.label ? "all" : s.label)}
+              className="bg-white rounded-xl border text-center p-4 transition-all hover:border-[#29a366]/30"
+              style={{
+                borderColor: tab === s.label ? "#29a366" : "rgba(0,0,0,0.06)",
+              }}
             >
-              <CardContent className="p-5 md:p-6 text-center">
-                <p className={`text-xl md:text-3xl font-normal font-headline tracking-[-0.05em] ${s.color}`}>{s.count}</p>
-                <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{s.label}</p>
-              </CardContent>
-            </Card>
+              <p className="text-2xl font-bold" style={{ color: s.color }}>
+                {s.count}
+              </p>
+              <p className="text-xs text-[#888] mt-0.5">{s.label}</p>
+            </button>
           ))}
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9 rounded-full bg-white dark:bg-white/5 border-black/[0.06] dark:border-white/[0.06]"
-              placeholder="Search orders..."
+        <div className="bg-white rounded-xl border border-black/[0.06] p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#bbb]" />
+            <input
+              type="text"
+              placeholder="Search orders…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-[#f2f2f0] border border-black/[0.08] rounded-md pl-9 pr-4 py-2 text-sm text-[#111] placeholder:text-[#bbb] outline-none focus:border-[#29a366] focus:bg-white transition-all"
             />
           </div>
-          <Button variant="outline" size="icon" className="rounded-full shrink-0 border-black/[0.06] dark:border-white/[0.06]">
-            <Filter className="h-4 w-4" />
-          </Button>
         </div>
 
-        {/* Status Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-          {[
-            { value: "all", label: "All", count: counts.all },
-            { value: "To Pay", label: "To Pay", count: counts["To Pay"] },
-            { value: "To Ship", label: "To Ship", count: counts["To Ship"] },
-            { value: "To Receive", label: "To Receive", count: counts["To Receive"] },
-            { value: "To Pickup", label: "To Pickup", count: counts["To Pickup"] },
-            { value: "Completed", label: "Completed", count: counts.Completed },
-            { value: "Cancelled", label: "Cancelled", count: counts.Cancelled },
-          ].map((t) => (
+        {/* Status tab pills */}
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {statusTabs.map((t) => (
             <button
               key={t.value}
               onClick={() => setTab(t.value)}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap shrink-0 ${tab === t.value
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : t.value === "Cancelled"
-                    ? "bg-[#f8f8f8] text-red-500 hover:bg-red-50 dark:bg-white/5"
-                    : "bg-[#f8f8f8] text-muted-foreground hover:bg-muted dark:bg-white/5"
-                }`}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all"
+              style={
+                tab === t.value
+                  ? { background: "#29a366", color: "#fff" }
+                  : {
+                      background: "#fff",
+                      color: "#555",
+                      border: "1px solid rgba(0,0,0,0.08)",
+                    }
+              }
             >
-              {t.label} {t.count > 0 && <span className="ml-1 opacity-70">({t.count})</span>}
+              {t.label}
+              {t.count > 0 && ` (${t.count})`}
             </button>
           ))}
         </div>
@@ -294,223 +374,383 @@ export default function SellerOrdersPage() {
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-[32px] border border-black/[0.02] bg-white p-5">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-14 w-14 rounded-2xl shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-40 rounded-full" />
-                    <Skeleton className="h-3 w-28 rounded-full" />
-                  </div>
-                  <Skeleton className="h-6 w-20 rounded-full" />
+              <div
+                key={i}
+                className="bg-white rounded-xl border border-black/[0.06] p-4 flex items-center gap-3"
+              >
+                <Skeleton className="h-12 w-12 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40 rounded" />
+                  <Skeleton className="h-3 w-28 rounded" />
                 </div>
+                <Skeleton className="h-5 w-20 rounded" />
               </div>
             ))}
           </div>
         ) : (
           <>
-            {/* Order List */}
             <div className="space-y-3">
               {filteredOrders.map((order: any) => {
                 const status = order.status || "To Pay";
-                const config = statusConfig[status] || statusConfig["To Pay"];
-                const StatusIcon = config.icon;
+                const cfg = statusConfig[status] || statusConfig["To Pay"];
+                const StatusIcon = cfg.icon;
                 const isExpanded = expandedOrder === order.id;
                 const product = getProduct(order.facilityId);
                 const buyer = getBuyer(order.userId);
 
                 return (
-                  <Card key={order.id} className="shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-black/[0.02] rounded-[32px] bg-white dark:bg-white/[0.03] overflow-hidden">
-                    <CardContent className="p-0">
-                      <button
-                        className="w-full p-4 flex items-center gap-3 text-left hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors"
-                        onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                      >
-                        {/* Product Image */}
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-black/[0.04]">
-                          {product?.imageUrl ? (
-                            <img src={product.imageUrl} alt={product.name || "Product"} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package className="h-5 w-5 text-muted-foreground/40" />
-                            </div>
-                          )}
-                        </div>
-                        {/* Product & Buyer Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{product?.name || `Order #${order.id?.slice(0, 8)}`}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-xs text-muted-foreground">Qty: <span className="font-medium text-foreground">{order.quantity || 1}</span></span>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-xs text-muted-foreground capitalize">{order.paymentMethod || "cod"}</span>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-xs text-muted-foreground inline-flex items-center gap-0.5">{order.fulfillmentMethod === "pickup" ? <><Package className="h-3 w-3" /> Pickup</> : <><Truck className="h-3 w-3" /> Delivery</>}</span>
+                  <div
+                    key={order.id}
+                    className="bg-white rounded-xl border border-black/[0.06] overflow-hidden"
+                  >
+                    <button
+                      className="w-full p-4 flex items-center gap-3 text-left hover:bg-[#f9f9f8] transition-colors"
+                      onClick={() =>
+                        setExpandedOrder(isExpanded ? null : order.id)
+                      }
+                    >
+                      <div className="h-12 w-12 rounded-xl overflow-hidden bg-[#f2f2f0] shrink-0 border border-black/[0.06]">
+                        {product?.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name || "Product"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-5 w-5 text-[#ccc]" />
                           </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] text-muted-foreground truncate inline-flex items-center gap-0.5">
-                              <User className="h-3 w-3" />
-                              {buyer ? [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || buyer.email || "Buyer" : "Buyer"}
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[#111] truncate">
+                          {product?.name || `Order #${order.id?.slice(0, 8)}`}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-xs text-[#888]">
+                            Qty:{" "}
+                            <span className="font-medium text-[#333]">
+                              {order.quantity || 1}
                             </span>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="text-[11px] text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
-                          </div>
+                          </span>
+                          <span className="text-[#ddd]">·</span>
+                          <span className="text-xs text-[#888] capitalize">
+                            {order.paymentMethod || "cod"}
+                          </span>
+                          <span className="text-[#ddd]">·</span>
+                          <span className="text-xs text-[#888] inline-flex items-center gap-0.5">
+                            {order.fulfillmentMethod === "pickup" ? (
+                              <>
+                                <Package className="h-3 w-3" /> Pickup
+                              </>
+                            ) : (
+                              <>
+                                <Truck className="h-3 w-3" /> Delivery
+                              </>
+                            )}
+                          </span>
                         </div>
-                        {/* Price & Status */}
-                        <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                          <p className="text-sm font-bold">₱{Number(order.totalPrice || 0).toLocaleString()}</p>
-                          <Badge className={`rounded-full text-[9px] px-2 py-0 border-0 capitalize ${config.className}`}>
-                            {config.label}
-                          </Badge>
-                          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                        </div>
-                      </button>
+                        <span className="text-[11px] text-[#aaa] inline-flex items-center gap-0.5 mt-0.5">
+                          <User className="h-3 w-3" />
+                          {buyer
+                            ? [buyer.firstName, buyer.lastName]
+                                .filter(Boolean)
+                                .join(" ") ||
+                              buyer.email ||
+                              "Buyer"
+                            : "Buyer"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <p className="text-sm font-bold text-[#111]">
+                          ₱{Number(order.totalPrice || 0).toLocaleString()}
+                        </p>
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded"
+                          style={{ color: cfg.color, background: cfg.bg }}
+                        >
+                          {cfg.label}
+                        </span>
+                        <ChevronDown
+                          className="h-3.5 w-3.5 text-[#bbb] transition-transform"
+                          style={{
+                            transform: isExpanded ? "rotate(180deg)" : "none",
+                          }}
+                        />
+                      </div>
+                    </button>
 
-                      {isExpanded && (
-                        <div className="px-4 pb-4 pt-0 border-t border-black/[0.04] dark:border-white/[0.04]">
-                          <div className="pt-3 space-y-3">
-                            {/* Order ID */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Order ID</span>
-                              <span className="text-xs font-mono">{order.id?.slice(0, 12)}</span>
-                            </div>
-                            {/* Buyer Info */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Buyer</span>
-                              <span className="text-xs font-medium">
-                                {buyer ? [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || "—" : "—"}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-black/[0.04]">
+                        <div className="pt-3 space-y-2.5">
+                          {[
+                            [
+                              "Order ID",
+                              <span className="font-mono text-xs">
+                                {order.id?.slice(0, 12)}
+                              </span>,
+                            ],
+                            [
+                              "Buyer",
+                              buyer
+                                ? [buyer.firstName, buyer.lastName]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"
+                                : "—",
+                            ],
+                            buyer?.mobile && [
+                              "Phone",
+                              buyer.mobile || buyer.phone,
+                            ],
+                            buyer?.email && [
+                              "Email",
+                              <span className="truncate max-w-[180px] inline-block">
+                                {buyer.email}
+                              </span>,
+                            ],
+                            [
+                              "Status",
+                              <span
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded"
+                                style={{ color: cfg.color, background: cfg.bg }}
+                              >
+                                {cfg.label}
+                              </span>,
+                            ],
+                            [
+                              "Fulfillment",
+                              order.fulfillmentMethod === "pickup"
+                                ? "Pickup at shop"
+                                : order.shippingAddress || "N/A",
+                            ],
+                            [
+                              "Payment",
+                              <span className="capitalize">
+                                {order.paymentMethod || "cod"}
+                              </span>,
+                            ],
+                          ]
+                            .filter(Boolean)
+                            .map((row: any, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center justify-between gap-4"
+                              >
+                                <span className="text-xs text-[#888] shrink-0">
+                                  {row[0]}
+                                </span>
+                                <span className="text-xs text-[#333] text-right">
+                                  {row[1]}
+                                </span>
+                              </div>
+                            ))}
+
+                          {order.fulfillmentMethod !== "pickup" &&
+                            order.shippingAddress && (
+                              <div className="flex gap-2 p-2.5 bg-[#f2f2f0] rounded-xl border border-black/[0.06]">
+                                <MapPin className="h-3.5 w-3.5 text-[#888] shrink-0 mt-0.5" />
+                                <span className="text-xs text-[#333] leading-relaxed">
+                                  {order.shippingAddress}
+                                </span>
+                              </div>
+                            )}
+
+                          {order.paymentMethod === "gcash" && (
+                            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 space-y-1.5">
+                              <span className="text-xs font-semibold text-blue-700 flex items-center gap-1">
+                                <CreditCard className="h-3.5 w-3.5" /> GCash
+                                Payment
+                              </span>
+                              {order.gcashProofUrl ? (
+                                <img
+                                  src={order.gcashProofUrl}
+                                  alt="GCash Proof"
+                                  className="w-28 h-28 object-contain rounded border border-blue-200 bg-white"
+                                />
+                              ) : (
+                                <span className="text-xs text-[#888]">
+                                  No proof yet
+                                </span>
+                              )}
+                              <span className="text-xs text-[#555]">
+                                Ref:{" "}
+                                <span className="font-mono font-bold">
+                                  {order.gcashRef || "N/A"}
+                                </span>
                               </span>
                             </div>
-                            {(buyer?.mobile || buyer?.phone) && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Phone</span>
-                                <span className="text-xs">{buyer.mobile || buyer.phone}</span>
-                              </div>
-                            )}
-                            {buyer?.email && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Email</span>
-                                <span className="text-xs truncate max-w-[180px]">{buyer.email}</span>
-                              </div>
-                            )}
-                            {order.shippingAddress && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Shipping Address</span>
-                                <span className="text-xs text-right max-w-[200px]">{order.shippingAddress}</span>
-                              </div>
-                            )}
-                            {/* Status */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Status</span>
-                              <Badge className={`rounded-full text-[10px] border-0 capitalize ${config.className}`}>
-                                {config.label}
-                              </Badge>
+                          )}
+                          {order.paymentMethod === "qrph" && (
+                            <div className="p-3 bg-[#f2f2f0] rounded-xl border border-black/[0.06] space-y-1.5">
+                              <span className="text-xs font-semibold text-[#333]">
+                                QR PH Payment
+                              </span>
+                              {order.qrphProofUrl ? (
+                                <img
+                                  src={order.qrphProofUrl}
+                                  alt="QR PH Proof"
+                                  className="w-28 h-28 object-contain border rounded"
+                                />
+                              ) : (
+                                <span className="text-xs text-[#888]">
+                                  No proof yet
+                                </span>
+                              )}
+                              <span className="text-xs text-[#555]">
+                                Ref:{" "}
+                                <span className="font-mono">
+                                  {order.qrphRef || "N/A"}
+                                </span>
+                              </span>
                             </div>
-                            {/* Fulfillment & Address */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">{order.fulfillmentMethod === "pickup" ? <><Package className="h-3 w-3" /> Pickup</> : <><Truck className="h-3 w-3" /> Delivery</>}</span>
-                              <span className="text-xs text-right max-w-[200px]">{order.fulfillmentMethod === "pickup" ? "Pick up at shop" : (order.shippingAddress || "N/A")}</span>
-                            </div>
-                            {order.fulfillmentMethod !== "pickup" && order.shippingAddress && (
-                              <div className="flex gap-2 p-2.5 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-black/[0.04]">
-                                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                                <span className="text-xs text-foreground leading-relaxed">{order.shippingAddress}</span>
-                              </div>
-                            )}
-                            {/* Payment */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-muted-foreground">Payment</span>
-                              <span className="text-xs capitalize">{order.paymentMethod || "cod"}</span>
-                            </div>
-                            {order.paymentMethod === "qrph" && (
-                              <div className="flex flex-col gap-2 mt-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
-                                <span className="text-xs font-bold mb-1">QR PH Payment Proof</span>
-                                {order.qrphProofUrl ? (
-                                  <img src={order.qrphProofUrl} alt="QR PH Proof" className="w-32 h-32 object-contain border rounded mb-1" />
+                          )}
+
+                          <button
+                            className="w-full h-8 rounded-xl border border-black/[0.08] text-xs font-semibold text-[#555] hover:bg-[#f2f2f0] transition-colors flex items-center justify-center gap-1.5 mt-1"
+                            onClick={() => router.push(`/orders/${order.id}`)}
+                          >
+                            <ExternalLink className="h-3 w-3" /> View Full Order
+                            Details
+                          </button>
+
+                          <div className="flex gap-2 pt-1">
+                            {status === "To Pay" && (
+                              <>
+                                {order.paymentMethod === "gcash" &&
+                                order.gcashProofUrl ? (
+                                  <button
+                                    disabled={updating === order.id}
+                                    onClick={() =>
+                                      handleUpdateStatus(order.id, "To Ship")
+                                    }
+                                    className="flex-1 h-9 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                  >
+                                    {updating === order.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-3.5 w-3.5" />{" "}
+                                        Confirm GCash
+                                      </>
+                                    )}
+                                  </button>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">No proof uploaded</span>
+                                  <button
+                                    disabled={updating === order.id}
+                                    onClick={() =>
+                                      handleUpdateStatus(order.id, "To Ship")
+                                    }
+                                    className="flex-1 h-9 rounded-xl text-xs font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                    style={{ background: "#29a366" }}
+                                  >
+                                    {updating === order.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      "Accept Order"
+                                    )}
+                                  </button>
                                 )}
-                                <span className="text-xs">Reference: <span className="font-mono">{order.qrphRef || "N/A"}</span></span>
-                              </div>
+                                <button
+                                  disabled={updating === order.id}
+                                  onClick={() =>
+                                    handleUpdateStatus(order.id, "Cancelled")
+                                  }
+                                  className="flex-1 h-9 rounded-xl text-xs font-semibold text-[#555] border border-black/[0.08] hover:bg-[#f2f2f0] disabled:opacity-60"
+                                >
+                                  Decline
+                                </button>
+                              </>
                             )}
-                            {order.paymentMethod === "gcash" && (
-                              <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                <span className="text-xs font-bold mb-1 text-blue-700 inline-flex items-center gap-1"><CreditCard className="h-3.5 w-3.5" /> GCash Payment Proof</span>
-                                {order.gcashProofUrl ? (
-                                  <img src={order.gcashProofUrl} alt="GCash Proof" className="w-32 h-32 object-contain border border-blue-200 rounded-lg mb-1 bg-white" />
+                            {status === "To Ship" &&
+                              (order.fulfillmentMethod === "pickup" ? (
+                                <button
+                                  disabled={updating === order.id}
+                                  onClick={() =>
+                                    handleUpdateStatus(order.id, "To Pickup")
+                                  }
+                                  className="flex-1 h-9 rounded-xl text-xs font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                  style={{ background: "#29a366" }}
+                                >
+                                  {updating === order.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Package className="h-3.5 w-3.5" /> Ready
+                                      for Pickup
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  disabled={updating === order.id}
+                                  onClick={() =>
+                                    handleUpdateStatus(order.id, "To Receive")
+                                  }
+                                  className="flex-1 h-9 rounded-xl text-xs font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
+                                  style={{ background: "#29a366" }}
+                                >
+                                  {updating === order.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Truck className="h-3.5 w-3.5" /> Mark as
+                                      Shipped
+                                    </>
+                                  )}
+                                </button>
+                              ))}
+                            {status === "To Pickup" && (
+                              <button
+                                disabled={updating === order.id}
+                                onClick={() =>
+                                  handleUpdateStatus(order.id, "Completed")
+                                }
+                                className="flex-1 h-9 rounded-xl text-xs font-semibold text-white bg-[#16a34a] hover:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+                              >
+                                {updating === order.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">No proof uploaded yet</span>
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />{" "}
+                                    Picked Up — Complete
+                                  </>
                                 )}
-                                <span className="text-xs">Reference: <span className="font-mono font-bold">{order.gcashRef || "N/A"}</span></span>
-                                <span className="text-xs">Date: {order.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A"}</span>
-                                <span className="text-xs">Amount: <span className="font-bold">₱{Number(order.totalPrice || 0).toLocaleString()}</span></span>
-                              </div>
+                              </button>
                             )}
-                            {order.trackingNumber && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Tracking</span>
-                                <span className="text-xs">{order.trackingNumber}</span>
-                              </div>
+                            {status === "To Receive" && (
+                              <button
+                                disabled={updating === order.id}
+                                onClick={() =>
+                                  handleUpdateStatus(order.id, "Completed")
+                                }
+                                className="flex-1 h-9 rounded-xl text-xs font-semibold text-white bg-[#16a34a] hover:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+                              >
+                                {updating === order.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />{" "}
+                                    Mark as Delivered
+                                  </>
+                                )}
+                              </button>
                             )}
-                            {/* Shortcut to order details */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full rounded-full text-xs h-8 gap-1.5 border-black/[0.06]"
-                              onClick={() => router.push(`/orders/${order.id}`)}
-                            >
-                              <ExternalLink className="h-3 w-3" /> View Full Order Details
-                            </Button>
-                            <div className="flex gap-2 pt-1">
-                              {status === "To Pay" && (
-                                <>
-                                  {order.paymentMethod === "gcash" && order.gcashProofUrl ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 bg-blue-600 hover:bg-blue-700" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Confirm GCash</>}</Button>
-                                  ) : order.paymentMethod === "cod" ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept COD Order"}</Button>
-                                  ) : order.paymentMethod === "qrph" && order.qrphProofUrl ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm Payment"}</Button>
-                                  ) : (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Ship")}>{updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept Order"}</Button>
-                                  )}
-                                  <Button size="sm" variant="outline" className="rounded-full flex-1 text-xs h-9 border-black/[0.06]" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Cancelled")}>Decline</Button>
-                                </>
-                              )}
-                              {status === "To Ship" && (
-                                <>
-                                  {order.fulfillmentMethod === "pickup" ? (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Pickup")}>
-                                      {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Package className="h-3.5 w-3.5" /> Ready for Pickup</>}
-                                    </Button>
-                                  ) : (
-                                    <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "To Receive")}>
-                                      {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Truck className="h-3.5 w-3.5" /> Mark as Shipped</>}
-                                    </Button>
-                                  )}
-                                </>
-                              )}
-                              {status === "To Pickup" && (
-                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Completed")}>
-                                  {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Picked Up — Complete</>}
-                                </Button>
-                              )}
-                              {status === "To Receive" && (
-                                <Button size="sm" className="rounded-full flex-1 text-xs h-9 gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={updating === order.id} onClick={() => handleUpdateStatus(order.id, "Completed")}>
-                                  {updating === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><CheckCircle2 className="h-3.5 w-3.5" /> Mark as Delivered</>}
-                                </Button>
-                              )}
-                            </div>
                           </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
 
             {filteredOrders.length === 0 && (
-              <div className="text-center py-16">
-                <ShoppingCart className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">No orders found</p>
+              <div className="bg-white rounded-xl border border-black/[0.06] py-16 flex flex-col items-center gap-3">
+                <ShoppingCart
+                  className="h-10 w-10 text-[#ddd]"
+                  strokeWidth={1.5}
+                />
+                <p className="text-sm text-[#888]">No orders found</p>
               </div>
             )}
           </>

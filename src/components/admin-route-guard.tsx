@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,12 +8,7 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
  * Admin routes that admins ARE allowed to access.
  * Everything else will redirect them to /admin/dashboard.
  */
-const ADMIN_ALLOWED_PATHS = [
-  "/admin",
-  "/login",
-  "/signup",
-  "/auth",
-];
+const ADMIN_ALLOWED_PATHS = ["/admin", "/login", "/signup", "/auth"];
 
 /**
  * Redirects admin users away from regular user pages to the admin dashboard.
