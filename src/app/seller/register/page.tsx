@@ -310,106 +310,66 @@ export default function ShopRegistrationPage() {
     );
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "#f2f2f0" }}>
-      {/* Left sidebar */}
-      <div
-        className="hidden lg:flex flex-col w-[280px] shrink-0 relative overflow-hidden p-8"
-        style={{
-          background: "linear-gradient(160deg, #064e3b 0%, #29a366 100%)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-[0.06]">
-          <Image
-            src="/assets/fruits.jpg"
-            alt=""
-            fill
-            className="object-cover"
-            unoptimized
-          />
-        </div>
-        <div className="relative z-10 flex-1">
-          <Link href="/sell" className="flex items-center gap-2 mb-10">
-            <Image
-              src="/brand-icon.png"
-              alt="Emoorm"
-              width={32}
-              height={32}
-              className="rounded-xl"
-            />
-            <span className="text-white font-bold text-sm">Emoorm</span>
-          </Link>
-          <h2 className="text-lg font-bold text-white mb-1">
-            Set up your shop
-          </h2>
-          <p className="text-xs text-white/60 mb-8 leading-relaxed">
-            Complete all 4 steps to activate your seller account.
-          </p>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#f2f2f0" }}>
 
-          {/* Step indicators */}
-          <div className="space-y-2">
+      {/* Top navbar */}
+      <div className="bg-white border-b border-black/[0.06] sticky top-0 z-50">
+        <div className="max-w-[900px] mx-auto px-6 h-14 flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <Image src="/brand-icon.png" alt="Emoorm" width={32} height={32} style={{ objectFit: "contain" }} />
+            <span style={{ fontFamily: "'Ubuntu', sans-serif", fontWeight: 700, fontSize: "1.25rem", letterSpacing: "-0.05em" }}>
+              emoorm
+            </span>
+          </Link>
+          <div style={{ width: 1, height: 22, background: "rgba(0,0,0,0.15)", flexShrink: 0 }} />
+          <span className="text-sm font-semibold text-[#555]">Seller Center</span>
+        </div>
+      </div>
+
+      {/* Horizontal step bar */}
+      <div className="bg-white border-b border-black/[0.05]">
+        <div className="max-w-[900px] mx-auto px-6 py-4">
+          <div className="flex items-center">
             {STEPS.map((s, i) => {
               const Icon = s.icon;
               const done = i < step;
               const current = i === step;
               return (
-                <div
-                  key={s.label}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${current ? "bg-white/15" : ""}`}
-                >
-                  <div
-                    className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${done ? "bg-white/30" : current ? "bg-white/20" : "bg-white/10"}`}
-                  >
-                    {done ? (
-                      <CheckCircle2
-                        className="h-4 w-4 text-white"
-                        strokeWidth={2}
-                      />
-                    ) : (
-                      <Icon
-                        className="h-3.5 w-3.5 text-white/70"
-                        strokeWidth={1.8}
-                      />
-                    )}
+                <React.Fragment key={s.label}>
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <div
+                      className="h-8 w-8 rounded-full flex items-center justify-center transition-all"
+                      style={{ background: done || current ? "#29a366" : "#e5e7eb" }}
+                    >
+                      {done
+                        ? <CheckCircle2 className="h-4 w-4 text-white" strokeWidth={2.5} />
+                        : <Icon className="h-4 w-4 text-white" strokeWidth={1.8} />}
+                    </div>
+                    <span
+                      className="text-[11px] font-semibold whitespace-nowrap"
+                      style={{ color: done || current ? "#29a366" : "#aaa" }}
+                    >
+                      {s.label}
+                    </span>
                   </div>
-                  <span
-                    className={`text-sm font-medium ${current ? "text-white" : done ? "text-white/70" : "text-white/40"}`}
-                  >
-                    {s.label}
-                  </span>
-                  {current && (
-                    <ChevronRight className="h-3.5 w-3.5 text-white/40 ml-auto" />
+                  {i < STEPS.length - 1 && (
+                    <div
+                      className="flex-1 h-0.5 mx-3 mb-5 rounded-full transition-all"
+                      style={{ background: done ? "#29a366" : "#e5e7eb" }}
+                    />
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
         </div>
-        <p className="relative z-10 text-[11px] text-white/25">© Emoorm 2026</p>
       </div>
 
       {/* Main form panel */}
-      <div className="flex-1 flex flex-col items-center justify-start p-6 md:p-10 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start p-6 md:p-10">
         <div className="w-full max-w-[520px]">
-          {/* Mobile header */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <button
-              onClick={() => (step > 0 ? setStep((p) => p - 1) : router.back())}
-              className="p-2 rounded-xl hover:bg-white transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 text-[#555]" />
-            </button>
-            <div>
-              <p className="text-xs text-[#aaa]">
-                Step {step + 1} of {STEPS.length}
-              </p>
-              <p className="text-sm font-semibold text-[#111]">
-                {STEPS[step].label}
-              </p>
-            </div>
-          </div>
-
-          {/* Desktop back */}
-          <div className="hidden lg:flex items-center gap-2 mb-6">
+          {/* Back link */}
+          <div className="flex items-center gap-2 mb-6">
             <button
               onClick={() => (step > 0 ? setStep((p) => p - 1) : router.back())}
               className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#111] transition-colors"
@@ -418,9 +378,7 @@ export default function ShopRegistrationPage() {
               {step > 0 ? "Back" : "Back to sell page"}
             </button>
             <div className="flex-1" />
-            <span className="text-xs text-[#bbb]">
-              Step {step + 1} / {STEPS.length}
-            </span>
+            <span className="text-xs text-[#bbb]">Step {step + 1} / {STEPS.length}</span>
           </div>
 
           <form

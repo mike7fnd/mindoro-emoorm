@@ -132,6 +132,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
   const [bidSubmitting, setBidSubmitting] = useState(false);
   const [bidSheetOpen, setBidSheetOpen] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [cartToast, setCartToast] = useState(false);
+  const [selectedVariation, setSelectedVariation] = useState<string | null>(null);
   const [auctionTimeLeft, setAuctionTimeLeft] = useState("");
   const [quickSheet, setQuickSheet] = useState<{ open: boolean; intent: "cart" | "buy" }>({ open: false, intent: "cart" });
   const [sheetQty, setSheetQty] = useState(1);
@@ -229,6 +231,11 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
     return { table: "facilities", columns: "* , sold" };
   }, []);
   const { data: allProducts } = useCollection<Facility & { sold?: number; totalSales?: number }>(allProductsQuery);
+
+  const sameStoreProducts = useMemo(() => {
+    if (!allProducts || !facility?.storeId) return [];
+    return allProducts.filter((p) => p.id !== facility.id && p.storeId === facility.storeId);
+  }, [allProducts, facility]);
 
   const relatedProducts = useMemo(() => {
     if (!allProducts || !facility) return [];
@@ -600,6 +607,30 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                   <span className="text-gray-700 font-medium">{facility.bidCount || 0}</span>
                 </div>
               )}
+
+              {/* Variation row */}
+              {!facility.isAuction && facility.amenities && facility.amenities.length > 0 && (
+                <div className="flex items-start px-4 py-3 gap-3">
+                  <span className="text-gray-400 w-24 shrink-0 pt-1">Variation</span>
+                  <div className="flex flex-wrap gap-2">
+                    {facility.amenities.map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setSelectedVariation(v === selectedVariation ? null : v)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-[5px] text-xs border transition-all",
+                          selectedVariation === v
+                            ? "border-[#29a366] bg-[#29a366]/5 text-[#29a366] font-semibold"
+                            : "border-gray-200 text-gray-600 hover:border-[#29a366]/60"
+                        )}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {!facility.isAuction && (
                 <div className="flex items-center px-4 py-2.5 gap-3">
                   <span className="text-gray-400 w-24 shrink-0">Quantity</span>
@@ -679,15 +710,20 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               ) : (
                 <>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!user) { router.push("/login"); return; }
-                      setSheetQty(quantity);
-                      setQuickSheet({ open: true, intent: "cart" });
+                      await supabase.from("cart_items").upsert(
+                        { userId: user.uid, productId: facility.id, quantity },
+                        { onConflict: "userId,productId" }
+                      );
+                      setAddedToCart(true);
+                      setCartToast(true);
+                      setTimeout(() => { setAddedToCart(false); setCartToast(false); }, 2500);
                     }}
                     className={cn(
-                      "flex-1 py-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition-colors",
+                      "flex-1 py-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition-all",
                       addedToCart
-                        ? "border-green-500 text-green-600 bg-green-50"
+                        ? "border-[#29a366] text-[#29a366] bg-[#f0fdf4]"
                         : "border-[#29a366] text-[#29a366] hover:bg-[#f0fdf4]"
                     )}
                   >
@@ -695,10 +731,20 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
                     {addedToCart ? "Added to Cart!" : "Add to Cart"}
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!user) { router.push("/login"); return; }
-                      setSheetQty(quantity);
-                      setQuickSheet({ open: true, intent: "buy" });
+                      const { data: cartRow } = await supabase
+                        .from("cart_items")
+                        .upsert(
+                          { userId: user.uid, productId: facility.id, quantity },
+                          { onConflict: "userId,productId" }
+                        )
+                        .select("id")
+                        .single();
+                      if (cartRow?.id) {
+                        localStorage.setItem("buy_now_cart_id", cartRow.id);
+                      }
+                      router.push("/cart");
                     }}
                     className="flex-1 py-3 rounded-lg bg-[#29a366] text-white font-semibold text-sm hover:bg-[#23905a] transition-colors"
                   >
@@ -775,6 +821,41 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
               >
                 <MessageSquare className="h-3 w-3" /> Chat
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── More in this shop ─────────────────────────────────── */}
+        {store && sameStoreProducts.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs uppercase tracking-wide text-gray-400 font-semibold">More in this shop</p>
+              <Link
+                href={`/stores/${facility.storeId}`}
+                className="text-xs font-semibold hover:underline"
+                style={{ color: "#29a366" }}
+              >
+                See all →
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+              {sameStoreProducts.slice(0, 10).map((product) => (
+                <Link key={product.id} href={`/book/${product.id}`} className="shrink-0 w-[100px] group">
+                  <div className="aspect-square rounded-[8px] overflow-hidden border border-black/[0.06] mb-1.5">
+                    <Image
+                      src={product.imageUrl || "/placeholder.svg"}
+                      alt={product.name}
+                      width={100}
+                      height={100}
+                      className="object-cover h-full w-full group-hover:scale-105 transition-transform duration-200"
+                    />
+                  </div>
+                  <p className="text-xs text-[#111] line-clamp-2 leading-snug mb-1 group-hover:text-[#29a366] transition-colors">{product.name}</p>
+                  <p className="text-xs font-semibold" style={{ color: "#29a366" }}>
+                    ₱{(product.price || product.pricePerNight || 0).toLocaleString()}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
         )}
@@ -910,6 +991,27 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
       </main>
 
       <Footer />
+
+      {/* ── Cart toast — desktop only ─────────────────────────────── */}
+      {cartToast && facility && (
+        <div className="hidden md:flex fixed top-5 right-5 z-[9999] items-center gap-3 bg-white border border-black/[0.07] rounded-2xl px-4 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+          style={{ animation: "slideInRight 220ms cubic-bezier(0.34,1.4,0.64,1)" }}
+        >
+          <div className="h-9 w-9 rounded-full bg-[#29a366] flex items-center justify-center shrink-0">
+            <CheckCircle2 className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#111]">Added to cart</p>
+            <p className="text-xs text-[#888]">{quantity} item{quantity > 1 ? "s" : ""} · ₱{(unitPrice * quantity).toLocaleString()}</p>
+          </div>
+          <Link
+            href="/cart"
+            className="ml-2 text-xs font-semibold text-[#29a366] hover:underline whitespace-nowrap"
+          >
+            View Cart
+          </Link>
+        </div>
+      )}
 
       {/* ── Sticky bottom bar - mobile only ───────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-[1000] md:hidden bg-white border-t border-gray-100 px-4 py-3 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
@@ -1117,17 +1219,15 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
         </SheetContent>
       </Sheet>
 
-      {/* ── Order Overview Sheet ──────────────────────────────────── */}
+      {/* ── Order Overview — mobile sheet ──────────────────────────── */}
       <Sheet open={showCheckout} onOpenChange={setShowCheckout}>
         <SheetContent side="bottom" className="h-[95vh] rounded-t-[40px] p-0 border-none outline-none">
           <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-8 md:p-12 pb-32">
-              <div className="flex justify-between items-center mb-10">
-                <h2 className="text-3xl font-normal font-headline tracking-[-0.05em]">
-                  Order <span className="text-primary">Overview</span>
-                </h2>
+            <div className="flex-1 overflow-y-auto p-6 pb-32">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold text-[#111]">Order Overview</h2>
                 <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
@@ -1227,6 +1327,8 @@ export default function FacilityDetailsPage({ params }: { params: Promise<{ id: 
           </div>
         </SheetContent>
       </Sheet>
+
+
 
       {/* ── Bid Placement Bottom Sheet ─────────────────────────── */}
       <Sheet open={bidSheetOpen} onOpenChange={setBidSheetOpen}>

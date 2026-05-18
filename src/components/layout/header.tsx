@@ -588,9 +588,50 @@ function HeaderContent() {
     "Account";
 
   const isHome = pathname === "/";
+  const isCartPage = pathname === "/cart";
+  const [cartSearchQuery, setCartSearchQuery] = useState(searchParams.get("q") || "");
+
+  useEffect(() => {
+    if (isCartPage) setCartSearchQuery(searchParams.get("q") || "");
+  }, [isCartPage, searchParams]);
 
   return (
     <>
+      {/* Mobile cart header — shown only on cart page on small screens */}
+      {isCartPage && (
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-black/[0.07] shadow-sm">
+          <div className="flex items-center gap-3 px-4 h-14">
+            <Link href="/" className="shrink-0 flex items-center gap-1.5">
+              <Image src="/brand-icon.png" alt="Emoorm" width={28} height={28} style={{ objectFit: "contain" }} />
+              <span style={{ fontFamily: "'Ubuntu', sans-serif", fontWeight: 700, fontSize: "1.15rem", letterSpacing: "-0.05em" }}>emoorm</span>
+            </Link>
+            <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.15)", flexShrink: 0 }} />
+            <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: "0.85rem", color: "#666", whiteSpace: "nowrap" }}>Shopping Cart</span>
+
+            <div className="flex-1" />
+
+            {/* Search — right side */}
+            <div className="relative w-40">
+              <input
+                type="text"
+                placeholder="Search cart…"
+                value={cartSearchQuery}
+                onChange={(e) => {
+                  setCartSearchQuery(e.target.value);
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (e.target.value) params.set("q", e.target.value);
+                  else params.delete("q");
+                  router.replace(`/cart?${params.toString()}`, { scroll: false });
+                }}
+                autoComplete="off"
+                className="w-full h-8 pl-8 pr-2 rounded-[5px] bg-[#f2f2f0] border border-black/[0.08] text-sm text-[#111] placeholder:text-[#aaa] focus:outline-none focus:border-[#29a366]"
+              />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#bbb] pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Bar */}
       <div className={isHome ? "top-bar" : "top-bar static-header"}>
         <div className="top-bar-inner">
@@ -750,7 +791,7 @@ function HeaderContent() {
       >
         <div className="site-nav-inner">
           <div className="nav-side left-side">
-            <div className="brand">
+            <div className="brand" style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Link
                 href="/"
                 className="logo"
@@ -774,10 +815,28 @@ function HeaderContent() {
                   emoorm
                 </span>
               </Link>
+              {isCartPage && (
+                <>
+                  <div style={{ width: 1, height: 28, background: "rgba(0,0,0,0.18)", flexShrink: 0 }} />
+                  <span
+                    style={{
+                      fontFamily: "'Inter', sans-serif",
+                      fontWeight: 400,
+                      fontSize: "1.1rem",
+                      color: "#555",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Shopping Cart
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
-          {isAdmin ? (
+          {isCartPage ? (
+            <div />
+          ) : isAdmin ? (
             <nav className="navlinks">
               <Link
                 href="/admin/dashboard"
@@ -935,7 +994,31 @@ function HeaderContent() {
             </div>
           )}
 
-          <div className="nav-side right-side" />
+          <div className="nav-side right-side">
+            {isCartPage && (
+              <div className="header-search" style={{ position: "relative", width: 320 }}>
+                <div className="header-search-input-wrap">
+                  <input
+                    type="text"
+                    placeholder="Search in your cart…"
+                    className="header-search-input"
+                    value={cartSearchQuery}
+                    onChange={(e) => {
+                      setCartSearchQuery(e.target.value);
+                      const params = new URLSearchParams(searchParams.toString());
+                      if (e.target.value) params.set("q", e.target.value);
+                      else params.delete("q");
+                      router.replace(`/cart?${params.toString()}`, { scroll: false });
+                    }}
+                    autoComplete="off"
+                  />
+                </div>
+                <button className="header-search-btn" aria-label="Search cart">
+                  <Search />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         {/* end site-nav-inner */}
       </div>

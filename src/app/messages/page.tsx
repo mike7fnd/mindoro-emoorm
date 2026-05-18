@@ -305,7 +305,10 @@ function MessagesContent() {
   // ── Mobile active chat: full-screen overlay ─────────────────────────
   if (isMobileView && activeConversationId) {
     return (
-      <div className="fixed inset-0 z-[1001] flex flex-col bg-white">
+      <div
+        className="fixed inset-0 z-[1001] flex flex-col bg-white"
+        style={{ animation: "slideInFromRight 280ms cubic-bezier(0.25,1,0.5,1)" }}
+      >
         {/* Mobile chat header */}
         <div className="h-14 px-4 border-b border-black/[0.05] flex items-center gap-3 shrink-0 bg-white">
           <button
@@ -586,7 +589,11 @@ function MessagesContent() {
 
               {/* Chat window */}
               {showChat && (
-                <section className="flex-1 flex flex-col min-w-0">
+                <section
+                  key={activeConversationId}
+                  className="flex-1 flex flex-col min-w-0"
+                  style={activeConversationId ? { animation: "chatFadeIn 200ms ease" } : undefined}
+                >
                   {activeConversationId ? (
                     <>
                       {/* Chat header */}
