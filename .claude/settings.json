@@ -21,7 +21,8 @@
       "Bash(xargs grep -l \"support_tickets\")",
       "Bash(findstr \"header.tsx\")",
       "Bash(Select-String \"header\")",
-      "PowerShell(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\"; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"auth-modal\" })"
+      "PowerShell(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\"; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"auth-modal\" })",
+      "Bash(Get-Content \"c:\\\\Users\\\\Admin\\\\Documents\\\\BellasParadise-emoorm\\\\src\\\\app\\\\page.tsx\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\BellasParadise-emoorm\\src\\app\\book\\[id]"

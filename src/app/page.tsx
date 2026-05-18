@@ -85,7 +85,7 @@ const municipalities = [
   "Victoria",
 ];
 
-export default function HomePage() {
+function HomePageInner() {
   const { user, isUserLoading } = useUser();
   const supabase = useSupabase();
   const { t } = useLanguage();
@@ -1454,5 +1454,13 @@ export default function HomePage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <React.Suspense fallback={null}>
+      <HomePageInner />
+    </React.Suspense>
   );
 }
