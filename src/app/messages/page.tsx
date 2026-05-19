@@ -16,6 +16,9 @@ import {
   Languages,
   Trash2,
   Info,
+  Maximize2,
+  Minimize2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -86,6 +89,10 @@ function MessagesContent() {
     "english",
   );
   const [chatCleared, setChatCleared] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isChatHidden, setIsChatHidden] = useState(false);
+  const [mobileSlideIn, setMobileSlideIn] = useState(false);
+  const [chatVisible, setChatVisible] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -101,6 +108,29 @@ function MessagesContent() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // Escape key exits fullscreen
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsFullscreen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Mobile slide-in animation: two-frame pattern (start off-screen, then transition in)
+  useEffect(() => {
+    if (!activeConversationId) { setMobileSlideIn(false); return; }
+    setMobileSlideIn(false);
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setMobileSlideIn(true)));
+    return () => cancelAnimationFrame(id);
+  }, [activeConversationId]);
+
+  // Desktop chat fade-in animation
+  useEffect(() => {
+    if (!activeConversationId || isChatHidden) { setChatVisible(false); return; }
+    setChatVisible(false);
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setChatVisible(true)));
+    return () => cancelAnimationFrame(id);
+  }, [activeConversationId, isChatHidden]);
 
   const conversationsQuery = useStableMemo(() => {
     if (!user) return null;
@@ -307,7 +337,10 @@ function MessagesContent() {
     return (
       <div
         className="fixed inset-0 z-[1001] flex flex-col bg-white"
-        style={{ animation: "slideInFromRight 280ms cubic-bezier(0.25,1,0.5,1)" }}
+        style={{
+          transform: mobileSlideIn ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 300ms cubic-bezier(0.25,1,0.5,1)",
+        }}
       >
         {/* Mobile chat header */}
         <div className="h-14 px-4 border-b border-black/[0.05] flex items-center gap-3 shrink-0 bg-white">
@@ -508,8 +541,13 @@ function MessagesContent() {
 
             {/* Chat card */}
             <div
-              className="bg-white rounded-[5px] border border-black/[0.06] overflow-hidden flex"
-              style={{ height: "calc(100vh - 260px)", minHeight: 500 }}
+              className={cn(
+                "bg-white overflow-hidden flex",
+                isFullscreen
+                  ? "fixed inset-0 z-[200]"
+                  : "rounded-[5px] border border-black/[0.06]",
+              )}
+              style={isFullscreen ? {} : { height: "calc(100vh - 260px)", minHeight: 500 }}
             >
               {/* Conversations list */}
               {showList && (
@@ -531,7 +569,7 @@ function MessagesContent() {
                     {conversations.map((convo) => (
                       <div
                         key={convo.id}
-                        onClick={() => router.push(`/messages?id=${convo.id}`)}
+                        onClick={() => { router.push(`/messages?id=${convo.id}`); setIsChatHidden(false); }}
                         className={cn(
                           "flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-black/[0.04] transition-colors",
                           activeConversationId === convo.id
@@ -587,12 +625,30 @@ function MessagesContent() {
                 </aside>
               )}
 
+              {/* Chat window — hidden placeholder */}
+              {showChat && isChatHidden && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+                  <MessagesSquare className="h-10 w-10 text-[#ddd]" strokeWidth={1.5} />
+                  <p className="text-sm text-[#888]">Chat hidden</p>
+                  <button
+                    onClick={() => setIsChatHidden(false)}
+                    className="text-xs font-semibold hover:underline"
+                    style={{ color: "#29a366" }}
+                  >
+                    Show chat
+                  </button>
+                </div>
+              )}
+
               {/* Chat window */}
-              {showChat && (
+              {showChat && !isChatHidden && (
                 <section
-                  key={activeConversationId}
                   className="flex-1 flex flex-col min-w-0"
-                  style={activeConversationId ? { animation: "chatFadeIn 200ms ease" } : undefined}
+                  style={{
+                    opacity: chatVisible ? 1 : 0,
+                    transform: chatVisible ? "translateX(0)" : "translateX(14px)",
+                    transition: "opacity 220ms ease, transform 220ms ease",
+                  }}
                 >
                   {activeConversationId ? (
                     <>
@@ -636,7 +692,26 @@ function MessagesContent() {
                             </p>
                           </div>
                         </div>
-                        {isBotConvo(activeConversationId) && (
+                        <div className="flex items-center gap-0.5">
+                          {/* Fullscreen toggle */}
+                          <button
+                            onClick={() => setIsFullscreen((f) => !f)}
+                            className="p-2 hover:bg-[#f2f2f0] rounded-full transition-colors outline-none"
+                            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                          >
+                            {isFullscreen
+                              ? <Minimize2 className="h-4 w-4 text-[#999]" />
+                              : <Maximize2 className="h-4 w-4 text-[#999]" />}
+                          </button>
+                          {/* Hide chat */}
+                          <button
+                            onClick={() => { setIsChatHidden(true); setIsFullscreen(false); }}
+                            className="p-2 hover:bg-[#f2f2f0] rounded-full transition-colors outline-none"
+                            title="Hide chat"
+                          >
+                            <X className="h-4 w-4 text-[#999]" />
+                          </button>
+                          {isBotConvo(activeConversationId) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="p-2 hover:bg-[#f2f2f0] rounded-full transition-colors outline-none">
@@ -704,6 +779,7 @@ function MessagesContent() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
+                      </div>
                       </div>
 
                       {/* Messages */}

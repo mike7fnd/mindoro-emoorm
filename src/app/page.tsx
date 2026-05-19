@@ -6,9 +6,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useLanguage } from "@/contexts/language-context";
-import { Heart, Star, Search, MapPin } from "lucide-react";
+import { Star, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser, useSupabase, useCollection, useStableMemo } from "@/supabase";
+import { useUser, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Filter } from "lucide-react";
@@ -86,8 +86,7 @@ const municipalities = [
 ];
 
 function HomePageInner() {
-  const { user, isUserLoading } = useUser();
-  const supabase = useSupabase();
+  const { isUserLoading } = useUser();
   const { t } = useLanguage();
 
   const [showWelcome, setShowWelcome] = useState(false);
@@ -109,7 +108,6 @@ function HomePageInner() {
   const [categoryFilter, setCategoryFilter] = useState(
     searchParams.get("cat") || "",
   );
-  const [likedIds, setLikedIds] = useState<string[]>([]);
 
   useEffect(() => {
     setSearchTerm(searchParams.get("q") || "");
@@ -212,24 +210,6 @@ function HomePageInner() {
   const { data: productsData, isLoading: isProductsLoading } =
     useCollection<Product>(productsQuery);
   const { data: storesData } = useCollection<StoreItem>(storesQuery);
-
-  const wishlistQuery = useStableMemo(() => {
-    if (!user) return null;
-    return {
-      table: "wishlist",
-      filters: [{ column: "userId", op: "eq" as const, value: user.uid }],
-    };
-  }, [user]);
-
-  const { data: wishlistData } = useCollection<{
-    id: string;
-    productId: string;
-  }>(wishlistQuery);
-
-  const wishlistProductIds = useMemo(() => {
-    if (!wishlistData) return [];
-    return wishlistData.map((w) => w.productId);
-  }, [wishlistData]);
 
   const categories = [
     "All",
@@ -372,30 +352,6 @@ function HomePageInner() {
     if (searchTerm) params.set("q", searchTerm);
     router.push(`/?${params.toString()}`);
   };
-
-  const toggleLike = async (e: React.MouseEvent, productId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) return;
-
-    const isLiked = wishlistProductIds.includes(productId);
-    if (isLiked) {
-      const item = wishlistData?.find((w) => w.productId === productId);
-      if (item) {
-        await supabase.from("wishlist").delete().eq("id", item.id);
-      }
-    } else {
-      await supabase.from("wishlist").insert({ userId: user.uid, productId });
-    }
-    setLikedIds((prev) =>
-      prev.includes(productId)
-        ? prev.filter((i) => i !== productId)
-        : [...prev, productId],
-    );
-  };
-
-  const isItemLiked = (id: string) =>
-    wishlistProductIds.includes(id) || likedIds.includes(id);
 
   const openFilter = () => {
     setShowFilter(true);
@@ -608,6 +564,19 @@ function HomePageInner() {
             paddingTop: "calc(var(--nav-height) + var(--top-bar-height))",
           }}
         >
+          <style>{`
+            @keyframes sellerAdShimmer {
+              0%   { transform: translateX(-200%) skewX(-20deg); }
+              100% { transform: translateX(600%) skewX(-20deg); }
+            }
+            @keyframes sellerStarSpin {
+              to { transform: rotate(360deg); }
+            }
+            @keyframes sellerStarPop {
+              0%,100% { transform: scale(1) rotate(0deg); }
+              50%     { transform: scale(1.2) rotate(15deg); }
+            }
+          `}</style>
           <div className="max-w-[1280px] mx-auto px-8 flex gap-0.5">
             <div className="flex-[2] relative h-[360px] overflow-hidden rounded-l-[5px]">
               <Image
@@ -620,26 +589,201 @@ function HomePageInner() {
               />
             </div>
             <div className="flex-1 flex flex-col gap-0.5">
-              <div className="relative flex-1 overflow-hidden">
-                <Image
-                  src="https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80"
-                  alt="Tropical fruits"
-                  fill
-                  className="object-cover"
-                  priority
-                  unoptimized
-                />
-              </div>
-              <div className="relative flex-1 overflow-hidden rounded-br-[5px]">
-                <Image
-                  src="https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&w=600&q=80"
-                  alt="Local seafood market"
-                  fill
-                  className="object-cover"
-                  priority
-                  unoptimized
-                />
-              </div>
+
+              {/* Seller Ad — Panel 1: "Start Selling" */}
+              <Link href="/sell" className="relative flex-1 overflow-hidden group block">
+                {/* Base: near-black green */}
+                <div className="absolute inset-0" style={{ background: "#041009" }} />
+                {/* Diagonal colour band — the main graphic element */}
+                <div className="absolute pointer-events-none" style={{
+                  background: "#29a366",
+                  width: "170%", height: "48%",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  zIndex: 1,
+                }} />
+                {/* Halftone-style dot grid on the band */}
+                <div className="absolute pointer-events-none" style={{
+                  width: "170%", height: "48%",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.18) 1.5px, transparent 1.5px)",
+                  backgroundSize: "10px 10px",
+                  zIndex: 2,
+                }} />
+                {/* Thin accent line above band */}
+                <div className="absolute pointer-events-none" style={{
+                  background: "#7dffb8",
+                  width: "170%", height: "2px",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  zIndex: 3,
+                }} />
+                {/* Thin accent line below band */}
+                <div className="absolute pointer-events-none" style={{
+                  background: "#7dffb8",
+                  width: "170%", height: "2px",
+                  top: "calc(26% + 48%)", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  zIndex: 3,
+                }} />
+                {/* Bottom-left corner bracket */}
+                <div className="absolute bottom-0 left-0 pointer-events-none" style={{
+                  width: 0, height: 0,
+                  borderBottom: "52px solid #29a366",
+                  borderRight: "52px solid transparent",
+                  opacity: 0.35,
+                  zIndex: 2,
+                }} />
+                {/* Oversized decorative "SELL" watermark top-right */}
+                <div className="absolute select-none pointer-events-none" style={{
+                  right: -6, top: -4,
+                  fontSize: "4.8rem", fontWeight: 900,
+                  color: "rgba(41,163,102,0.12)",
+                  lineHeight: 1, letterSpacing: "-0.06em",
+                  zIndex: 1,
+                }}>SELL</div>
+                {/* "FREE" 16-point starburst badge */}
+                <div className="absolute pointer-events-none" style={{
+                  top: 10, right: 10, width: 40, height: 40,
+                  background: "#ffd700",
+                  clipPath: "polygon(50% 0%,56% 33%,87% 12%,72% 41%,100% 50%,72% 59%,87% 88%,56% 67%,50% 100%,44% 67%,13% 88%,28% 59%,0% 50%,28% 41%,13% 12%,44% 33%)",
+                  zIndex: 10,
+                }} />
+                <div className="absolute pointer-events-none" style={{
+                  top: 10, right: 10, width: 40, height: 40, zIndex: 11,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "7px", fontWeight: 900, color: "#041009",
+                  letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1,
+                }}>FREE</div>
+                {/* Shimmer */}
+                <div className="absolute inset-y-0 pointer-events-none" style={{
+                  width: 50,
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
+                  animation: "sellerAdShimmer 4.5s ease-in-out infinite",
+                  animationDelay: "0.5s", zIndex: 5,
+                }} />
+                {/* Content */}
+                <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ zIndex: 20 }}>
+                  <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" }}>
+                    For Local Producers
+                  </p>
+                  <div>
+                    <p style={{ color: "white", fontWeight: 900, lineHeight: 0.86, letterSpacing: "-0.04em", fontSize: "1.5rem", textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+                      START<br />SELLING<br /><span style={{ color: "#7dffb8" }}>TODAY</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.58rem", lineHeight: 1.45, marginBottom: 8 }}>
+                      Reach buyers across<br />Oriental Mindoro
+                    </p>
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 transition-all group-hover:gap-2.5"
+                      style={{ background: "#ffd700", color: "#041009", clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)", paddingRight: 14 }}
+                    >
+                      Register Now →
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Seller Ad — Panel 2: "Earn Online" */}
+              <Link href="/sell" className="relative flex-1 overflow-hidden rounded-br-[5px] group block">
+                {/* Base: near-black dark */}
+                <div className="absolute inset-0" style={{ background: "#140500" }} />
+                {/* Diagonal colour band */}
+                <div className="absolute pointer-events-none" style={{
+                  background: "linear-gradient(90deg, #ff6b35, #e03010)",
+                  width: "170%", height: "48%",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  zIndex: 1,
+                }} />
+                {/* Halftone dots on band */}
+                <div className="absolute pointer-events-none" style={{
+                  width: "170%", height: "48%",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)",
+                  backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.18) 1.5px, transparent 1.5px)",
+                  backgroundSize: "10px 10px",
+                  zIndex: 2,
+                }} />
+                {/* Accent lines */}
+                <div className="absolute pointer-events-none" style={{
+                  background: "#ffb380",
+                  width: "170%", height: "2px",
+                  top: "26%", left: "-35%",
+                  transform: "rotate(-7deg)", zIndex: 3,
+                }} />
+                <div className="absolute pointer-events-none" style={{
+                  background: "#ffb380",
+                  width: "170%", height: "2px",
+                  top: "calc(26% + 48%)", left: "-35%",
+                  transform: "rotate(-7deg)", zIndex: 3,
+                }} />
+                {/* Bottom-left corner bracket */}
+                <div className="absolute bottom-0 left-0 pointer-events-none" style={{
+                  width: 0, height: 0,
+                  borderBottom: "52px solid #ff6b35",
+                  borderRight: "52px solid transparent",
+                  opacity: 0.32, zIndex: 2,
+                }} />
+                {/* Oversized "₱" decorative watermark */}
+                <div className="absolute select-none pointer-events-none" style={{
+                  right: -4, top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: "5.5rem", fontWeight: 900,
+                  color: "rgba(255,107,53,0.12)",
+                  lineHeight: 1, zIndex: 1,
+                }}>₱</div>
+                {/* "JOIN FREE" starburst badge */}
+                <div className="absolute pointer-events-none" style={{
+                  top: 10, right: 10, width: 40, height: 40,
+                  background: "#ff6b35",
+                  clipPath: "polygon(50% 0%,56% 33%,87% 12%,72% 41%,100% 50%,72% 59%,87% 88%,56% 67%,50% 100%,44% 67%,13% 88%,28% 59%,0% 50%,28% 41%,13% 12%,44% 33%)",
+                  border: "2px solid rgba(255,255,255,0.25)", zIndex: 10,
+                }} />
+                <div className="absolute pointer-events-none" style={{
+                  top: 10, right: 10, width: 40, height: 40, zIndex: 11,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "6px", fontWeight: 900, color: "white",
+                  letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1,
+                }}>JOIN<br/>FREE</div>
+                {/* Shimmer */}
+                <div className="absolute inset-y-0 pointer-events-none" style={{
+                  width: 50,
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
+                  animation: "sellerAdShimmer 4.5s ease-in-out infinite",
+                  animationDelay: "2.5s", zIndex: 5,
+                }} />
+                {/* Content */}
+                <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ zIndex: 20 }}>
+                  <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" }}>
+                    Earn Online
+                  </p>
+                  <div>
+                    <p style={{ color: "white", fontWeight: 900, lineHeight: 0.86, letterSpacing: "-0.04em", fontSize: "1.5rem", textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+                      GROW<br />YOUR<br /><span style={{ color: "#ffb380" }}>BUSINESS</span>
+                    </p>
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
+                      {["Free to list", "Fast payouts", "More buyers"].map((b) => (
+                        <span key={b} style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.57rem", display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ color: "#ff6b35", fontWeight: 900 }}>▸</span> {b}
+                        </span>
+                      ))}
+                    </div>
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 transition-all group-hover:gap-2.5"
+                      style={{ background: "white", color: "#e03010", clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)", paddingRight: 14 }}
+                    >
+                      Start Earning →
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
             </div>
           </div>
         </div>
@@ -821,17 +965,52 @@ function HomePageInner() {
                 suggestedProducts.length > 0 && (
                   <section>
                     <div
-                      className="sticky z-20 -mx-4 px-4 md:-mx-6 md:px-6 py-3 flex items-center gap-4 mb-3"
-                      style={{
-                        top: "calc(var(--nav-height) + var(--top-bar-height))",
-                        backgroundColor: "#f2f2f0",
-                      }}
+                      className="sticky z-20 -mx-4 md:-mx-8 mb-4"
+                      style={{ top: "calc(var(--nav-height) + var(--top-bar-height))" }}
                     >
-                      <div className="flex-1 h-px bg-primary/40" />
-                      <h2 className="text-xl font-headline font-normal tracking-[-0.04em] text-center shrink-0">
-                        {t("home.suggestedForYou")}
-                      </h2>
-                      <div className="flex-1 h-px bg-primary/40" />
+                      <div
+                        className="relative flex items-center justify-between px-6 md:px-10 py-4 overflow-hidden"
+                        style={{ background: "#29a366" }}
+                      >
+                        {/* Subtle dot texture */}
+                        <div className="absolute inset-0 pointer-events-none" style={{
+                          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
+                          backgroundSize: "18px 18px",
+                        }} />
+                        {/* Top gloss */}
+                        <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none" style={{
+                          background: "linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 100%)",
+                        }} />
+
+                        {/* Left rule + dot */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div style={{ height: 1, width: "clamp(24px, 8vw, 80px)", background: "rgba(255,255,255,0.28)" }} />
+                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.45)" }} />
+                        </div>
+
+                        {/* Center text */}
+                        <div className="relative z-10 flex items-center justify-center">
+                          <span style={{
+                            color: "white",
+                            fontWeight: 800,
+                            fontSize: "clamp(1.05rem, 4vw, 1.45rem)",
+                            letterSpacing: "-0.02em",
+                            lineHeight: 1,
+                            textShadow: "0 1px 8px rgba(0,0,0,0.15)",
+                          }}>
+                            Suggested For You
+                          </span>
+                        </div>
+
+                        {/* Right dot + rule */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.45)" }} />
+                          <div style={{ height: 1, width: "clamp(24px, 8vw, 80px)", background: "rgba(255,255,255,0.28)" }} />
+                        </div>
+                      </div>
+
+                      {/* Thin accent strip */}
+                      <div style={{ height: 3, background: "#1e8a52" }} />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       {suggestedProducts.map((product) => (
@@ -975,18 +1154,157 @@ function HomePageInner() {
               {/* ── New Arrivals ──────────────────────────────────────────── */}
               {!selectedCategory && !searchTerm && newArrivals.length > 0 && (
                 <section>
+                  {/* New Arrivals — animated full-width promo banner */}
+                  <style>{`
+                    @keyframes promoGrad {
+                      0%,100% { background-position: 0% 50%; }
+                      50%      { background-position: 100% 50%; }
+                    }
+                    @keyframes promoShimmer {
+                      0%   { transform: translateX(-200%) skewX(-15deg); }
+                      100% { transform: translateX(600%) skewX(-15deg); }
+                    }
+                    @keyframes promoStarSpin {
+                      to { transform: rotate(360deg); }
+                    }
+                    @keyframes promoStarPop {
+                      0%,100% { transform: scale(1); }
+                      50%     { transform: scale(1.35); }
+                    }
+                    @keyframes promoFloat {
+                      0%   { transform: translateY(0);    opacity: 0.7; }
+                      100% { transform: translateY(-40px); opacity: 0;   }
+                    }
+                    @keyframes promoTicker {
+                      from { transform: translateX(0); }
+                      to   { transform: translateX(-50%); }
+                    }
+                    @keyframes promoTextPulse {
+                      0%,100% { filter: brightness(1); }
+                      50%     { filter: brightness(1.18) drop-shadow(0 0 10px rgba(255,210,60,0.55)); }
+                    }
+                  `}</style>
+
                   <div
-                    className="sticky z-20 -mx-4 px-4 md:-mx-6 md:px-6 py-3 flex items-center gap-4 mb-3"
-                    style={{
-                      top: "calc(var(--nav-height) + var(--top-bar-height))",
-                      backgroundColor: "#f2f2f0",
-                    }}
+                    className="sticky z-20 -mx-4 md:-mx-8 mb-4"
+                    style={{ top: "calc(var(--nav-height) + var(--top-bar-height))" }}
                   >
-                    <div className="flex-1 h-px bg-primary/40" />
-                    <h2 className="text-xl font-headline font-normal tracking-[-0.04em] text-center shrink-0">
-                      {t("home.newArrivals")}
-                    </h2>
-                    <div className="flex-1 h-px bg-primary/40" />
+                    {/* Main gradient band */}
+                    <div
+                      className="relative flex items-center justify-between px-5 md:px-10 py-5 overflow-hidden"
+                      style={{
+                        background: "linear-gradient(100deg,#ff4500,#f43f5e,#ff6b1a,#e11d48,#ff4500)",
+                        backgroundSize: "300% 300%",
+                        animation: "promoGrad 5s ease infinite",
+                      }}
+                    >
+                      {/* Dot-grid texture */}
+                      <div className="absolute inset-0 pointer-events-none" style={{
+                        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.09) 1px, transparent 1px)",
+                        backgroundSize: "18px 18px",
+                      }} />
+                      {/* Top gloss */}
+                      <div className="absolute inset-x-0 top-0 h-[45%] pointer-events-none" style={{
+                        background: "linear-gradient(180deg, rgba(255,255,255,0.17) 0%, transparent 100%)",
+                      }} />
+                      {/* Shimmer sweep */}
+                      <div className="absolute inset-y-0 pointer-events-none" style={{
+                        width: 90,
+                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent)",
+                        animation: "promoShimmer 4s ease-in-out infinite",
+                        animationDelay: "1.5s",
+                      }} />
+                      {/* Floating particles */}
+                      {[10,22,36,52,66,80].map((left, i) => (
+                        <div key={i} className="absolute rounded-full pointer-events-none" style={{
+                          width: i % 2 === 0 ? 5 : 3,
+                          height: i % 2 === 0 ? 5 : 3,
+                          background: "rgba(255,255,255,0.55)",
+                          left: `${left}%`,
+                          bottom: "12%",
+                          animation: `promoFloat ${1.8 + i * 0.25}s ease-out infinite`,
+                          animationDelay: `${i * 0.45}s`,
+                        }} />
+                      ))}
+
+                      {/* Left star cluster */}
+                      <div className="relative shrink-0 flex items-center gap-2">
+                        <div style={{
+                          width: 54, height: 54,
+                          background: "rgba(255,255,255,0.20)",
+                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+                          animation: "promoStarSpin 10s linear infinite",
+                        }} />
+                        <div style={{
+                          width: 22, height: 22,
+                          background: "rgba(255,215,0,0.80)",
+                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+                          animation: "promoStarPop 1.6s ease-in-out infinite",
+                        }} />
+                      </div>
+
+                      {/* Center text */}
+                      <div className="relative z-10 flex flex-col items-center gap-1">
+                        <span style={{
+                          color: "rgba(255,255,255,0.72)",
+                          fontSize: "0.58rem",
+                          fontWeight: 800,
+                          letterSpacing: "0.32em",
+                          textTransform: "uppercase",
+                          lineHeight: 1,
+                        }}>
+                          Just Landed
+                        </span>
+                        <span style={{
+                          color: "white",
+                          fontWeight: 900,
+                          fontSize: "clamp(1.15rem, 4.5vw, 1.65rem)",
+                          letterSpacing: "-0.02em",
+                          lineHeight: 1,
+                          textShadow: "0 2px 14px rgba(0,0,0,0.22)",
+                          animation: "promoTextPulse 2.8s ease-in-out infinite",
+                        }}>
+                          New Arrivals
+                        </span>
+                      </div>
+
+                      {/* Right star cluster */}
+                      <div className="relative shrink-0 flex items-center gap-2">
+                        <div style={{
+                          width: 22, height: 22,
+                          background: "rgba(255,215,0,0.80)",
+                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+                          animation: "promoStarPop 1.6s ease-in-out infinite",
+                          animationDelay: "0.8s",
+                        }} />
+                        <div style={{
+                          width: 54, height: 54,
+                          background: "rgba(255,255,255,0.20)",
+                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+                          animation: "promoStarSpin 10s linear infinite",
+                          animationDirection: "reverse",
+                        }} />
+                      </div>
+                    </div>
+
+                    {/* Scrolling ticker strip */}
+                    <div className="overflow-hidden py-1.5" style={{ background: "#c41d3b" }}>
+                      <div
+                        className="flex whitespace-nowrap"
+                        style={{ animation: "promoTicker 16s linear infinite" }}
+                      >
+                        {[0, 1].map((copy) => (
+                          <span key={copy} className="flex items-center shrink-0">
+                            {["NEW ARRIVALS", "JUST LANDED", "FRESH PICKS", "HOT ITEMS", "FROM MINDORO"].map((txt, j) => (
+                              <React.Fragment key={j}>
+                                <span className="text-white/90 font-bold uppercase px-5" style={{ fontSize: "0.6rem", letterSpacing: "0.22em" }}>{txt}</span>
+                                <span className="text-white/35 text-[7px]">◆</span>
+                              </React.Fragment>
+                            ))}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {newArrivals.map((product) => (
