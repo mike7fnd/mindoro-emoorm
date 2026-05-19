@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useLanguage } from "@/contexts/language-context";
-import { Star, Search, MapPin } from "lucide-react";
+import { Star, Search, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
@@ -66,6 +66,19 @@ interface StoreItem {
 
 type BrowseTab = "products" | "stores" | "map";
 
+const bannerSlides = [
+  { src: "/assets/banners/discover-mindoro.png", alt: "Discover Mindoro" },
+  { src: "/assets/banners/banner-qoute.png", alt: "Emoorm Banner" },
+  { src: "/assets/banners/season-banner.png", alt: "Season Sale" },
+  { src: "/assets/banners/buy-now-qoute.png", alt: "Buy Now" },
+];
+// Clone last→front and first→back for bi-directional infinite loop
+const allBannerSlides = [
+  bannerSlides[bannerSlides.length - 1],
+  ...bannerSlides,
+  bannerSlides[0],
+];
+
 const municipalities = [
   "All",
   "Baco",
@@ -122,6 +135,8 @@ function HomePageInner() {
   const tabIconsRef = useRef<(HTMLDivElement | null)[]>([]);
   const tabPillRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const [bannerIdx, setBannerIdx] = useState(1); // 1 = real first (0 is clone of last)
+  const [bannerTransition, setBannerTransition] = useState(true);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -198,6 +213,33 @@ function HomePageInner() {
       });
     }
   }, [isSticky]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setBannerIdx((i) => i + 1), 4500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Seamless loop: when we hit the clone at either end, instant-jump to the real slide
+  useEffect(() => {
+    if (bannerIdx === allBannerSlides.length - 1) {
+      const t = setTimeout(() => { setBannerTransition(false); setBannerIdx(1); }, 680);
+      return () => clearTimeout(t);
+    }
+    if (bannerIdx === 0) {
+      const t = setTimeout(() => { setBannerTransition(false); setBannerIdx(bannerSlides.length); }, 680);
+      return () => clearTimeout(t);
+    }
+  }, [bannerIdx]);
+
+  useEffect(() => {
+    if (!bannerTransition) {
+      const id = requestAnimationFrame(() => requestAnimationFrame(() => setBannerTransition(true)));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [bannerTransition]);
+
+  const handleBannerPrev = () => { setBannerTransition(true); setBannerIdx((i) => i - 1); };
+  const handleBannerNext = () => { setBannerTransition(true); setBannerIdx((i) => i + 1); };
 
   const productsQuery = useStableMemo(() => {
     return { table: "facilities", columns: "* , sold" };
@@ -579,14 +621,77 @@ function HomePageInner() {
           `}</style>
           <div className="max-w-[1280px] mx-auto px-8 flex gap-0.5">
             <div className="flex-[2] relative h-[360px] overflow-hidden rounded-l-[5px]">
-              <Image
-                src="/assets/banners/discover-mindoro.png"
-                alt="Discover Mindoro"
-                fill
-                className="object-cover"
-                priority
-                unoptimized
-              />
+              {/* Slides strip */}
+              <div
+                className="flex h-full"
+                style={{
+                  width: `${allBannerSlides.length * 100}%`,
+                  transform: `translateX(-${(bannerIdx / allBannerSlides.length) * 100}%)`,
+                  transition: bannerTransition ? "transform 0.65s cubic-bezier(0.4,0,0.2,1)" : "none",
+                }}
+              >
+                {allBannerSlides.map((slide, i) => (
+                  <div
+                    key={i}
+                    className="relative h-full shrink-0"
+                    style={{ width: `${100 / allBannerSlides.length}%` }}
+                  >
+                    <Image
+                      src={slide.src}
+                      alt={slide.alt}
+                      fill
+                      className="object-cover"
+                      priority={i === 1}
+                      unoptimized
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Left arrow */}
+              <button
+                onClick={handleBannerPrev}
+                aria-label="Previous slide"
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
+                style={{ width: 36, height: 36, background: "rgba(0,0,0,0.38)", border: "1.5px solid rgba(255,255,255,0.25)" }}
+              >
+                <ChevronLeft className="h-5 w-5 text-white" />
+              </button>
+
+              {/* Right arrow */}
+              <button
+                onClick={handleBannerNext}
+                aria-label="Next slide"
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
+                style={{ width: 36, height: 36, background: "rgba(0,0,0,0.38)", border: "1.5px solid rgba(255,255,255,0.25)" }}
+              >
+                <ChevronRight className="h-5 w-5 text-white" />
+              </button>
+
+              {/* Circle dot indicators — inside image, bottom center */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+                {bannerSlides.map((_, i) => {
+                  const active = (bannerIdx - 1 + bannerSlides.length) % bannerSlides.length === i;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => { setBannerTransition(true); setBannerIdx(i + 1); }}
+                      aria-label={`Go to slide ${i + 1}`}
+                      style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: "50%",
+                        background: active ? "white" : "rgba(255,255,255,0.4)",
+                        border: active ? "none" : "1.5px solid rgba(255,255,255,0.5)",
+                        padding: 0,
+                        cursor: "pointer",
+                        transition: "all 0.3s ease",
+                        transform: active ? "scale(1.2) translateY(-3px)" : "scale(1) translateY(0)",
+                      }}
+                    />
+                  );
+                })}
+              </div>
             </div>
             <div className="flex-1 flex flex-col gap-0.5">
 
@@ -656,13 +761,6 @@ function HomePageInner() {
                   fontSize: "7px", fontWeight: 900, color: "#041009",
                   letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1,
                 }}>FREE</div>
-                {/* Shimmer */}
-                <div className="absolute inset-y-0 pointer-events-none" style={{
-                  width: 50,
-                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
-                  animation: "sellerAdShimmer 4.5s ease-in-out infinite",
-                  animationDelay: "0.5s", zIndex: 5,
-                }} />
                 {/* Content */}
                 <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ zIndex: 20 }}>
                   <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" }}>
@@ -749,13 +847,6 @@ function HomePageInner() {
                   fontSize: "6px", fontWeight: 900, color: "white",
                   letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1,
                 }}>JOIN<br/>FREE</div>
-                {/* Shimmer */}
-                <div className="absolute inset-y-0 pointer-events-none" style={{
-                  width: 50,
-                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)",
-                  animation: "sellerAdShimmer 4.5s ease-in-out infinite",
-                  animationDelay: "2.5s", zIndex: 5,
-                }} />
                 {/* Content */}
                 <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ zIndex: 20 }}>
                   <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" }}>
