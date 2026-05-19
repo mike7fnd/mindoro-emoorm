@@ -17,14 +17,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "E-Moorm - Hyperlocal Marketplace",
+  title: "Emoorm Mindoro ︱Agriculture Marketplace",
   description:
     "Discover and purchase authentic, locally produced goods from Oriental Mindoro, Philippines.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "E-Moorm",
+    title: "Emoorm",
   },
   icons: {
     icon: [{ url: "/brand-icon.png", type: "image/png" }],
