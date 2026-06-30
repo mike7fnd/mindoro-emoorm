@@ -27,7 +27,7 @@ export default function MyWishlistPage() {
     try {
       await auth.signOut();
       router.push("/login");
-    } catch {}
+    } catch { }
   };
 
   const wishlistQuery = useStableMemo(() => {
@@ -188,13 +188,15 @@ export default function MyWishlistPage() {
                   >
                     <Link href={`/book/${product.id}`}>
                       <div className="h-20 w-20 rounded-[5px] overflow-hidden shrink-0 border border-black/[0.06]">
-                        <Image
-                          src={product.imageUrl || "/placeholder.svg"}
-                          alt={product.name}
-                          width={80}
-                          height={80}
-                          className="object-cover h-full w-full"
-                        />
+                        {product.imageUrl && (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            width={80}
+                            height={80}
+                            className="object-cover h-full w-full"
+                          />
+                        )}
                       </div>
                     </Link>
                     <div className="flex-1 min-w-0">

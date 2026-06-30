@@ -28,10 +28,10 @@ interface Message {
 }
 
 const STICKER_GROUPS = [
-  { label: "⚡", title: "Quick",    items: ["👍","👎","❤️","😂","😮","😢","😡","🎉","🔥","💯","✅","🙏"] },
-  { label: "😊", title: "Faces",    items: ["😀","😍","🥰","🤩","😎","🥺","😭","🤣","😅","😊","🤔","🫡","😏","🤗","😆","😤"] },
-  { label: "👋", title: "Gestures", items: ["👋","🤝","👏","🙌","🫶","✌️","🤞","🙏","💪","👊","👌","🤙","🫰","🤌"] },
-  { label: "🎉", title: "Fun",      items: ["🎁","🎂","🎉","🎊","🥳","🎯","🎮","🎵","🌈","⭐","✨","🚀","💎","🌟","🍕","🧋"] },
+  { label: "⚡", title: "Quick", items: ["👍", "👎", "❤️", "😂", "😮", "😢", "😡", "🎉", "🔥", "💯", "✅", "🙏"] },
+  { label: "😊", title: "Faces", items: ["😀", "😍", "🥰", "🤩", "😎", "🥺", "😭", "🤣", "😅", "😊", "🤔", "🫡", "😏", "🤗", "😆", "😤"] },
+  { label: "👋", title: "Gestures", items: ["👋", "🤝", "👏", "🙌", "🫶", "✌️", "🤞", "🙏", "💪", "👊", "👌", "🤙", "🫰", "🤌"] },
+  { label: "🎉", title: "Fun", items: ["🎁", "🎂", "🎉", "🎊", "🥳", "🎯", "🎮", "🎵", "🌈", "⭐", "✨", "🚀", "💎", "🌟", "🍕", "🧋"] },
 ];
 
 function isBotConvo(id: string | null | undefined): boolean {
@@ -143,11 +143,11 @@ export function FloatingChat() {
     try {
       const pinned = localStorage.getItem("emoorm_pinned_convos");
       if (pinned) setPinnedIds(JSON.parse(pinned));
-    } catch {}
+    } catch { }
     try {
       const rt = localStorage.getItem("emoorm_convo_read_times");
       if (rt) setConvoReadTimes(JSON.parse(rt));
-    } catch {}
+    } catch { }
   }, []);
 
   // Keyboard shortcuts
@@ -217,8 +217,8 @@ export function FloatingChat() {
     const q = convoSearch.trim().toLowerCase();
     let list = q
       ? conversations.filter(
-          (c) => c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q),
-        )
+        (c) => c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q),
+      )
       : [...conversations];
 
     if (filterTab === "unread") {
@@ -235,7 +235,7 @@ export function FloatingChat() {
       const bp = pinnedIds.includes(b.id);
       if (ap !== bp) return ap ? -1 : 1;
       return (b.updatedAt ? new Date(b.updatedAt).getTime() : 0) -
-             (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+        (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
     });
 
     return list;
@@ -396,7 +396,7 @@ export function FloatingChat() {
     }
   };
 
-  if (pathname?.startsWith("/messages") || pathname?.startsWith("/seller")) return null;
+  if (pathname !== "/") return null;
 
   const activeConvo = conversations.find((c) => c.id === activeConvoId);
 
@@ -506,8 +506,8 @@ export function FloatingChat() {
             const label = tab === "all" ? "All" : tab === "unread" ? "Unread" : "Pinned";
             const badge =
               tab === "unread" ? unreadTabCount
-              : tab === "pinned" ? pinnedIds.length
-              : null;
+                : tab === "pinned" ? pinnedIds.length
+                  : null;
             return (
               <button
                 key={tab}
@@ -698,19 +698,23 @@ export function FloatingChat() {
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
       />
 
-      {/* Floating trigger */}
+      {/* Floating trigger — bottom-right edge tab */}
       <button
         onClick={cardRendered && cardVisible ? handleClose : handleOpen}
         aria-label={cardVisible ? "Close chat" : "Open messages"}
-        className="fixed bottom-6 right-6 z-[10001] h-14 w-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-        style={{ background: "#29a366" }}
+        className="fixed bottom-0 right-6 z-[10001] flex items-center gap-2.5 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.12)] px-4 pt-3 pb-3 hover:pt-4 transition-all duration-200 active:scale-95 border border-b-0 border-black/[0.08]"
+        style={{ borderRadius: "12px 12px 0 0" }}
       >
-        <div style={{ transition: "transform 200ms ease", transform: cardVisible ? "rotate(90deg) scale(0.9)" : "rotate(0deg) scale(1)" }}>
-          {cardVisible ? <X className="h-6 w-6 text-white" /> : <MessageSquare className="h-6 w-6 text-white" />}
+        <div className="relative shrink-0">
+          <MessageSquare className="h-5 w-5" style={{ color: "#1a5c4f", fill: "#1a5c4f" }} />
+          <div className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white" style={{ background: "#1a5c4f" }} />
         </div>
-        {!cardVisible && unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 min-w-[20px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
-            {unreadCount > 9 ? "9+" : unreadCount}
+        <span className="text-sm font-semibold whitespace-nowrap" style={{ color: "#1a5c4f" }}>
+          {cardVisible ? "Close" : "Messages"}
+        </span>
+        {unreadCount > 0 && !cardVisible && (
+          <span className="h-5 min-w-[20px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>

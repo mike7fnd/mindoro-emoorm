@@ -530,17 +530,20 @@ function HeaderContent() {
   ] as const;
 
   // "Sell on Emoorm" smart routing
+  const [isSeller, setIsSeller] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setIsSeller(false); return; }
+    supabase.from("stores").select("id").eq("id", user.uid).maybeSingle()
+      .then(({ data }) => setIsSeller(!!data));
+  }, [user, supabase]);
+
   const handleSellClick = async () => {
     if (!user) {
       router.push("/sell");
       return;
     }
-    const { data } = await supabase
-      .from("stores")
-      .select("id")
-      .eq("id", user.uid)
-      .maybeSingle();
-    router.push(data ? "/seller/dashboard" : "/seller/register");
+    router.push(isSeller ? "/seller/dashboard" : "/seller/register");
   };
 
   // After login, check for a pending sell intent and redirect
@@ -648,7 +651,7 @@ function HeaderContent() {
                 font: "inherit",
               }}
             >
-              {t("topbar.sell")}
+              {isSeller ? "My Seller Dashboard" : t("topbar.sell")}
             </button>
             <div className="top-bar-divider" />
             <Link href="/customer-care">{t("topbar.care")}</Link>

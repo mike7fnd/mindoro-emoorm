@@ -57,12 +57,12 @@ export default function SellerMessagesPage() {
     () =>
       user
         ? {
-            table: "messages",
-            filters: [
-              { column: "recipientId", op: "eq" as const, value: user.uid },
-            ],
-            order: { column: "createdAt", ascending: false },
-          }
+          table: "messages",
+          filters: [
+            { column: "recipientId", op: "eq" as const, value: user.uid },
+          ],
+          order: { column: "createdAt", ascending: false },
+        }
         : null,
     [user],
   );
@@ -94,14 +94,36 @@ export default function SellerMessagesPage() {
     return Array.from(map.values());
   }, [receivedMessages]);
 
-  const filteredConvos = useMemo(
+  // Fetch buyer names for display
+  const buyerIds = useMemo(() => {
+    if (!conversations) return [];
+    return [...new Set(conversations.map((c) => c.senderId))];
+  }, [conversations]);
+
+  const buyerNamesQuery = useStableMemo(
     () =>
-      conversations.filter(
-        (c) =>
-          !search ||
-          c.senderId.toLowerCase().includes(search.toLowerCase()) ||
-          c.lastMessage?.toLowerCase().includes(search.toLowerCase()),
-      ),
+      buyerIds.length > 0
+        ? { table: "users", filters: [{ column: "id", op: "in" as const, value: buyerIds }] }
+        : null,
+    [buyerIds],
+  );
+  const { data: buyerUsers } = useCollection<{ id: string; firstName?: string; lastName?: string; email?: string }>(buyerNamesQuery);
+
+  const buyerNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    buyerUsers?.forEach((u) => {
+      const name = [u.firstName, u.lastName].filter(Boolean).join(" ");
+      map[u.id] = name || u.email?.split("@")[0] || "Buyer";
+    });
+    return map;
+  }, [buyerUsers]);
+  () =>
+    conversations.filter(
+      (c) =>
+        !search ||
+        c.senderId.toLowerCase().includes(search.toLowerCase()) ||
+        c.lastMessage?.toLowerCase().includes(search.toLowerCase()),
+    ),
     [conversations, search],
   );
 
@@ -110,16 +132,16 @@ export default function SellerMessagesPage() {
     () =>
       user && activeConvoId
         ? {
-            table: "messages",
-            filters: [
-              {
-                column: "conversationId",
-                op: "eq" as const,
-                value: activeConvoId,
-              },
-            ],
-            order: { column: "createdAt", ascending: true },
-          }
+          table: "messages",
+          filters: [
+            {
+              column: "conversationId",
+              op: "eq" as const,
+              value: activeConvoId,
+            },
+          ],
+          order: { column: "createdAt", ascending: true },
+        }
         : null,
     [user, activeConvoId],
   );
@@ -231,7 +253,7 @@ export default function SellerMessagesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-1 mb-0.5">
                         <p className="text-sm font-medium text-[#111] truncate">
-                          Buyer
+                          {buyerNameMap[convo.senderId] || "Buyer"}
                         </p>
                         <span className="text-[10px] text-[#bbb] shrink-0">
                           {formatTime(convo.updatedAt)}

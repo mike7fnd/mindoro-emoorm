@@ -16,6 +16,7 @@ import {
 import { useUser, useSupabase } from "@/supabase";
 import { initiateEmailSignIn } from "@/supabase/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,6 +28,14 @@ export default function LoginPage() {
   const supabase = useSupabase();
   const router = useRouter();
   const { isAdmin, isAdminLoading } = useIsAdmin();
+  const isMobile = useIsMobile();
+
+  // On desktop, redirect to modal popup instead of showing full-page login
+  useEffect(() => {
+    if (!isUserLoading && !user && isMobile === false) {
+      router.replace("/?auth=signin");
+    }
+  }, [isUserLoading, user, isMobile, router]);
 
   useEffect(() => {
     if (user && !isUserLoading && !isAdminLoading) {
@@ -68,7 +77,7 @@ export default function LoginPage() {
     }
   };
 
-  if (isUserLoading) return null;
+  if (isUserLoading || isMobile === undefined || (!user && isMobile === false)) return null;
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#f2f2f0" }}>

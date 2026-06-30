@@ -286,7 +286,7 @@ function HomePageInner() {
       const matchesMunicipality =
         municipality === "All" ||
         (f.city || f.municipality || "").toLowerCase() ===
-          municipality.toLowerCase();
+        municipality.toLowerCase();
       const matchesMinPrice =
         !minPrice || (f.price || f.pricePerNight || 0) >= minPrice;
       const matchesMaxPrice =
@@ -846,7 +846,7 @@ function HomePageInner() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "6px", fontWeight: 900, color: "white",
                   letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.1,
-                }}>JOIN<br/>FREE</div>
+                }}>JOIN<br />FREE</div>
                 {/* Content */}
                 <div className="absolute inset-0 flex flex-col justify-between p-4" style={{ zIndex: 20 }}>
                   <p style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase" }}>
@@ -903,11 +903,7 @@ function HomePageInner() {
             return (
               <section className="mb-8 md:mb-10">
                 <div
-                  className="sticky z-20 -mx-4 px-4 md:-mx-6 md:px-6 py-3 flex items-center gap-4 mb-3"
-                  style={{
-                    top: "calc(var(--nav-height) + var(--top-bar-height))",
-                    backgroundColor: "#f2f2f0",
-                  }}
+                  className="py-3 flex items-center gap-4 mb-3"
                 >
                   <div className="flex-1 h-px bg-primary/40" />
                   <h2 className="text-xl font-headline font-normal tracking-[-0.04em] text-center shrink-0">
@@ -1056,8 +1052,7 @@ function HomePageInner() {
                 suggestedProducts.length > 0 && (
                   <section>
                     <div
-                      className="sticky z-20 -mx-4 md:-mx-8 mb-4"
-                      style={{ top: "calc(var(--nav-height) + var(--top-bar-height))" }}
+                      className="mb-4"
                     >
                       <div
                         className="relative flex items-center justify-between px-6 md:px-10 py-4 overflow-hidden"
@@ -1113,12 +1108,14 @@ function HomePageInner() {
                             href={`/book/${product.id}`}
                             className="relative block aspect-square overflow-hidden"
                           >
-                            <Image
-                              src={product.imageUrl || "/placeholder.svg"}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                            />
+                            {product.imageUrl && (
+                              <Image
+                                src={product.imageUrl}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                              />
+                            )}
                           </Link>
                           <div className="p-3 flex flex-col gap-2">
                             <Link href={`/book/${product.id}`}>
@@ -1185,11 +1182,7 @@ function HomePageInner() {
               {!selectedCategory && !searchTerm && popularStores.length > 0 && (
                 <section>
                   <div
-                    className="sticky z-20 -mx-4 px-4 md:-mx-6 md:px-6 py-3 flex items-center gap-4 mb-3"
-                    style={{
-                      top: "calc(var(--nav-height) + var(--top-bar-height))",
-                      backgroundColor: "#f2f2f0",
-                    }}
+                    className="py-3 flex items-center gap-4 mb-3"
                   >
                     <div className="flex-1 h-px bg-primary/40" />
                     <h2 className="text-xl font-headline font-normal tracking-[-0.04em] text-center shrink-0">
@@ -1277,8 +1270,7 @@ function HomePageInner() {
                   `}</style>
 
                   <div
-                    className="sticky z-20 -mx-4 md:-mx-8 mb-4"
-                    style={{ top: "calc(var(--nav-height) + var(--top-bar-height))" }}
+                    className="mb-4"
                   >
                     {/* Main gradient band */}
                     <div
@@ -1306,7 +1298,7 @@ function HomePageInner() {
                         animationDelay: "1.5s",
                       }} />
                       {/* Floating particles */}
-                      {[10,22,36,52,66,80].map((left, i) => (
+                      {[10, 22, 36, 52, 66, 80].map((left, i) => (
                         <div key={i} className="absolute rounded-full pointer-events-none" style={{
                           width: i % 2 === 0 ? 5 : 3,
                           height: i % 2 === 0 ? 5 : 3,
@@ -1407,12 +1399,14 @@ function HomePageInner() {
                           href={`/book/${product.id}`}
                           className="relative block aspect-square overflow-hidden"
                         >
-                          <Image
-                            src={product.imageUrl || "/placeholder.svg"}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                          />
+                          {product.imageUrl && (
+                            <Image
+                              src={product.imageUrl}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
                         </Link>
                         <div className="p-3 flex flex-col gap-2">
                           <Link href={`/book/${product.id}`}>
@@ -1484,11 +1478,7 @@ function HomePageInner() {
               <section>
                 {!isResultsMode && (
                   <div
-                    className="sticky z-20 -mx-4 px-4 md:-mx-6 md:px-6 py-3 mb-3"
-                    style={{
-                      top: "calc(var(--nav-height) + var(--top-bar-height))",
-                      backgroundColor: "#f2f2f0",
-                    }}
+                    className="py-3 mb-3"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-px bg-primary/40" />
@@ -1680,12 +1670,14 @@ function HomePageInner() {
                                 href={`/book/${product.id}`}
                                 className="relative block aspect-square overflow-hidden"
                               >
-                                <Image
-                                  src={product.imageUrl || "/placeholder.svg"}
-                                  alt={product.name}
-                                  fill
-                                  className="object-cover"
-                                />
+                                {product.imageUrl && (
+                                  <Image
+                                    src={product.imageUrl}
+                                    alt={product.name}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                )}
                               </Link>
                               <div className="p-3 flex flex-col gap-2">
                                 <Link href={`/book/${product.id}`}>
@@ -1785,12 +1777,14 @@ function HomePageInner() {
                             href={`/book/${product.id}`}
                             className="relative block aspect-square overflow-hidden"
                           >
-                            <Image
-                              src={product.imageUrl || "/placeholder.svg"}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                            />
+                            {product.imageUrl && (
+                              <Image
+                                src={product.imageUrl}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                              />
+                            )}
                           </Link>
                           <div className="p-3 flex flex-col gap-2">
                             <Link href={`/book/${product.id}`}>
