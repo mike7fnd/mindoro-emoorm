@@ -117,13 +117,15 @@ export default function SellerMessagesPage() {
     });
     return map;
   }, [buyerUsers]);
-  () =>
-    conversations.filter(
-      (c) =>
-        !search ||
-        c.senderId.toLowerCase().includes(search.toLowerCase()) ||
-        c.lastMessage?.toLowerCase().includes(search.toLowerCase()),
-    ),
+
+  const filteredConvos = useMemo(
+    () =>
+      conversations.filter(
+        (c) =>
+          !search ||
+          c.senderId.toLowerCase().includes(search.toLowerCase()) ||
+          c.lastMessage?.toLowerCase().includes(search.toLowerCase()),
+      ),
     [conversations, search],
   );
 
