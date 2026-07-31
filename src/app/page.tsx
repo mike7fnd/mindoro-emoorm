@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useLanguage } from "@/contexts/language-context";
-import { Star, Search, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, Search, MapPin, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useCollection, useStableMemo } from "@/supabase";
 import Image from "next/image";
@@ -72,7 +72,7 @@ const bannerSlides = [
   { src: "/assets/banners/season-banner.png", alt: "Season Sale" },
   { src: "/assets/banners/buy-now-qoute.png", alt: "Buy Now" },
 ];
-// Clone last→front and first→back for bi-directional infinite loop
+// Clone last?front and first?back for bi-directional infinite loop
 const allBannerSlides = [
   bannerSlides[bannerSlides.length - 1],
   ...bannerSlides,
@@ -121,12 +121,28 @@ function HomePageInner() {
   const [categoryFilter, setCategoryFilter] = useState(
     searchParams.get("cat") || "",
   );
+  const [imageSearchIds, setImageSearchIds] = useState<string[]>(
+    searchParams.get("ids") ? searchParams.get("ids")!.split(",").filter(Boolean) : [],
+  );
+  const [imgSearchPreview, setImgSearchPreview] = useState<string | null>(null);
+
+  // Read the reference thumbnail from sessionStorage when in image search mode
+  useEffect(() => {
+    if (imageSearchIds.length > 0) {
+      const saved = sessionStorage.getItem("imgSearchPreview");
+      if (saved) setImgSearchPreview(saved);
+    } else {
+      setImgSearchPreview(null);
+    }
+  }, [imageSearchIds]);
 
   useEffect(() => {
     setSearchTerm(searchParams.get("q") || "");
     const cat = searchParams.get("cat") || "";
     setCategoryFilter(cat);
     setSelectedCategory(cat);
+    const ids = searchParams.get("ids");
+    setImageSearchIds(ids ? ids.split(",").filter(Boolean) : []);
   }, [searchParams]);
   const [showFilter, setShowFilter] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
@@ -274,6 +290,18 @@ function HomePageInner() {
 
   const filteredProducts = useMemo(() => {
     if (!productsData) return [];
+
+    // Image search mode — return exact matched IDs in ranked order
+    if (imageSearchIds.length > 0) {
+      // Still loading or no results
+      if (imageSearchIds[0] === "searching" || imageSearchIds[0] === "none") return [];
+
+      const idOrder = new Map(imageSearchIds.map((id, i) => [id, i]));
+      return productsData
+        .filter((f) => idOrder.has(f.id))
+        .sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999));
+    }
+
     return productsData.filter((f) => {
       const matchesSearch =
         f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -310,6 +338,7 @@ function HomePageInner() {
     });
   }, [
     productsData,
+    imageSearchIds,
     searchTerm,
     categoryFilter,
     municipality,
@@ -346,7 +375,7 @@ function HomePageInner() {
     }
   }, [filteredProducts, sortBy]);
 
-  // ── Sections for home feed ───────────────────────────────────────────
+  // -- Sections for home feed -------------------------------------------
   const suggestedProducts = useMemo(() => {
     if (!productsData) return [];
     return [...productsData]
@@ -385,7 +414,7 @@ function HomePageInner() {
     searchParams.get("cat") || "",
   );
 
-  const isResultsMode = !!searchTerm || !!categoryFilter;
+  const isResultsMode = !!searchTerm || !!categoryFilter || imageSearchIds.length > 0;
 
   const navigateCategory = (cat: string) => {
     const next = selectedCategory === cat ? "" : cat;
@@ -559,7 +588,7 @@ function HomePageInner() {
     >
       <Header />
 
-      {/* Welcome sticker overlay — first visit only */}
+      {/* Welcome sticker overlay � first visit only */}
       {showWelcome && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
@@ -598,7 +627,7 @@ function HomePageInner() {
         </div>
       )}
 
-      {/* ── Hero Banner ──────────────────────────────────────────────── */}
+      {/* -- Hero Banner ------------------------------------------------ */}
       {!isResultsMode && (
         <div
           className="hidden md:block"
@@ -668,7 +697,7 @@ function HomePageInner() {
                 <ChevronRight className="h-5 w-5 text-white" />
               </button>
 
-              {/* Circle dot indicators — inside image, bottom center */}
+              {/* Circle dot indicators � inside image, bottom center */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
                 {bannerSlides.map((_, i) => {
                   const active = (bannerIdx - 1 + bannerSlides.length) % bannerSlides.length === i;
@@ -695,11 +724,11 @@ function HomePageInner() {
             </div>
             <div className="flex-1 flex flex-col gap-0.5">
 
-              {/* Seller Ad — Panel 1: "Start Selling" */}
+              {/* Seller Ad � Panel 1: "Start Selling" */}
               <Link href="/sell" className="relative flex-1 overflow-hidden group block">
                 {/* Base: near-black green */}
                 <div className="absolute inset-0" style={{ background: "#041009" }} />
-                {/* Diagonal colour band — the main graphic element */}
+                {/* Diagonal colour band � the main graphic element */}
                 <div className="absolute pointer-events-none" style={{
                   background: "#29a366",
                   width: "170%", height: "48%",
@@ -779,13 +808,13 @@ function HomePageInner() {
                       className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 transition-all group-hover:gap-2.5"
                       style={{ background: "#ffd700", color: "#041009", clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)", paddingRight: 14 }}
                     >
-                      Register Now →
+                      Register Now ?
                     </span>
                   </div>
                 </div>
               </Link>
 
-              {/* Seller Ad — Panel 2: "Earn Online" */}
+              {/* Seller Ad � Panel 2: "Earn Online" */}
               <Link href="/sell" className="relative flex-1 overflow-hidden rounded-br-[5px] group block">
                 {/* Base: near-black dark */}
                 <div className="absolute inset-0" style={{ background: "#140500" }} />
@@ -826,14 +855,14 @@ function HomePageInner() {
                   borderRight: "52px solid transparent",
                   opacity: 0.32, zIndex: 2,
                 }} />
-                {/* Oversized "₱" decorative watermark */}
+                {/* Oversized "?" decorative watermark */}
                 <div className="absolute select-none pointer-events-none" style={{
                   right: -4, top: "50%",
                   transform: "translateY(-50%)",
                   fontSize: "5.5rem", fontWeight: 900,
                   color: "rgba(255,107,53,0.12)",
                   lineHeight: 1, zIndex: 1,
-                }}>₱</div>
+                }}>?</div>
                 {/* "JOIN FREE" starburst badge */}
                 <div className="absolute pointer-events-none" style={{
                   top: 10, right: 10, width: 40, height: 40,
@@ -861,7 +890,7 @@ function HomePageInner() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
                       {["Free to list", "Fast payouts", "More buyers"].map((b) => (
                         <span key={b} style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.57rem", display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ color: "#ff6b35", fontWeight: 900 }}>▸</span> {b}
+                          <span style={{ color: "#ff6b35", fontWeight: 900 }}>?</span> {b}
                         </span>
                       ))}
                     </div>
@@ -869,7 +898,7 @@ function HomePageInner() {
                       className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 transition-all group-hover:gap-2.5"
                       style={{ background: "white", color: "#e03010", clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)", paddingRight: 14 }}
                     >
-                      Start Earning →
+                      Start Earning ?
                     </span>
                   </div>
                 </div>
@@ -886,7 +915,7 @@ function HomePageInner() {
           isResultsMode ? "pt-4 md:pt-[130px]" : "pt-6 md:pt-8",
         )}
       >
-        {/* ── Shop by Category (home only) ─────────────────────────────── */}
+        {/* -- Shop by Category (home only) ------------------------------- */}
         {!isResultsMode &&
           (() => {
             const categoryImages: Record<string, string> = {
@@ -962,7 +991,7 @@ function HomePageInner() {
           className="sticky top-0 z-30 -mx-4 px-4 md:-mx-6 md:px-6 pt-2 pb-2"
           style={{ backgroundColor: "rgba(255,255,255,0)" }}
         >
-          {/* Search Bar — hidden on desktop (moved to header) */}
+          {/* Search Bar � hidden on desktop (moved to header) */}
           <section className="mb-3 md:hidden">
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-1 group w-full">
@@ -1033,7 +1062,7 @@ function HomePageInner() {
                         className="absolute top-4 right-4 text-muted-foreground hover:text-primary"
                         onClick={closeFilter}
                       >
-                        ✕
+                        ?
                       </button>
                       <h3 className="text-xl mb-6 font-headline tracking-[-0.03em]">
                         Filter Options
@@ -1046,63 +1075,26 @@ function HomePageInner() {
             </section>
 
             <div className="space-y-10 animate-[fadeSlideIn_0.3s_ease-out]">
-              {/* ── Suggested For You ─────────────────────────────────────── */}
+              {/* -- Suggested For You --------------------------------------- */}
               {!selectedCategory &&
                 !searchTerm &&
+                imageSearchIds.length === 0 &&
                 suggestedProducts.length > 0 && (
                   <section>
-                    <div
-                      className="mb-4"
-                    >
-                      <div
-                        className="relative flex items-center justify-between px-6 md:px-10 py-4 overflow-hidden"
-                        style={{ background: "#29a366" }}
-                      >
-                        {/* Subtle dot texture */}
-                        <div className="absolute inset-0 pointer-events-none" style={{
-                          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
-                          backgroundSize: "18px 18px",
-                        }} />
-                        {/* Top gloss */}
-                        <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none" style={{
-                          background: "linear-gradient(180deg, rgba(255,255,255,0.13) 0%, transparent 100%)",
-                        }} />
-
-                        {/* Left rule + dot */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div style={{ height: 1, width: "clamp(24px, 8vw, 80px)", background: "rgba(255,255,255,0.28)" }} />
-                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.45)" }} />
-                        </div>
-
-                        {/* Center text */}
-                        <div className="relative z-10 flex items-center justify-center">
-                          <span style={{
-                            color: "white",
-                            fontWeight: 800,
-                            fontSize: "clamp(1.05rem, 4vw, 1.45rem)",
-                            letterSpacing: "-0.02em",
-                            lineHeight: 1,
-                            textShadow: "0 1px 8px rgba(0,0,0,0.15)",
-                          }}>
-                            Suggested For You
-                          </span>
-                        </div>
-
-                        {/* Right dot + rule */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.45)" }} />
-                          <div style={{ height: 1, width: "clamp(24px, 8vw, 80px)", background: "rgba(255,255,255,0.28)" }} />
-                        </div>
+                    <div className="mb-4">
+                      <div className="py-3 flex items-center gap-4">
+                        <div className="flex-1 h-px bg-primary/30" />
+                        <h2 className="text-xl font-headline font-normal tracking-[-0.04em] text-center shrink-0">
+                          {t("home.suggestedForYou")}
+                        </h2>
+                        <div className="flex-1 h-px bg-primary/30" />
                       </div>
-
-                      {/* Thin accent strip */}
-                      <div style={{ height: 3, background: "#1e8a52" }} />
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       {suggestedProducts.map((product) => (
                         <div
                           key={product.id}
-                          className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col"
+                          className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col group transition-all duration-200 hover:shadow-md hover:border-black/[0.12]"
                         >
                           <Link
                             href={`/book/${product.id}`}
@@ -1116,6 +1108,12 @@ function HomePageInner() {
                                 className="object-cover"
                               />
                             )}
+                            {/* Hover cart button */}
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                              <div className="h-7 w-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                                <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                            </div>
                           </Link>
                           <div className="p-3 flex flex-col gap-2">
                             <Link href={`/book/${product.id}`}>
@@ -1124,7 +1122,7 @@ function HomePageInner() {
                               </h3>
                             </Link>
                             <p className="text-[17px] text-primary font-normal leading-none">
-                              ₱
+                              ?
                               {(
                                 product.price ||
                                 product.pricePerNight ||
@@ -1178,8 +1176,8 @@ function HomePageInner() {
                   </section>
                 )}
 
-              {/* ── Stores Near You ───────────────────────────────────────── */}
-              {!selectedCategory && !searchTerm && popularStores.length > 0 && (
+              {/* -- Stores Near You ----------------------------------------- */}
+              {!selectedCategory && !searchTerm && imageSearchIds.length === 0 && popularStores.length > 0 && (
                 <section>
                   <div
                     className="py-3 flex items-center gap-4 mb-3"
@@ -1235,10 +1233,10 @@ function HomePageInner() {
                 </section>
               )}
 
-              {/* ── New Arrivals ──────────────────────────────────────────── */}
-              {!selectedCategory && !searchTerm && newArrivals.length > 0 && (
+              {/* -- New Arrivals -------------------------------------------- */}
+              {!selectedCategory && !searchTerm && imageSearchIds.length === 0 && newArrivals.length > 0 && (
                 <section>
-                  {/* New Arrivals — animated full-width promo banner */}
+                  {/* New Arrivals � animated full-width promo banner */}
                   <style>{`
                     @keyframes promoGrad {
                       0%,100% { background-position: 0% 50%; }
@@ -1272,104 +1270,6 @@ function HomePageInner() {
                   <div
                     className="mb-4"
                   >
-                    {/* Main gradient band */}
-                    <div
-                      className="relative flex items-center justify-between px-5 md:px-10 py-5 overflow-hidden"
-                      style={{
-                        background: "linear-gradient(100deg,#ff4500,#f43f5e,#ff6b1a,#e11d48,#ff4500)",
-                        backgroundSize: "300% 300%",
-                        animation: "promoGrad 5s ease infinite",
-                      }}
-                    >
-                      {/* Dot-grid texture */}
-                      <div className="absolute inset-0 pointer-events-none" style={{
-                        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.09) 1px, transparent 1px)",
-                        backgroundSize: "18px 18px",
-                      }} />
-                      {/* Top gloss */}
-                      <div className="absolute inset-x-0 top-0 h-[45%] pointer-events-none" style={{
-                        background: "linear-gradient(180deg, rgba(255,255,255,0.17) 0%, transparent 100%)",
-                      }} />
-                      {/* Shimmer sweep */}
-                      <div className="absolute inset-y-0 pointer-events-none" style={{
-                        width: 90,
-                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent)",
-                        animation: "promoShimmer 4s ease-in-out infinite",
-                        animationDelay: "1.5s",
-                      }} />
-                      {/* Floating particles */}
-                      {[10, 22, 36, 52, 66, 80].map((left, i) => (
-                        <div key={i} className="absolute rounded-full pointer-events-none" style={{
-                          width: i % 2 === 0 ? 5 : 3,
-                          height: i % 2 === 0 ? 5 : 3,
-                          background: "rgba(255,255,255,0.55)",
-                          left: `${left}%`,
-                          bottom: "12%",
-                          animation: `promoFloat ${1.8 + i * 0.25}s ease-out infinite`,
-                          animationDelay: `${i * 0.45}s`,
-                        }} />
-                      ))}
-
-                      {/* Left star cluster */}
-                      <div className="relative shrink-0 flex items-center gap-2">
-                        <div style={{
-                          width: 54, height: 54,
-                          background: "rgba(255,255,255,0.20)",
-                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
-                          animation: "promoStarSpin 10s linear infinite",
-                        }} />
-                        <div style={{
-                          width: 22, height: 22,
-                          background: "rgba(255,215,0,0.80)",
-                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
-                          animation: "promoStarPop 1.6s ease-in-out infinite",
-                        }} />
-                      </div>
-
-                      {/* Center text */}
-                      <div className="relative z-10 flex flex-col items-center gap-1">
-                        <span style={{
-                          color: "rgba(255,255,255,0.72)",
-                          fontSize: "0.58rem",
-                          fontWeight: 800,
-                          letterSpacing: "0.32em",
-                          textTransform: "uppercase",
-                          lineHeight: 1,
-                        }}>
-                          Just Landed
-                        </span>
-                        <span style={{
-                          color: "white",
-                          fontWeight: 900,
-                          fontSize: "clamp(1.15rem, 4.5vw, 1.65rem)",
-                          letterSpacing: "-0.02em",
-                          lineHeight: 1,
-                          textShadow: "0 2px 14px rgba(0,0,0,0.22)",
-                          animation: "promoTextPulse 2.8s ease-in-out infinite",
-                        }}>
-                          New Arrivals
-                        </span>
-                      </div>
-
-                      {/* Right star cluster */}
-                      <div className="relative shrink-0 flex items-center gap-2">
-                        <div style={{
-                          width: 22, height: 22,
-                          background: "rgba(255,215,0,0.80)",
-                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
-                          animation: "promoStarPop 1.6s ease-in-out infinite",
-                          animationDelay: "0.8s",
-                        }} />
-                        <div style={{
-                          width: 54, height: 54,
-                          background: "rgba(255,255,255,0.20)",
-                          clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
-                          animation: "promoStarSpin 10s linear infinite",
-                          animationDirection: "reverse",
-                        }} />
-                      </div>
-                    </div>
-
                     {/* Scrolling ticker strip */}
                     <div className="overflow-hidden py-1.5" style={{ background: "#c41d3b" }}>
                       <div
@@ -1381,7 +1281,7 @@ function HomePageInner() {
                             {["NEW ARRIVALS", "JUST LANDED", "FRESH PICKS", "HOT ITEMS", "FROM MINDORO"].map((txt, j) => (
                               <React.Fragment key={j}>
                                 <span className="text-white/90 font-bold uppercase px-5" style={{ fontSize: "0.6rem", letterSpacing: "0.22em" }}>{txt}</span>
-                                <span className="text-white/35 text-[7px]">◆</span>
+                                <span className="text-white/35 text-[7px]">?</span>
                               </React.Fragment>
                             ))}
                           </span>
@@ -1393,7 +1293,7 @@ function HomePageInner() {
                     {newArrivals.map((product) => (
                       <div
                         key={product.id}
-                        className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col"
+                        className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col group transition-all duration-200 hover:shadow-md hover:border-black/[0.12]"
                       >
                         <Link
                           href={`/book/${product.id}`}
@@ -1407,6 +1307,11 @@ function HomePageInner() {
                               className="object-cover"
                             />
                           )}
+                          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                            <div className="h-7 w-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                              <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                            </div>
+                          </div>
                         </Link>
                         <div className="p-3 flex flex-col gap-2">
                           <Link href={`/book/${product.id}`}>
@@ -1420,7 +1325,7 @@ function HomePageInner() {
                             </div>
                           </Link>
                           <p className="text-[17px] text-primary font-normal leading-none">
-                            ₱
+                            ?
                             {(
                               product.price ||
                               product.pricePerNight ||
@@ -1474,7 +1379,7 @@ function HomePageInner() {
                 </section>
               )}
 
-              {/* ── All Products / Filtered Results ──────────────────────── */}
+              {/* -- All Products / Filtered Results ------------------------ */}
               <section>
                 {!isResultsMode && (
                   <div
@@ -1491,7 +1396,7 @@ function HomePageInner() {
                 )}
 
                 {isResultsMode ? (
-                  /* ── Results: sidebar + main ───────────────────────── */
+                  /* -- Results: sidebar + main ------------------------- */
                   <div className="flex gap-5 items-start">
                     {/* Filter Sidebar (desktop only) */}
                     <div className="hidden md:block w-[220px] shrink-0">
@@ -1609,10 +1514,22 @@ function HomePageInner() {
                     <div className="flex-1 min-w-0">
                       {/* Sort bar */}
                       <div className="flex items-center justify-between mb-4 bg-white rounded-[5px] border border-black/[0.06] px-4 py-2.5">
-                        <span className="flex items-center gap-1.5 text-sm font-medium text-[#333]">
+                        <span className="flex items-center gap-2 text-sm font-medium text-[#333] min-w-0">
+                          {imageSearchIds.length > 0 && imgSearchPreview && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={imgSearchPreview}
+                              alt="Search reference"
+                              className="h-8 w-8 rounded-md object-cover shrink-0 ring-1 ring-black/10"
+                            />
+                          )}
                           <Search className="h-4 w-4 text-[#29a366] shrink-0" />
-                          {t("home.searchResultsFor")} &ldquo;
-                          {searchTerm || categoryFilter}&rdquo;
+                          {imageSearchIds.length > 0
+                            ? imageSearchIds[0] === "searching"
+                              ? "Finding similar products…"
+                              : `Visually similar products (${sortedProducts.length})`
+                            : <>{t("home.searchResultsFor")} &ldquo;{searchTerm || categoryFilter}&rdquo;</>
+                          }
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-[#555] whitespace-nowrap hidden sm:block">
@@ -1664,7 +1581,7 @@ function HomePageInner() {
                           sortedProducts.map((product) => (
                             <div
                               key={product.id}
-                              className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col"
+                              className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col group transition-all duration-200 hover:shadow-md hover:border-black/[0.12]"
                             >
                               <Link
                                 href={`/book/${product.id}`}
@@ -1678,6 +1595,11 @@ function HomePageInner() {
                                     className="object-cover"
                                   />
                                 )}
+                                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                                  <div className="h-7 w-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                                    <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                                  </div>
+                                </div>
                               </Link>
                               <div className="p-3 flex flex-col gap-2">
                                 <Link href={`/book/${product.id}`}>
@@ -1694,8 +1616,8 @@ function HomePageInner() {
                                 </Link>
                                 <p className="text-[17px] text-primary font-normal leading-none">
                                   {product.isAuction
-                                    ? `₱${(product.currentBid || product.startingBid || 0).toLocaleString()}`
-                                    : `₱${(product.price || product.pricePerNight || 0).toLocaleString()}`}
+                                    ? `?${(product.currentBid || product.startingBid || 0).toLocaleString()}`
+                                    : `?${(product.price || product.pricePerNight || 0).toLocaleString()}`}
                                 </p>
                                 {(product.city || product.municipality) && (
                                   <span className="text-xs text-[#999] truncate -mt-1">
@@ -1745,7 +1667,7 @@ function HomePageInner() {
                     </div>
                   </div>
                 ) : (
-                  /* ── Home: normal 6-col grid ───────────────────────── */
+                  /* -- Home: normal 6-col grid ------------------------- */
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {isProductsLoading ? (
                       <>
@@ -1764,14 +1686,61 @@ function HomePageInner() {
                         ))}
                       </>
                     ) : filteredProducts.length === 0 ? (
-                      <div className="col-span-full text-center py-20 text-muted-foreground italic">
-                        {t("home.noProducts")}
+                      <div className="col-span-full">
+                        {imageSearchIds[0] === "searching" ? (
+                          /* ── Image search loading state ── */
+                          <div className="py-10">
+                            {/* Reference image with scan animation */}
+                            {imgSearchPreview && (
+                              <div className="flex justify-center mb-8">
+                                <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ width: 160, height: 160 }}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={imgSearchPreview} alt="Searching" className="w-full h-full object-cover" />
+                                  {/* Scanning line */}
+                                  <div className="img-search-scan-line" />
+                                  {/* Pulsing overlay corners */}
+                                  <div className="absolute inset-0 pointer-events-none">
+                                    <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-[#29a366] rounded-tl-md img-search-corner-pulse" />
+                                    <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-[#29a366] rounded-tr-md img-search-corner-pulse" style={{ animationDelay: "0.15s" }} />
+                                    <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-[#29a366] rounded-bl-md img-search-corner-pulse" style={{ animationDelay: "0.3s" }} />
+                                    <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-[#29a366] rounded-br-md img-search-corner-pulse" style={{ animationDelay: "0.45s" }} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {/* Cycling status text */}
+                            <ImageSearchStatusText />
+                            {/* Skeleton product cards */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
+                              {Array.from({ length: 8 }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="bg-white rounded-[5px] overflow-hidden img-search-skeleton-card"
+                                  style={{ animationDelay: `${i * 0.07}s` }}
+                                >
+                                  <div className="aspect-square w-full img-search-shimmer" />
+                                  <div className="p-3 space-y-2">
+                                    <div className="h-3 w-3/4 rounded-full img-search-shimmer" />
+                                    <div className="h-3 w-1/2 rounded-full img-search-shimmer" />
+                                    <div className="h-4 w-1/3 rounded-full img-search-shimmer" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : imageSearchIds.length > 0 ? (
+                          <div className="text-center py-20 text-muted-foreground italic">
+                            No visually similar products found.
+                          </div>
+                        ) : (
+                          t("home.noProducts")
+                        )}
                       </div>
                     ) : (
                       filteredProducts.map((product) => (
                         <div
                           key={product.id}
-                          className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col"
+                          className="bg-white rounded-[5px] overflow-hidden border border-black/[0.06] flex flex-col group transition-all duration-200 hover:shadow-md hover:border-black/[0.12]"
                         >
                           <Link
                             href={`/book/${product.id}`}
@@ -1785,6 +1754,11 @@ function HomePageInner() {
                                 className="object-cover"
                               />
                             )}
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200">
+                              <div className="h-7 w-7 rounded-full bg-white/90 shadow flex items-center justify-center">
+                                <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                            </div>
                           </Link>
                           <div className="p-3 flex flex-col gap-2">
                             <Link href={`/book/${product.id}`}>
@@ -1801,8 +1775,8 @@ function HomePageInner() {
                             </Link>
                             <p className="text-[17px] text-primary font-normal leading-none">
                               {product.isAuction
-                                ? `₱${(product.currentBid || product.startingBid || 0).toLocaleString()}`
-                                : `₱${(product.price || product.pricePerNight || 0).toLocaleString()}`}
+                                ? `?${(product.currentBid || product.startingBid || 0).toLocaleString()}`
+                                : `?${(product.price || product.pricePerNight || 0).toLocaleString()}`}
                             </p>
                             {(product.city || product.municipality) && (
                               <span className="text-xs text-[#999] truncate -mt-1">

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail, Headphones } from "lucide-react";
@@ -12,7 +12,7 @@ export function Footer() {
       aria-label="Footer"
     >
 
-      {/* ── Row 1: Main nav columns ── */}
+      {/* Row 1: Main nav columns */}
       <div className="border-b border-black/[0.08]" style={{ backgroundColor: "#fff" }}>
         <div className="max-w-[1280px] mx-auto px-8 py-6 grid grid-cols-5 gap-6">
 
@@ -24,16 +24,16 @@ export function Footer() {
                 { label: "Help Centre", href: "/customer-care" },
                 { label: "How to Buy", href: "/how-to-order" },
                 { label: "How to Sell", href: "/sell" },
-                { label: "Returns & Refunds Policy", href: "/returns" },
-                { label: "Shipping & Delivery Info", href: "/delivery" },
+                { label: "Returns & Refunds", href: "/returns" },
+                { label: "Shipping & Delivery", href: "/delivery" },
                 { label: "Payment Methods", href: "/payments" },
                 { label: "Track My Order", href: "/my-bookings" },
-                { label: "Report a Problem", href: "/customer-care" },
+                { label: "Report a Problem", href: "/feedback" },
                 { label: "Contact Support", href: "/customer-care" },
-              ].map((i) => (
-                <li key={i.href}>
-                  <Link href={i.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
-                    {i.label}
+              ].map((item, idx) => (
+                <li key={`cc-${idx}`}>
+                  <Link href={item.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -51,29 +51,27 @@ export function Footer() {
                 { label: "Become a Seller", href: "/sell" },
                 { label: "Seller University", href: "/seller/university" },
                 { label: "Affiliate Programs", href: "/affiliate" },
-                { label: "Advertise on Emoorm", href: "/advertise" },
                 { label: "Flash Deals", href: "/flash-deals" },
                 { label: "Privacy Policy", href: "/privacy" },
                 { label: "Terms of Service", href: "/terms" },
-                { label: "Intellectual Property", href: "/ip" },
                 { label: "Careers at Emoorm", href: "/careers" },
-              ].map((i) => (
-                <li key={i.href}>
-                  <Link href={i.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
-                    {i.label}
+              ].map((item, idx) => (
+                <li key={`em-${idx}`}>
+                  <Link href={item.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
+                    {item.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Buyer Links */}
+          {/* My Account */}
           <div>
             <h4 className="text-[13px] font-bold text-[#111] mb-3 pb-2 border-b border-black/[0.07]">My Account</h4>
             <ul className="space-y-1.5">
               {[
-                { label: "Sign In", href: "/?auth=signin" },
-                { label: "Create Account", href: "/?auth=signup" },
+                { label: "Sign In", href: "/login" },
+                { label: "Create Account", href: "/signup" },
                 { label: "My Profile", href: "/profile" },
                 { label: "My Orders", href: "/my-bookings" },
                 { label: "My Wishlist", href: "/wishlist" },
@@ -82,10 +80,10 @@ export function Footer() {
                 { label: "Notifications", href: "/notifications" },
                 { label: "Messages", href: "/messages" },
                 { label: "Settings", href: "/settings" },
-              ].map((i) => (
-                <li key={i.href}>
-                  <Link href={i.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
-                    {i.label}
+              ].map((item) => (
+                <li key={item.label}>
+                  <Link href={item.href} className="text-[12px] text-[#666] hover:text-[#29a366] transition-colors">
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -128,7 +126,7 @@ export function Footer() {
               </div>
               <div className="flex items-start gap-2 text-[12px] text-[#666]">
                 <Headphones className="h-3.5 w-3.5 text-[#29a366] shrink-0 mt-0.5" />
-                <span>Mon–Sat, 8AM–6PM PHT</span>
+                <span>Mon-Sat, 8AM-6PM PHT</span>
               </div>
             </div>
 
@@ -154,51 +152,45 @@ export function Footer() {
         </div>
       </div>
 
-      {/* ── Row 2: SEO content ── */}
+      {/* Row 2: SEO content */}
       <div className="border-b border-black/[0.08]" style={{ backgroundColor: "#f5f5f3" }}>
         <div className="max-w-[1280px] mx-auto px-8 py-6">
 
-          {/* 3-col paragraphs */}
           <div className="grid grid-cols-3 gap-6 mb-4">
             <div>
               <h3 className="text-[12px] font-bold text-[#111] mb-2">Buy &amp; Sell on Emoorm</h3>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                Emoorm is the trusted hyperlocal marketplace connecting buyers with farmers, fishers, artisans, and food producers from Oriental Mindoro, Philippines. Whether you're looking for freshly harvested vegetables, locally caught seafood, handcrafted goods, or traditional Mindoreno delicacies, Emoorm brings it all to your fingertips. Join thousands of Mindoro locals who shop and sell on Emoorm every day — your gateway to the finest products the province has to offer.
+                Emoorm is the trusted hyperlocal marketplace connecting buyers with farmers, fishers, artisans, and food producers from Oriental Mindoro, Philippines. Browse freshly harvested vegetables, locally caught seafood, handcrafted goods, and traditional Mindoreno delicacies all in one place.
               </p>
             </div>
             <div>
               <h3 className="text-[12px] font-bold text-[#111] mb-2">Shop with Confidence</h3>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                Shopping on Emoorm is safe, straightforward, and rewarding. Every seller on our platform is verified to ensure you're buying from trusted local producers. Browse shop ratings and customer reviews to find the best sellers across the province. With Emoorm's buyer protection, your money is secured until you receive and are satisfied with your order. Every purchase directly supports a hardworking Mindoro family — shop with confidence knowing your peso makes a real difference.
+                Every seller on Emoorm is verified so you always buy from trusted local producers. Browse shop ratings and customer reviews to find the best sellers across the province. Every purchase directly supports a hardworking Mindoro family.
               </p>
             </div>
             <div>
               <h3 className="text-[12px] font-bold text-[#111] mb-2">Sell Your Products on Emoorm</h3>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                Are you a local farmer, fisher, artisan, or food producer in Oriental Mindoro? Emoorm gives you the tools to reach more customers online with zero hassle. List your products in minutes, manage orders through the Emoorm Seller Center, and grow your business with access to buyers across the province. Whether you produce organic vegetables, fresh seafood, or one-of-a-kind handicrafts, there is a market waiting for you. Register as a seller today and bring your products to new heights.
+                Are you a local farmer, fisher, artisan, or food producer in Oriental Mindoro? Emoorm gives you the tools to reach more customers online. List your products in minutes, manage orders through the Seller Center, and grow your business across the province.
               </p>
             </div>
           </div>
 
-          {/* Wide paragraph */}
           <div className="mb-4">
             <h3 className="text-[12px] font-bold text-[#111] mb-2">
               Discover Authentic Products from Every Corner of Oriental Mindoro
             </h3>
-            <p className="text-[11px] text-[#888] leading-relaxed mb-2">
-              Emoorm is your one-stop destination for everything locally grown and made across the municipalities of Oriental Mindoro. Find the freshest vegetables straight from Naujan's farms, premium rice and grains from Bongabong and Gloria, and the finest seafood harvested from Puerto Galera's coastal waters. Craving something unique? Explore our Delicacies section for time-honored Mindoreno treats — perfect as pasalubong, gifts, or everyday indulgences. Discover handcrafted pieces in our Handicrafts category, made by skilled local artisans in Calapan City, Pinamalayan, Roxas, and more.
-            </p>
             <p className="text-[11px] text-[#888] leading-relaxed">
-              Health-conscious shoppers will love our Wellness category featuring natural, farm-sourced health products. Home cooks can browse Meat &amp; Poultry, fresh Fruits, and seasonal produce sourced directly from growers — no middlemen, just real freshness at honest prices. On Emoorm, every order you place goes straight to a local producer in one of Oriental Mindoro's sixteen municipalities: Baco, Bansud, Bongabong, Bulalacao, Calapan City, Gloria, Mansalay, Naujan, Pinamalayan, Pola, Puerto Galera, Roxas, San Teodoro, Socorro, and Victoria. Shop local, eat fresh, and help Mindoro thrive.
+              Emoorm serves all sixteen municipalities of Oriental Mindoro: Baco, Bansud, Bongabong, Bulalacao, Calapan City, Gloria, Mansalay, Naujan, Pinamalayan, Pola, Puerto Galera, Roxas, San Teodoro, Socorro, and Victoria. Shop local, eat fresh, and help Mindoro thrive.
             </p>
           </div>
 
-          {/* Category + Municipality links grid */}
-          <div className="grid grid-cols-4 gap-6 pt-5 border-t border-black/[0.07]">
+          <div className="grid grid-cols-4 gap-6 pt-4 border-t border-black/[0.07]">
             <div>
               <p className="text-[11px] font-bold text-[#444] mb-2">Fresh Produce</p>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                {["Vegetables", "Fruits", "Meat & Poultry", "Seafood", "Rice & Grains", "Organic Produce", "Farm Fresh Eggs", "Native Chicken"].map((c, i, a) => (
+                {["Vegetables", "Fruits", "Meat & Poultry", "Seafood", "Rice & Grains", "Organic Produce"].map((c, i, a) => (
                   <React.Fragment key={c}>
                     <Link href={`/?cat=${encodeURIComponent(c)}`} className="hover:text-[#29a366] transition-colors">{c}</Link>
                     {i < a.length - 1 && " · "}
@@ -209,7 +201,7 @@ export function Footer() {
             <div>
               <p className="text-[11px] font-bold text-[#444] mb-2">Food &amp; Snacks</p>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                {["Delicacies", "Snacks", "Beverages", "Condiments", "Pasalubong", "Dried Fish", "Vinegar", "Coconut Products", "Pastillas", "Peanut Butter"].map((c, i, a) => (
+                {["Delicacies", "Snacks", "Beverages", "Condiments", "Pasalubong", "Dried Fish", "Coconut Products"].map((c, i, a) => (
                   <React.Fragment key={c}>
                     <Link href={`/?cat=${encodeURIComponent(c)}`} className="hover:text-[#29a366] transition-colors">{c}</Link>
                     {i < a.length - 1 && " · "}
@@ -220,7 +212,7 @@ export function Footer() {
             <div>
               <p className="text-[11px] font-bold text-[#444] mb-2">Lifestyle &amp; Crafts</p>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                {["Handicrafts", "Wellness", "Natural Products", "Woven Items", "Bamboo Crafts", "Herbal Products", "Essential Oils", "Home Decor", "Artisanal Crafts", "Gift Sets"].map((c, i, a) => (
+                {["Handicrafts", "Wellness", "Natural Products", "Woven Items", "Bamboo Crafts", "Herbal Products", "Gift Sets"].map((c, i, a) => (
                   <React.Fragment key={c}>
                     <Link href={`/?cat=${encodeURIComponent(c)}`} className="hover:text-[#29a366] transition-colors">{c}</Link>
                     {i < a.length - 1 && " · "}
@@ -229,9 +221,9 @@ export function Footer() {
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold text-[#444] mb-2">Shop by Municipality</p>
+              <p className="text-[11px] font-bold text-[#444] mb-2">Municipalities</p>
               <p className="text-[11px] text-[#888] leading-relaxed">
-                {["Calapan City", "Puerto Galera", "Naujan", "Pinamalayan", "Roxas", "Bongabong", "Gloria", "Mansalay", "Pola", "Bansud", "Bulalacao", "Victoria", "Socorro", "San Teodoro", "Baco"].map((c, i, a) => (
+                {["Calapan City", "Puerto Galera", "Naujan", "Pinamalayan", "Roxas", "Bongabong", "Gloria", "Mansalay", "Pola", "Bansud", "Victoria", "Socorro"].map((c, i, a) => (
                   <React.Fragment key={c}>
                     <span>{c}</span>
                     {i < a.length - 1 && " · "}
@@ -244,18 +236,16 @@ export function Footer() {
         </div>
       </div>
 
-      {/* ── Bottom bar ── */}
+      {/* Bottom bar */}
       <div style={{ backgroundColor: "#fff" }}>
         <div className="max-w-[1280px] mx-auto px-8 py-5 flex items-center justify-between">
-          {/* Left: brand */}
           <div className="flex items-center gap-2.5">
             <Image src="/brand-icon.png" alt="Emoorm" width={22} height={22} className="object-contain opacity-50" />
             <p className="text-[11px] text-[#aaa]">
-              © {new Date().getFullYear()} Emoorm Mindoro · Oriental Mindoro, Philippines
+              &copy; {new Date().getFullYear()} Emoorm Mindoro &mdash; Oriental Mindoro, Philippines
             </p>
           </div>
 
-          {/* Center: quick links */}
           <div className="flex items-center gap-4">
             {[
               { label: "Privacy", href: "/privacy" },
@@ -263,15 +253,13 @@ export function Footer() {
               { label: "Sitemap", href: "/sitemap" },
               { label: "Feedback", href: "/feedback" },
               { label: "Careers", href: "/careers" },
-              { label: "Press", href: "/press" },
             ].map((l) => (
-              <Link key={l.href} href={l.href} className="text-[11px] text-[#bbb] hover:text-[#555] transition-colors">
+              <Link key={l.label} href={l.href} className="text-[11px] text-[#bbb] hover:text-[#555] transition-colors">
                 {l.label}
               </Link>
             ))}
           </div>
 
-          {/* Right: Follow Us */}
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#bbb] mr-1">Follow Us</span>
             {[

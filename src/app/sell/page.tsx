@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -7,12 +7,6 @@ import { useRouter } from "next/navigation";
 import { Footer } from "@/components/layout/footer";
 import { useUser, useSupabase, useStableMemo, useDoc } from "@/supabase";
 import {
-  Store,
-  Users,
-  Truck,
-  MessageSquare,
-  BarChart3,
-  Shield,
   ArrowRight,
   Star,
   Menu,
@@ -22,34 +16,28 @@ import {
 
 const BENEFITS = [
   {
-    icon: Store,
     title: "Free to open a shop",
-    desc: "No monthly fees or listing costs. Keep more of what you earn.",
+    desc: "No fees. Keep more of what you earn.",
   },
   {
-    icon: Users,
     title: "Reach local buyers",
-    desc: "Connect directly with buyers in Oriental Mindoro who want fresh, local products.",
+    desc: "Buyers across Oriental Mindoro looking for fresh, local products.",
   },
   {
-    icon: Truck,
     title: "You control delivery",
-    desc: "Set your own delivery area and schedule. No third-party courier required.",
+    desc: "Set your own area and schedule.",
   },
   {
-    icon: MessageSquare,
-    title: "Direct buyer messaging",
-    desc: "Chat with buyers in real time to confirm orders and build relationships.",
+    title: "Direct messaging",
+    desc: "Chat with buyers in real time to confirm orders.",
   },
   {
-    icon: BarChart3,
-    title: "Track your performance",
-    desc: "See your sales, reviews, and earnings from a simple seller dashboard.",
+    title: "Track performance",
+    desc: "Sales, reviews, and earnings in one dashboard.",
   },
   {
-    icon: Shield,
     title: "Verified & trusted",
-    desc: "Government ID verification builds buyer trust and protects the community.",
+    desc: "Gov't ID verification builds buyer confidence.",
   },
 ];
 
@@ -57,27 +45,26 @@ const STEPS = [
   {
     n: "1",
     title: "Create a seller account",
-    desc: "Sign up in minutes with your name and email.",
+    desc: "Sign up with your name and email.",
   },
   {
     n: "2",
     title: "Register your shop",
-    desc: "Fill in your store name, location, and upload your valid ID.",
+    desc: "Store name, location, and valid ID.",
   },
   {
     n: "3",
     title: "List your products",
-    desc: "Add photos, prices, and descriptions of what you sell.",
+    desc: "Photos, prices, descriptions.",
   },
   {
     n: "4",
     title: "Start earning",
-    desc: "Buyers find you, place orders, and you deliver.",
+    desc: "Buyers find you and you deliver.",
   },
 ];
 
 type DropItem = {
-  icon?: React.ElementType;
   n?: string;
   title: string;
   desc?: string;
@@ -112,12 +99,12 @@ const NAV_LINKS: NavLink[] = [
       {
         title: "Why Emoorm",
         items: [
-          { icon: Store,         title: "Free to open a shop",    desc: "No monthly fees. Keep more of what you earn.",           href: "#benefits" },
-          { icon: Users,         title: "Reach local buyers",     desc: "Connect with buyers across Oriental Mindoro.",            href: "#benefits" },
-          { icon: Truck,         title: "You control delivery",   desc: "Set your own area, schedule, and delivery rules.",        href: "#benefits" },
-          { icon: MessageSquare, title: "Direct messaging",       desc: "Chat with buyers in real time to confirm orders.",        href: "#benefits" },
-          { icon: BarChart3,     title: "Track performance",      desc: "See sales, reviews, and earnings at a glance.",           href: "#benefits" },
-          { icon: Shield,        title: "Verified & trusted",     desc: "Gov't ID verification builds buyer confidence.",          href: "#benefits" },
+          { title: "Free to open a shop", desc: "No monthly fees. Keep more of what you earn.", href: "#benefits" },
+          { title: "Reach local buyers", desc: "Connect with buyers across Oriental Mindoro.", href: "#benefits" },
+          { title: "You control delivery", desc: "Set your own area, schedule, and delivery rules.", href: "#benefits" },
+          { title: "Direct messaging", desc: "Chat with buyers in real time to confirm orders.", href: "#benefits" },
+          { title: "Track performance", desc: "See sales, reviews, and earnings at a glance.", href: "#benefits" },
+          { title: "Verified & trusted", desc: "Gov't ID verification builds buyer confidence.", href: "#benefits" },
         ],
       },
     ],
@@ -129,18 +116,18 @@ const NAV_LINKS: NavLink[] = [
       {
         title: "What you can sell",
         items: [
-          { title: "Vegetables",           href: "/?cat=Vegetables" },
-          { title: "Fruits",               href: "/?cat=Fruits" },
-          { title: "Seafood",              href: "/?cat=Seafood" },
-          { title: "Rice & Grains",        href: "/?cat=Rice+%26+Grains" },
-          { title: "Meat & Poultry",       href: "/?cat=Meat+%26+Poultry" },
-          { title: "Dairy",                href: "/?cat=Dairy" },
-          { title: "Handicrafts",          href: "/?cat=Handicrafts" },
-          { title: "Wellness Products",    href: "/?cat=Wellness" },
-          { title: "Delicacies",           href: "/?cat=Delicacies" },
-          { title: "Beverages",            href: "/?cat=Beverages" },
-          { title: "Condiments & Sauces",  href: "/?cat=Condiments" },
-          { title: "Seedlings & Plants",   href: "/?cat=Seedlings" },
+          { title: "Vegetables", href: "/?cat=Vegetables" },
+          { title: "Fruits", href: "/?cat=Fruits" },
+          { title: "Seafood", href: "/?cat=Seafood" },
+          { title: "Rice & Grains", href: "/?cat=Rice+%26+Grains" },
+          { title: "Meat & Poultry", href: "/?cat=Meat+%26+Poultry" },
+          { title: "Dairy", href: "/?cat=Dairy" },
+          { title: "Handicrafts", href: "/?cat=Handicrafts" },
+          { title: "Wellness Products", href: "/?cat=Wellness" },
+          { title: "Delicacies", href: "/?cat=Delicacies" },
+          { title: "Beverages", href: "/?cat=Beverages" },
+          { title: "Condiments & Sauces", href: "/?cat=Condiments" },
+          { title: "Seedlings & Plants", href: "/?cat=Seedlings" },
         ],
       },
     ],
@@ -264,13 +251,11 @@ export default function SellLandingPage() {
   );
   const { data: store, isLoading: storeLoading } = useDoc(storeRef);
 
-  // Open the shared AuthModal with seller intent stored in sessionStorage
   const openAuthModal = (mode: "signin" | "signup") => {
     sessionStorage.setItem("sellerAuthIntent", "true");
     router.push(`?auth=${mode}`);
   };
 
-  // After login from this page, redirect to seller dashboard or registration
   useEffect(() => {
     if (!user) return;
     const intent = sessionStorage.getItem("sellerAuthIntent");
@@ -311,7 +296,7 @@ export default function SellLandingPage() {
         style={{ background: "#29a366" }}
       >
         <Star className="h-3.5 w-3.5 fill-white text-white shrink-0" />
-        <span>Free to join, start your shop. Built for Oriental Mindoro sellers.</span>
+        <span>Free to join. Built for Oriental Mindoro sellers.</span>
       </div>
 
       {/* ── Nav bar ─────────────────────────────────────────────── */}
@@ -323,7 +308,7 @@ export default function SellLandingPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5 shrink-0">
             <Image src="/brand-icon.png" alt="Emoorm" width={36} height={36} className="rounded-lg" />
-            <span style={{ fontFamily: "'Ubuntu', sans-serif", fontWeight: 700, fontSize: "1.5rem", letterSpacing: "-0.06em" }}>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "1.5rem", letterSpacing: "-0.04em" }}>
               <span style={{ color: "#29a366" }}>emoorm</span>
             </span>
           </Link>
@@ -414,13 +399,13 @@ export default function SellLandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-12">
             {/* Left — headline */}
             <div className="flex-1 min-w-0">
-              <h1 className="text-6xl md:text-6xl font-black text-[#111] leading-[1.05] mb-5 tracking-tight">
+              <h1 className="text-6xl md:text-6xl font-bold text-[#111] leading-[1.05] mb-5 tracking-tight">
                 Start Selling
                 <br />
                 <span style={{ color: "#29a366" }}>in Emoorm</span>
               </h1>
               <p className="text-base text-[#666] leading-relaxed mb-8 max-w-md">
-                Join local farmers, and agri-entrepreneurs.
+                Join local farmers and agri-entrepreneurs.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mb-8">
                 <button
@@ -462,22 +447,17 @@ export default function SellLandingPage() {
       </section>
 
       {/* ── Benefits ─────────────────────────────────────────── */}
-      <section id="benefits" className="py-16 md:py-20 px-4 md:px-8 bg-[#f9fafb]">
+      <section id="benefits" className="py-14 px-4 md:px-8 bg-[#f9fafb]">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-black text-[#111] mb-3">Why sell on Emoorm?</h2>
-            <p className="text-sm text-[#888] max-w-md mx-auto">
-              Built specifically for local sellers in Oriental Mindoro not a one-size-fits-all platform.
-            </p>
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-semibold text-[#111] mb-2">Why sell on Emoorm?</h2>
+            <p className="text-sm text-[#999]">Built for local sellers in Oriental Mindoro.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {BENEFITS.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-white rounded-2xl border border-black/[0.06] p-6">
-                <div className="h-10 w-10 rounded-xl bg-[#f0fdf4] flex items-center justify-center mb-4">
-                  <Icon className="h-5 w-5 text-[#29a366]" strokeWidth={1.8} />
-                </div>
-                <p className="text-sm font-bold text-[#111] mb-1.5">{title}</p>
-                <p className="text-xs text-[#888] leading-relaxed">{desc}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {BENEFITS.map(({ title, desc }) => (
+              <div key={title} className="bg-white rounded-2xl border border-black/[0.06] px-5 py-5">
+                <p className="text-lg font-bold text-[#111] mb-1 leading-snug">{title}</p>
+                <p className="text-sm text-[#888] leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -485,21 +465,21 @@ export default function SellLandingPage() {
       </section>
 
       {/* ── How it works ─────────────────────────────────────── */}
-      <section id="how-it-works" className="py-16 md:py-20 px-4 md:px-8">
+      <section id="how-it-works" className="py-14 px-4 md:px-8">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-black text-[#111] mb-3">How it works</h2>
-            <p className="text-sm text-[#888]">Set up your shop and start selling in under 10 minutes.</p>
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-semibold text-[#111] mb-2">How it works</h2>
+            <p className="text-sm text-[#999]">Up and running in under 10 minutes.</p>
           </div>
           <div className="space-y-3">
             {STEPS.map(({ n, title, desc }) => (
-              <div key={n} className="flex items-start gap-5 bg-white rounded-2xl border border-black/[0.06] px-6 py-5">
-                <span className="text-3xl font-black leading-none mt-0.5 shrink-0" style={{ color: "#29a366", opacity: 0.18 }}>
+              <div key={n} className="flex items-center gap-5 bg-white rounded-2xl border border-black/[0.06] px-6 py-5">
+                <span className="text-4xl font-black leading-none shrink-0 w-10 text-center" style={{ color: "#29a366", opacity: 0.2 }}>
                   {n}
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-[#111] mb-0.5">{title}</p>
-                  <p className="text-xs text-[#888] leading-relaxed">{desc}</p>
+                  <p className="text-lg font-bold text-[#111] leading-tight">{title}</p>
+                  <p className="text-sm text-[#888] mt-0.5">{desc}</p>
                 </div>
               </div>
             ))}
@@ -508,17 +488,17 @@ export default function SellLandingPage() {
       </section>
 
       {/* ── Categories ───────────────────────────────────────── */}
-      <section id="categories" className="py-16 px-4 md:px-8 bg-[#f9fafb]">
+      <section id="categories" className="py-14 px-4 md:px-8 bg-[#f9fafb]">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-xl font-black text-[#111] mb-2">What can you sell?</h2>
-          <p className="text-sm text-[#888] mb-8">Anything local, fresh, and made in Oriental Mindoro.</p>
+          <h2 className="text-3xl md:text-4xl font-semibold text-[#111] mb-2">What can you sell?</h2>
+          <p className="text-sm text-[#999] mb-8">Local, fresh, and made in Oriental Mindoro.</p>
           <div className="flex flex-wrap justify-center gap-2">
             {[
-              "Vegetables","Fruits","Seafood","Rice & Grains","Meat & Poultry",
-              "Dairy","Handicrafts","Wellness Products","Delicacies",
-              "Beverages","Condiments & Sauces","Seedlings & Plants",
+              "Vegetables", "Fruits", "Seafood", "Rice & Grains", "Meat & Poultry",
+              "Dairy", "Handicrafts", "Wellness Products", "Delicacies",
+              "Beverages", "Condiments & Sauces", "Seedlings & Plants",
             ].map((cat) => (
-              <span key={cat} className="bg-white border border-black/[0.06] rounded-full px-4 py-1.5 text-xs font-medium text-[#555]">
+              <span key={cat} className="bg-white border border-black/[0.06] rounded-full px-5 py-2 text-sm font-semibold text-[#444]">
                 {cat}
               </span>
             ))}
@@ -532,10 +512,8 @@ export default function SellLandingPage() {
         style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)" }}
       >
         <div className="max-w-xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-3">Ready to start selling?</h2>
-          <p className="text-sm text-white/70 mb-8 leading-relaxed">
-            Join the Emoorm seller community. Free, local, and built for you.
-          </p>
+          <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3">Ready to start selling?</h2>
+          <p className="text-sm text-white/70 mb-8">Free, local, and built for you.</p>
           <button
             onClick={handleCTA}
             disabled={isUserLoading || storeLoading}

@@ -19,6 +19,7 @@ import {
   Heart,
   Tag,
   TrendingUp,
+  Camera,
 } from "lucide-react";
 import {
   useDoc,
@@ -471,6 +472,23 @@ function HeaderContent() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const mobileOverlayRef = useRef<HTMLDivElement>(null);
 
+  // Auto-hide top bar on scroll down, reveal on scroll up
+  const [topBarVisible, setTopBarVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY && y > 40) {
+        setTopBarVisible(false);
+      } else {
+        setTopBarVisible(true);
+      }
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const toggleMobileMenu = () => {
     if (isMobileMenuOpen) {
       gsap.to(mobileMenuRef.current, {
@@ -508,6 +526,69 @@ function HeaderContent() {
     } else {
       router.push(`/?q=${encoded}`);
     }
+  };
+
+  // ── Image search ────────────────────────────────────────────────────
+  const [isImageSearching, setIsImageSearching] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [isFlyingToSearch, setIsFlyingToSearch] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Called when user picks/drops a file in the modal
+  const handleImageDrop = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    setImagePreview(url);
+    setPendingImageFile(file);
+    // Stay on the card — user will click "Search similar products"
+  };
+
+  // Called when user clicks "Search similar products"
+  const handleImageSearch = async () => {
+    if (!pendingImageFile) return;
+    setIsImageSearching(true);
+    setIsFlyingToSearch(true);
+    setShowImageSearch(false);
+    // Persist the reference thumbnail so the results page can show it
+    if (imagePreview) {
+      sessionStorage.setItem("imgSearchPreview", imagePreview);
+    }
+    // Navigate to results immediately — show loading state there
+    const query = `/?ids=searching`;
+    if (pathname === "/") {
+      router.replace(query);
+    } else {
+      router.push(query);
+    }
+    try {
+      const formData = new FormData();
+      formData.append("image", pendingImageFile);
+      const res = await fetch("/api/image-search", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      const ids: string[] = data.ids ?? [];
+      // Replace the placeholder URL with real IDs (or empty to show "no results")
+      const finalQuery = ids.length > 0 ? `/?ids=${ids.join(",")}` : `/?ids=none`;
+      router.replace(finalQuery);
+      setPendingImageFile(null);
+      setImagePreview(null);
+      setHeaderSearch("");
+    } catch {
+      // On error still show results page with no results
+      router.replace(`/?ids=none`);
+    } finally {
+      setIsImageSearching(false);
+      setIsFlyingToSearch(false);
+    }
+  };
+
+  const clearPendingImage = () => {
+    setPendingImageFile(null);
+    setImagePreview(null);
+    setIsImageSearching(false);
   };
 
   const handleSuggestionClick = (s: (typeof suggestions)[number]) => {
@@ -606,7 +687,7 @@ function HeaderContent() {
           <div className="flex items-center gap-3 px-4 h-14">
             <Link href="/" className="shrink-0 flex items-center gap-1.5">
               <Image src="/brand-icon.png" alt="Emoorm" width={28} height={28} style={{ objectFit: "contain" }} />
-              <span style={{ fontFamily: "'Ubuntu', sans-serif", fontWeight: 700, fontSize: "1.15rem", letterSpacing: "-0.05em" }}>emoorm</span>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "1.15rem", letterSpacing: "-0.04em" }}>emoorm</span>
             </Link>
             <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.15)", flexShrink: 0 }} />
             <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: "0.85rem", color: "#666", whiteSpace: "nowrap" }}>Shopping Cart</span>
@@ -636,7 +717,13 @@ function HeaderContent() {
       )}
 
       {/* Top Bar */}
-      <div className={isHome ? "top-bar" : "top-bar static-header"}>
+      <div
+        className={isHome ? "top-bar" : "top-bar static-header"}
+        style={{
+          transform: topBarVisible ? "translateY(0)" : "translateY(-100%)",
+          transition: "transform 0.25s ease",
+        }}
+      >
         <div className="top-bar-inner">
           <div className="top-bar-left">
             <Link href="/feedback">{t("topbar.feedback")}</Link>
@@ -777,9 +864,9 @@ function HeaderContent() {
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Link href="?auth=signin">{t("topbar.signin")}</Link>
+                <Link href="/login">{t("topbar.signin")}</Link>
                 <span style={{ color: "#444" }}>/</span>
-                <Link href="?auth=signup">{t("topbar.signup")}</Link>
+                <Link href="/signup">{t("topbar.signup")}</Link>
               </div>
             )}
           </div>
@@ -791,6 +878,10 @@ function HeaderContent() {
         className={
           isHome ? "site-nav has-top-bar" : "site-nav has-top-bar static-header"
         }
+        style={isHome ? {
+          top: topBarVisible ? "var(--top-bar-height)" : "0",
+          transition: "top 0.25s ease",
+        } : undefined}
       >
         <div className="site-nav-inner">
           <div className="nav-side left-side">
@@ -809,10 +900,10 @@ function HeaderContent() {
                 />
                 <span
                   style={{
-                    fontFamily: "'Ubuntu', sans-serif",
+                    fontFamily: "'Inter', sans-serif",
                     fontWeight: 700,
                     fontSize: "2.3rem",
-                    letterSpacing: "-0.06em",
+                    letterSpacing: "-0.04em",
                   }}
                 >
                   emoorm
@@ -905,13 +996,58 @@ function HeaderContent() {
                     }
                     autoComplete="off"
                   />
+                  {/* Camera icon / thumbnail area — right side of input */}
+                  {imagePreview && pendingImageFile ? (
+                    <div className="flex items-center gap-1 pr-2 shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreview}
+                        alt=""
+                        className={`h-6 w-6 rounded object-cover ring-1 ring-[#29a366]/40 ${!isFlyingToSearch ? "img-arrive-in-search" : ""}`}
+                      />
+                      {!isImageSearching && (
+                        <button
+                          type="button"
+                          onClick={clearPendingImage}
+                          className="h-4 w-4 rounded-full bg-[#eee] hover:bg-[#ddd] flex items-center justify-center text-[#888] text-[10px] leading-none transition-colors"
+                          aria-label="Clear image"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {isImageSearching && (
+                        <svg className="animate-spin h-3.5 w-3.5 text-[#29a366] shrink-0" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                        </svg>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowImageSearch(true)}
+                      aria-label="Search by image"
+                      title="Search by image"
+                      className="header-img-search-inline-btn"
+                    >
+                      <Camera className="h-[17px] w-[17px]" />
+                    </button>
+                  )}
                 </div>
                 <button
                   className="header-search-btn"
-                  onClick={() => handleHeaderSearch(headerSearch)}
+                  onClick={() => pendingImageFile ? handleImageSearch() : handleHeaderSearch(headerSearch)}
+                  disabled={isImageSearching}
                   aria-label="Search"
                 >
-                  <Search />
+                  {isImageSearching ? (
+                    <svg className="animate-spin h-[18px] w-[18px] text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  ) : (
+                    <Search />
+                  )}
                 </button>
 
                 {/* Suggestions dropdown */}
@@ -1025,6 +1161,114 @@ function HeaderContent() {
         </div>
         {/* end site-nav-inner */}
       </div>
+
+      {/* ── Image Search Modal ───────────────────────────────────────── */}
+      {showImageSearch && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-start justify-center"
+          style={{ paddingTop: "calc(var(--top-bar-height) + var(--nav-height) + 8px)" }}
+          onClick={() => { if (!isImageSearching) { setShowImageSearch(false); setIsFlyingToSearch(false); } }}
+        >
+          {/* Backdrop — fades in, no blur */}
+          <div className="absolute inset-0 img-search-backdrop" />
+
+          {/* Card — springs down from the search bar */}
+          <div
+            className="img-search-card relative bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header row */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <span className="text-base font-semibold text-[#111]">Search by image</span>
+              {!isImageSearching && (
+                <button
+                  onClick={() => { setShowImageSearch(false); setIsFlyingToSearch(false); }}
+                  className="h-8 w-8 rounded-full hover:bg-[#f2f2f0] flex items-center justify-center transition-colors text-[#aaa] hover:text-[#333] text-lg leading-none"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="px-6 pb-6">
+              {!imagePreview ? (
+                /* ── Drop zone (no image yet) ── */
+                <div
+                  className={`flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed transition-all cursor-pointer py-12 px-6 ${isDragOver ? "border-[#29a366] bg-[#f0fdf4]" : "border-black/[0.10] bg-[#fafafa] hover:border-[#29a366]/40 hover:bg-[#f7fef9]"}`}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleImageDrop(file);
+                  }}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <p className="text-base font-semibold text-[#111]">
+                    {isDragOver ? "Drop it here" : "Upload or drop an image"}
+                  </p>
+                  <p className="text-sm text-[#999]">We'll find similar products</p>
+                  <span className="text-sm text-[#29a366] font-semibold border border-[#29a366]/40 bg-[#29a366]/5 rounded-full px-6 py-2">
+                    Browse files
+                  </span>
+                </div>
+              ) : (
+                /* ── Preview + action (image on left, action on right) ── */
+                <div className="flex items-stretch gap-5">
+                  {/* Thumbnail — left */}
+                  <div
+                    className={`relative shrink-0 w-36 rounded-xl overflow-hidden bg-[#f5f5f5] ${isFlyingToSearch ? "img-fly-to-search" : "img-preview-in"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+
+                  {/* Right side — info + actions */}
+                  <div className="flex flex-col justify-between flex-1 py-1">
+                    <div>
+                      <p className="text-sm font-semibold text-[#111] mb-1">Image ready</p>
+                      <p className="text-sm text-[#999] leading-relaxed">
+                        Click search to find similar products in Emoorm.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4">
+                      <button
+                        onClick={() => { handleImageSearch(); }}
+                        disabled={isImageSearching}
+                        className="flex-1 h-10 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                        style={{ background: "#29a366" }}
+                      >
+                        {isImageSearching ? "Searching…" : "Search similar products"}
+                      </button>
+                      <button
+                        onClick={() => { setImagePreview(null); setPendingImageFile(null); }}
+                        className="h-10 px-3 rounded-xl text-sm text-[#999] hover:text-[#555] hover:bg-[#f2f2f0] transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Hidden input */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageDrop(file);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {!shouldHideBottomNav && (
         <div className="mobile-bottom-nav">
@@ -1230,7 +1474,7 @@ function HeaderContent() {
                 </Link>
               )
             ) : (
-              <Link href="?auth=signin" className="mobile-nav-item">
+              <Link href="/login" className="mobile-nav-item">
                 <div className="mobile-nav-icon">
                   <LogOut
                     className="h-[30px] w-[30px] rotate-180"
@@ -1368,13 +1612,13 @@ function HeaderContent() {
         ) : (
           <div className="pt-6 border-t border-black/10">
             <Link
-              href="?auth=signin"
+              href="/login"
               className="block w-full p-4 mb-3 text-center bg-black/5 rounded-xl font-bold"
             >
               Login
             </Link>
             <Link
-              href="?auth=signup"
+              href="/signup"
               className="block w-full p-4 mb-3 text-center bg-primary text-white rounded-xl font-bold shadow-lg"
             >
               Sign up
